@@ -1,26 +1,11 @@
-# transfer-nlp
-Building on D. Rao's book "Natural Language Processing with PyTorch", this library aims at bringing a flexible framework for NLP projects.
+# Build an experiment
+To build a new experiment, you need:
 
-The ideal use of this library is to provide a minimal implementation of a dataset loader, a vectorizer and a model. Then, given a config file with the experiment parameters, `runner.py` takes care of the training pipeline.
+- A `Vocabulary` (vocabularies implemented in `loaders/vocabulary.py` should be sufficient but you can extend to your own implemenations)
+- A `Vectorizer` (some vectorizers are already implemented in `loaders/vectorizers.py`, but you can create your own by extending the `Vectorizer` class)
+- A `CustomDataset` which will use your own dataset and create the vocabulary and vectorizer for you. A custom dataset class should extend the `CustomDataset` class
+- A model: you can see some examples in `models/`, to create a custom model you need to extend the `nn.Module` class from Pytorch
+- A `json` file containing all the experiments parameters (see `experiments/` for examples).
+- In `runners/runner.py`, add you dataset and model classes, and run you experiment from you `json` exoeriment file. 
 
-
-Before starting using this repository:
-
-- create a virtual environment: `mkvirtualenv YourEnvName`
-- clone the repository: `git clone https://github.com/petermartigny/transfer-nlp.git`
-- Install requirements: `pip install -r requirements.txt`
-
-Structure of the library:
-
-`loaders`
-- `loaders/vocabulary.py`: contains classes for vocabularies
-- `loaders/vectorizers.py`: classes for vectorizers
-- `loaders/loaders.py`: classes for dataset loaders
-
-`models`: contains implementations of NLP models
-
-`embeddings`: contains utility functions for embeddings management
-
-`experiments`: each experiment is defined as a json config file, defining the whole experiment
-
-`runners`: contains the full training pipeline, given a config file experiment
+Visualize training details using `tensorboard --logdir path/to/tensorboard/logs`
