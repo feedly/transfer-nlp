@@ -1,0 +1,126 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from loaders.vectorizers import Vectorizer
+from typing import Dict, List, Tuple, Any
+
+
+def column_gather(y_out: torch.FloatTensor, x_lengths: torch.LongTensor) -> torch.FloatTensor:
+
+    x_lengths = x_lengths.long().detach().cpu().numpy() - 1
+
+    out = []
+    for batch_index, column_index in enumerate(x_lengths):
+        out.append(y_out[batch_index, column_index])
+
+    return torch.stack(out)
+
+
+class ElmanRNN(nn.Module):
+
+    def __init__(self, input_size: int, hidden_size: int, batch_first: bool=False):
+
+        super(ElmanRNN, self).__init__()
+
+        self.rnn_cell: nn.RNNCell = nn.RNNCell(input_size, hidden_size)
+
+        self.batch_first: bool = batch_first
+        self.hidden_size: int = hidden_size
+
+    def _initial_hidden(self, batch_size: int) -> torch.tensor:
+        return torch.zeros((batch_size, self.hidden_size))
+
+    def forward(self, x_in, initial_hidden=None) -> torch.Tensor:
+
+        if self.batch_first:
+            batch_size, seq_size, feat_size = x_in.size()
+            x_in = x_in.permute(1, 0, 2)
+        else:
+            seq_size, batch_size, feat_size = x_in.size()
+
+        hiddens = []
+
+        if initial_hidden is None:
+            initial_hidden = self._initial_hidden(batch_size)
+            initial_hidden = initial_hidden.to(x_in.device)
+
+        hidden_t = initial_hidden
+
+        for t in range(seq_size):
+            hidden_t = self.rnn_cell(x_in[t], hidden_t)
+            hiddens.append(hidden_t)
+
+        hiddens = torch.stack(hiddens)
+
+        if self.batch_first:
+            hiddens = hiddens.permute(1, 0, 2)
+
+        return hiddens
+
+
+class SurnameClassifierRNN(nn.Module):
+
+    def __init__(self, embedding_size: int, num_embeddings: int, num_classes: int,
+                 rnn_hidden_size: int, batch_first: bool=True, padding_idx: int=0):
+        """
+        Args:
+            embedding_size (int): The size of the character embeddings
+            num_embeddings (int): The number of characters to embed
+            num_classes (int): The size of the prediction vector
+                Note: the number of nationalities
+            rnn_hidden_size (int): The size of the RNN's hidden state
+            batch_first (bool): Informs whether the input tensors will
+                have batch or the sequence on the 0th dimension
+            padding_idx (int): The index for the tensor padding;
+                see torch.nn.Embedding
+        """
+        super(SurnameClassifierRNN, self).__init__()
+
+        self.emb: nn.Embedding = nn.Embedding(num_embeddings=num_embeddings,
+                                embedding_dim=embedding_size,
+                                padding_idx=padding_idx)
+        self.rnn: ElmanRNN = ElmanRNN(input_size=embedding_size,
+                             hidden_size=rnn_hidden_size,
+                             batch_first=batch_first)
+        self.fc1: nn.Linear = nn.Linear(in_features=rnn_hidden_size,
+                         out_features=rnn_hidden_size)
+        self.fc2: nn.Linear = nn.Linear(in_features=rnn_hidden_size,
+                          out_features=num_classes)
+
+    def forward(self, x_in: torch.Tensor, x_lengths: torch.Tensor=None, apply_softmax: bool=False) -> torch.Tensor:
+
+        x_embedded = self.emb(x_in)
+        y_out = self.rnn(x_embedded)
+
+        if x_lengths is not None:
+            y_out = column_gather(y_out, x_lengths)
+        else:
+            y_out = y_out[:, -1, :]
+
+        y_out = F.relu(self.fc1(F.dropout(y_out, 0.5)))
+        y_out = self.fc2(F.dropout(y_out, 0.5))
+
+        if apply_softmax:
+            y_out = F.softmax(y_out, dim=1)
+
+        return y_out
+
+
+def predict_nationalityRNN(surname: str, classifier: SurnameClassifierRNN, vectorizer: Vectorizer) -> Dict[str, Any]:
+
+    vectorized_surname, vec_length = vectorizer.vectorize(surname)
+    vectorized_surname = torch.tensor(vectorized_surname).unsqueeze(dim=0)
+    vec_length = torch.tensor([vec_length], dtype=torch.int64)
+
+    result = classifier(vectorized_surname, vec_length, apply_softmax=True)
+    probability_values, indices = result.max(dim=1)
+
+    index = indices.item()
+    prob_value = probability_values.item()
+
+    predicted_nationality = vectorizer.target_vocab.lookup_index(index)
+
+    return {
+        'nationality': predicted_nationality,
+        'probability': prob_value,
+        'surname': surname}
