@@ -27,4 +27,4 @@ Structure of the library:
 `transfer-nlp/runners`: contains the full training pipeline, given a config file experiment
 
 
-This library builds on the book "Natural Language Processing with PyTorch" by Delip Rao and Brian McMahan for the initial experiments.
+This library builds on the book <cite>["Natural Language Processing with PyTorch"](https://www.amazon.com/dp/1491978236/)<cite> by Delip Rao and Brian McMahan for the initial experiments.
