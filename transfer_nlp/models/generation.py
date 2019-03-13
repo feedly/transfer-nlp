@@ -37,33 +37,35 @@ class SurnameConditionedGenerationModel(nn.Module):
         self._dropout_p: float = dropout_p
 
     def forward(self, x_in: torch.Tensor, nationality_index: int=0, apply_softmax: bool=False) -> torch.Tensor:
+        """The forward pass of the model
 
-        # print('input vector')
+        Args:
+            x_in (torch.Tensor): an input data tensor.
+                x_in.shape should be (batch, max_seq_size)
+            nationality_index (torch.Tensor): The index of the nationality for each data point
+                Used to initialize the hidden state of the RNN
+            apply_softmax (bool): a flag for the softmax activation
+                should be false if used with the Cross Entropy losses
+        Returns:
+            the resulting tensor. tensor.shape should be (batch, char_vocab_size)
+        """
         x_embedded = self.char_emb(x_in)
-        # describe(x_embedded)
         # hidden_size: (num_layers * num_directions, batch_size, rnn_hidden_size)
         if self.conditioned:
             nationality_embedded = self.nation_emb(nationality_index).unsqueeze(0)
-            # describe(nationality_embedded)
             y_out, _ = self.rnn(x_embedded, nationality_embedded)
-            # describe(y_out)
         else:
             y_out, _ = self.rnn(x_embedded)
-            # describe(y_out)
 
         batch_size, seq_size, feat_size = y_out.shape
         y_out = y_out.contiguous().view(batch_size * seq_size, feat_size)
-        # describe(y_out)
         y_out = self.fc(F.dropout(y_out, p=self._dropout_p))
-        # describe(y_out)
 
         if apply_softmax:
             y_out = F.softmax(y_out, dim=1)
-            # describe(y_out)
 
         new_feat_size = y_out.shape[-1]
         y_out = y_out.view(batch_size, seq_size, new_feat_size)
-        # describe(y_out)
 
         return y_out
 
@@ -168,15 +170,18 @@ def generate_names(model: SurnameConditionedGenerationModel, vectorizer: Vectori
 
 
 if __name__ == "__main__":
+
     char_embedding_size = 32
     char_vocab_size = 256
     rnn_hidden_size = 100
     num_nationalities = 2
+    batch_size = 32
+    max_sequence = 100
 
     model = SurnameConditionedGenerationModel(char_embedding_size=char_embedding_size, char_vocab_size=char_vocab_size, rnn_hidden_size=rnn_hidden_size, num_nationalities=num_nationalities, conditioned=True)
     print(model)
-    tensor = torch.ones(10).long()
+    tensor = torch.ones(size=(batch_size, max_sequence)).long()
     describe(tensor)
-    nationality_index = torch.LongTensor([0])
+    nationality_index = torch.zeros(size=(batch_size,), dtype=torch.int64)
     output = model(x_in=tensor, nationality_index=nationality_index)
     describe(output)

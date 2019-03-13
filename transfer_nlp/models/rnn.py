@@ -1,8 +1,17 @@
+import logging
+from typing import Dict, Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from common.utils import describe
 from loaders.vectorizers import Vectorizer
-from typing import Dict, List, Tuple, Any
+
+name = 'transfer_nlp.models.rnn'
+logging.getLogger(name).setLevel(level=logging.INFO)
+logger = logging.getLogger(name)
+logging.info('')
 
 
 def column_gather(y_out: torch.FloatTensor, x_lengths: torch.LongTensor) -> torch.FloatTensor:
@@ -30,7 +39,19 @@ class ElmanRNN(nn.Module):
     def _initial_hidden(self, batch_size: int) -> torch.tensor:
         return torch.zeros((batch_size, self.hidden_size))
 
-    def forward(self, x_in, initial_hidden=None) -> torch.Tensor:
+    def forward(self, x_in: torch.Tensor, initial_hidden: torch.Tensor=None) -> torch.Tensor:
+        """The forward pass of the ElmanRNN
+
+        Args:
+            x_in (torch.Tensor): an input data tensor.
+                If self.batch_first: x_in.shape = (batch, seq_size, feat_size)
+                Else: x_in.shape = (seq_size, batch, feat_size)
+            initial_hidden (torch.Tensor): the initial hidden state for the RNN
+        Returns:
+            hiddens (torch.Tensor): The outputs of the RNN at each time step.
+                If self.batch_first: hiddens.shape = (batch, seq_size, hidden_size)
+                Else: hiddens.shape = (seq_size, batch, hidden_size)
+        """
 
         if self.batch_first:
             batch_size, seq_size, feat_size = x_in.size()
@@ -88,6 +109,18 @@ class SurnameClassifierRNN(nn.Module):
                           out_features=num_classes)
 
     def forward(self, x_in: torch.Tensor, x_lengths: torch.Tensor=None, apply_softmax: bool=False) -> torch.Tensor:
+        """The forward pass of the classifier
+
+         Args:
+             x_in (torch.Tensor): an input data tensor.
+                 x_in.shape should be (batch, input_dim)
+             x_lengths (torch.Tensor): the lengths of each sequence in the batch.
+                 They are used to find the final vector of each sequence
+             apply_softmax (bool): a flag for the softmax activation
+                 should be false if used with the Cross Entropy losses
+         Returns:
+             the resulting tensor. tensor.shape should be (batch, output_dim)
+         """
 
         x_embedded = self.emb(x_in)
         y_out = self.rnn(x_embedded)
@@ -124,3 +157,37 @@ def predict_nationalityRNN(surname: str, classifier: SurnameClassifierRNN, vecto
         'nationality': predicted_nationality,
         'probability': prob_value,
         'surname': surname}
+
+
+if __name__ == "__main__":
+
+    input_size = 10
+    hidden_size = 10
+    seq_size = 50
+    batch_size = 32
+
+    model = ElmanRNN(input_size=input_size, hidden_size=hidden_size)
+
+    tensor = torch.randn(size=(batch_size, seq_size, input_size))
+    describe(tensor)
+    output = model(x_in=tensor)
+    describe(output)
+
+
+    embedding_size = 100
+    num_embeddings = 100
+    num_classes = 10
+    rnn_hidden_size = 64
+
+    model = SurnameClassifierRNN(embedding_size=embedding_size, num_embeddings=num_embeddings, num_classes=num_classes,
+                 rnn_hidden_size=rnn_hidden_size)
+
+    tensor = torch.randint(low=1, high=num_embeddings, size=(batch_size, embedding_size))
+    lens = torch.randint(low=1, high=num_embeddings, size=(batch_size,))
+    describe(tensor)
+    describe(lens)
+    output = model(x_in=tensor, x_lengths=lens)
+    describe(output)
+
+
+

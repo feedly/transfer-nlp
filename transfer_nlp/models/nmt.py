@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from nltk.translate import bleu_score
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
+from common.utils import describe
 from loaders.vectorizers import NMTVectorizer
 from loaders.vocabulary import SequenceVocabulary
 
@@ -276,3 +277,23 @@ class NMTSampler:
                                                     smoothing_function=chencherry.method1)
 
         return output
+
+
+if __name__ == "__main__":
+
+    batch_size = 32
+    num_embeddings = 100
+    embedding_size = 100
+    rnn_hidden_size = 100
+    sequence_size = 100
+
+    model = NMTEncoder(num_embeddings=num_embeddings, embedding_size=embedding_size, rnn_hidden_size=rnn_hidden_size)
+
+    tensor = torch.randint(low=1, high=num_embeddings, size=(batch_size, sequence_size))
+    describe(tensor)
+    lens = torch.randint(low=1, high=num_embeddings, size=(batch_size,))
+    lens = torch.sort(input=lens, descending=True)[0]
+    describe(lens)
+    x_unpacked, x_birnn_h = model(x_source=tensor, x_lengths=lens)
+    describe(x=x_unpacked)
+    describe(x=x_birnn_h)

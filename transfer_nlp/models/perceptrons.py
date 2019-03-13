@@ -1,13 +1,14 @@
 import logging
-import re
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from common.tokenizers import tokenize
+from common.utils import describe
 from loaders.vectorizers import Vectorizer
 
-name = 'transfer_nlp'
+name = 'transfer_nlp.models.perceptrons'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 logging.info('')
@@ -21,6 +22,12 @@ class Perceptron(nn.Module):
         self.fc = nn.Linear(in_features=num_features, out_features=1)
 
     def forward(self, x_in: torch.Tensor, apply_sigmoid: bool = False) -> torch.Tensor:
+        """
+        Linear transformation, and squeeze to get only batch direction
+        :param x_in: size (batch, num_features)
+        :param apply_sigmoid: False if used with the cross entropy loss, True if probability wanted
+        :return:
+        """
 
         y_out = self.fc(x_in).squeeze()
         if apply_sigmoid:
@@ -43,6 +50,12 @@ class MultiLayerPerceptron(nn.Module):
         # TODO: experiment with more layers
 
     def forward(self, x_in: torch.Tensor, apply_softmax: bool = False) -> torch.Tensor:
+        """
+        Linear -> ReLu -> Linear (+ softmax if probabilities needed)
+        :param x_in: size (batch, input_dim)
+        :param apply_softmax: False if used with the cross entropy loss, True if probability wanted
+        :return:
+        """
         # TODO: experiment with other activation functions
 
         intermediate = F.relu(self.fc(x_in))
@@ -57,20 +70,6 @@ class MultiLayerPerceptron(nn.Module):
         return output
 
 
-def preprocess(text: str) -> str:
-    """
-    Basic text preprocessing
-    :param text:
-    :return:
-    """
-
-    text = text.lower()
-    text = re.sub(r"([.,!?])", r" \1 ", text)
-    text = re.sub(r"[^a-zA-Z.,!?]+", r" ", text)
-
-    return text
-
-
 def predict_review(review: str, model: nn.Module, vectorizer: Vectorizer, threshold: float = 0.5):
     """
     Do inference from a text review
@@ -81,7 +80,7 @@ def predict_review(review: str, model: nn.Module, vectorizer: Vectorizer, thresh
     :return:
     """
 
-    review = preprocess(review)
+    review = tokenize(review)
     vector = torch.tensor(vectorizer.vectorize(review=review))
     classifier = model.cpu()
     result = classifier(vector.view(1, -1)).unsqueeze(dim=0)
@@ -118,4 +117,29 @@ def inspect_model(model: nn.Module, vectorizer: Vectorizer):
     indices.reverse()
     for i in range(20):
         logger.info(vectorizer.data_vocab.lookup_index(index=indices[i]))
+
+
+if __name__ == "__main__":
+
+    batch_size = 32
+    num_features = 100
+
+    model = Perceptron(num_features=num_features)
+
+    tensor = torch.randn(size=(batch_size, num_features))
+    describe(tensor)
+    output = model.forward(x_in=tensor)
+    describe(x=output)
+
+
+    input_dim = 10
+    hidden_dim = 10
+    output_dim = 10
+
+    model = MultiLayerPerceptron(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim)
+
+    tensor = torch.randn(size=(batch_size, input_dim))
+    describe(tensor)
+    output = model(x_in=tensor)
+    describe(x=output)
 

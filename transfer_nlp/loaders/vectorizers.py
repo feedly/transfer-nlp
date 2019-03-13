@@ -7,20 +7,20 @@ import numpy as np
 import pandas as pd
 
 from loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
+from common.tokenizers import tokenize
 
-
-def tokenize(text: str) -> List[str]:
-    """
-    Basic text preprocessing
-    :param text:
-    :return:
-    """
-
-    text = text.lower()
-    text = re.sub(r"([.,!?])", r" \1 ", text)
-    text = re.sub(r"[^a-zA-Z.,!?]+", r" ", text)
-
-    return text.split(" ")
+# def tokenize(text: str) -> List[str]:
+#     """
+#     Basic text preprocessing
+#     :param text:
+#     :return:
+#     """
+#
+#     text = text.lower()
+#     text = re.sub(r"([.,!?])", r" \1 ", text)
+#     text = re.sub(r"[^a-zA-Z.,!?]+", r" ", text)
+#
+#     return text.split(" ")
 
 class Vectorizer:
 

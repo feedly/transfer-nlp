@@ -34,7 +34,7 @@ from models.cbow import CBOWClassifier
 from models.cnn import SurnameClassifierCNN, NewsClassifier, predict_category
 from models.generation import SurnameConditionedGenerationModel, decode_samples, generate_names
 from models.nmt import NMTModel, NMTSampler
-from models.perceptrons import MultiLayerPerceptron, Perceptron, predict_review, inspect_model, preprocess
+from models.perceptrons import MultiLayerPerceptron, Perceptron, predict_review, inspect_model
 from models.rnn import SurnameClassifierRNN, predict_nationalityRNN
 from runners.utils import compute_accuracy, set_seed_everywhere, handle_dirs, make_training_state, update_train_state, predict_nationality, \
     predict_topk_nationality, sequence_loss, compute_accuracy_sequence
@@ -63,7 +63,7 @@ MODEL_CLASSES = {'NewsClassifier': NewsClassifier,
                  'SurnameConditionedGenerationModel': SurnameConditionedGenerationModel,
                  'NMTModel': NMTModel}
 
-UTILS_FUNCTIONS = [preprocess, inspect_model, predict_review, predict_category, get_closest, pretty_print, predict_nationality,
+UTILS_FUNCTIONS = [inspect_model, predict_review, predict_category, get_closest, pretty_print, predict_nationality,
                    predict_topk_nationality, decode_samples, predict_nationalityRNN, generate_names]
 
 class Runner:
@@ -560,9 +560,9 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'surnamesGeneration.json'
+    args.config = args.config or 'newsClassifier.json'
     runner = run_experiment(config=args.config)
-    generate_names(model=runner.model, vectorizer=runner.vectorizer, character=True)
+    # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=True)
     # runner.visualize_nmt_test()
     # runner.visualize_results()
 

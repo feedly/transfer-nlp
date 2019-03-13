@@ -2,13 +2,21 @@
 CNN over character-lebvel one-hot encoding
 """
 
+import logging
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from common.tokenizers import tokenize
+from common.utils import describe
 from loaders.vectorizers import NewsVectorizer, Vectorizer
-from models.perceptrons import preprocess
+
+name = 'transfer_nlp.models.cnn'
+logging.getLogger(name).setLevel(level=logging.INFO)
+logger = logging.getLogger(name)
+logging.info('')
 
 
 class SurnameClassifierCNN(nn.Module):
@@ -34,15 +42,11 @@ class SurnameClassifierCNN(nn.Module):
         self.fc = nn.Linear(num_channels, num_classes)
 
     def forward(self, x_in: torch.Tensor, apply_softmax: bool=False) -> torch.Tensor:
-        """The forward pass of the classifier
-
-        Args:
-            x_in (torch.Tensor): an input data tensor.
-                x_surname.shape should be (batch, initial_num_channels, max_surname_length)
-            apply_softmax (bool): a flag for the softmax activation
-                should be false if used with the Cross Entropy losses
-        Returns:
-            the resulting tensor. tensor.shape should be (batch, num_classes)
+        """
+        Conv -> ELU -> ELU -> Conv -> ELU -> Linear
+        :param x_in: size (batch, initial_num_channels, max_sequence)
+        :param apply_sigmoid: False if used with the cross entropy loss, True if probability wanted
+        :return:
         """
         features = self.convnet(x_in).squeeze(dim=2)
 
@@ -135,7 +139,7 @@ def predict_category(title: str, model: NewsClassifier, vectorizer: Vectorizer, 
             Note: CNNs are sensitive to the input data tensor size.
                   This ensures to keep it the same size as the training data
     """
-    title = preprocess(text=title)
+    title = tokenize(text=title)
     vectorized_title = torch.tensor(vectorizer.vectorize(title=title, vector_length=max_length))
     result = model(x_in=vectorized_title.unsqueeze(0), apply_softmax=True)
     probability_values, indices = result.max(dim=1)
@@ -146,4 +150,34 @@ def predict_category(title: str, model: NewsClassifier, vectorizer: Vectorizer, 
         'probability': probability_values.item()}
 
 
+if __name__ == "__main__":
 
+    batch_size = 128
+    initial_num_channels = 77
+    num_classes = 10
+    num_channels = 10
+    max_surname_length = 17
+
+    model = SurnameClassifierCNN(initial_num_channels=initial_num_channels, num_classes=num_classes, num_channels=num_channels)
+
+    tensor = torch.randn(size=(batch_size, initial_num_channels, max_surname_length))
+    describe(tensor)
+    output = model(x_in=tensor)
+    describe(x=output)
+
+
+    embedding_size = 10
+    num_embeddings = 10
+    num_channels = 10
+    hidden_dim = 10
+    num_classes = 10
+    dropout_p = 0.5
+    max_size = 20
+
+    model = NewsClassifier(embedding_size=embedding_size, num_embeddings=num_embeddings, num_channels=num_channels,
+                 hidden_dim=hidden_dim, num_classes=num_classes, dropout_p=dropout_p)
+
+    tensor = torch.randint(low=1, high=num_embeddings, size=(batch_size, max_size))
+    describe(tensor)
+    output = model(x_in=tensor)
+    describe(x=output)

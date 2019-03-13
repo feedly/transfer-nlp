@@ -17,7 +17,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
 from loaders.vectorizers import ReviewsVectorizer, SurnamesVectorizer, Vectorizer, SurnamesVectorizerCNN, CBOWVectorizer, NewsVectorizer, SurnameVectorizerRNN, \
-    SurnameVectorizerGeneration, NMTVectorizer, FeedlyVectorizer, tokenize
+    SurnameVectorizerGeneration, NMTVectorizer, FeedlyVectorizer
+from common.tokenizers import tokenize
 
 
 class CustomDataset(Dataset):
