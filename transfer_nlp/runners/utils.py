@@ -38,12 +38,12 @@ def handle_dirs(dirpath: Path):
         os.makedirs(dirpath)
 
 
-def make_training_state(args: Namespace) -> Dict:
+def make_training_state(args: Dict) -> Dict:
 
     return {'stop_early': False,
             'early_stopping_step': 0,
             'early_stopping_best_val': 1e8,
-            'learning_rate': args.learning_rate,
+            'learning_rate': args['lr'],
             'epoch_index': 0,
             'train_loss': [],
             'train_acc': [],
@@ -51,7 +51,7 @@ def make_training_state(args: Namespace) -> Dict:
             'val_acc': [],
             'test_loss': -1,
             'test_acc': -1,
-            'model_filename': args.model_state_file}
+            'model_filename': args['model_state_file']}
 
 
 def update_train_state(args: Namespace, model: nn.Module, train_state: Dict):

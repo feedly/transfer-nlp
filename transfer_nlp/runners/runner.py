@@ -88,6 +88,8 @@ class Runner:
 
         self.instantiate()
 
+
+
     def instantiate(self):
 
         if self.args.expand_filepaths_to_save_dir:
@@ -132,7 +134,7 @@ class Runner:
         # Use GloVe or randomly initialized embeddings
         if self.args.use_glove:
             words = self.vectorizer.data_vocab._token2id.keys()
-            embeddings = make_embedding_matrix(glove_filepath=args.glove_filepath,
+            embeddings = make_embedding_matrix(glove_filepath=self.args.glove_filepath,
                                                words=words)
             logging.info("Using pre-trained embeddings")
         else:
@@ -560,7 +562,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'newsClassifier.json'
+    args.config = args.config or 'surnameClassifier.json'
     runner = run_experiment(config=args.config)
     # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=True)
     # runner.visualize_nmt_test()

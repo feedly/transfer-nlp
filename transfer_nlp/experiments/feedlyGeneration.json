@@ -23,4 +23,5 @@
 "dataset_cls": "FeedlyDataset",
 "model": "SurnameConditionedGenerationModel",
 "gradient_clipping": 0.25,
-"conditioned": false}
+"conditioned": false,
+"is_output_continuous": false}
