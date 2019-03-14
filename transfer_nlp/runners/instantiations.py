@@ -13,6 +13,8 @@ from models.nmt import NMTModel
 from models.perceptrons import MultiLayerPerceptron, Perceptron
 from models.rnn import SurnameClassifierRNN
 from runners.utils import sequence_loss
+from loaders.loaders import generate_nmt_batches, generate_batches
+from runners.utils import compute_accuracy_sequence, compute_accuracy
 
 
 class SequenceLoss:
@@ -74,6 +76,36 @@ DATASET_CLASSES = {
     'SurnameDatasetGeneration': SurnameDatasetGeneration,
     'NMTDataset': NMTDataset,
     'FeedlyDataset': FeedlyDataset}
+
+BATCH_GENERATORS = {
+    'regular': generate_batches,
+    'nmt': generate_nmt_batches,
+}
+
+METRICS = {
+    "accuracySequence": compute_accuracy_sequence,
+    "accuracy": compute_accuracy,
+}
+
+
+class Metric:
+
+    def __init__(self, config_args: Dict):
+        """
+        :param config_args: Contains the experiment configuration, with all necessary hyperparameters
+        """
+        name = config_args['metric']
+        self.metric = METRICS[name]
+
+
+class Generator:
+
+    def __init__(self, config_args: Dict):
+        """
+        :param config_args: Contains the experiment configuration, with all necessary hyperparameters
+        """
+        name = config_args['batch_generator']
+        self.generator = BATCH_GENERATORS[name]
 
 
 class Data:

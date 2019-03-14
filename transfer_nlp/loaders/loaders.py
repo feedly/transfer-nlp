@@ -105,7 +105,7 @@ class ReviewsDataset(CustomDataset):
 
         rating_index = self._vectorizer.target_vocab.lookup_token(row.rating)
 
-        return {'x_data': review_vector,
+        return {'x_in': review_vector,
                 'y_target': rating_index}
 
 
@@ -142,7 +142,7 @@ class SurnamesDataset(CustomDataset):
         nationality_index = self._vectorizer.target_vocab.lookup_token(row.nationality)
 
         return {
-            'x_data': surname_vector,
+            'x_in': surname_vector,
             'y_target': nationality_index}
 
 
@@ -408,9 +408,9 @@ class NMTDataset(CustomDataset):
             "x_source_length": vector_dict["source_length"]}
 
 
-def generate_batches(data: Dataset, batch_size: int, shuffle: bool=True, drop_last: bool=True, device: str='cpu') -> Dict:
+def generate_batches(dataset: Dataset, batch_size: int, shuffle: bool=True, drop_last: bool=True, device: str='cpu') -> Dict:
 
-    dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
+    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
 
     for data_dict in dataloader:
         out_data_dict = {}

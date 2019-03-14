@@ -28,4 +28,5 @@
 "is_output_continuous": false,
 "mode": "min",
 "factor": 0.5,
-"patience": 1}
+"patience": 1,
+"batch_generator": "regular"}

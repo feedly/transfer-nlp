@@ -11,16 +11,16 @@ import torch.nn.functional as F
 from loaders.vectorizers import Vectorizer
 
 
-def compute_accuracy(y_pred, y_target):
+def compute_accuracy(input, target):
 
-    if len(y_pred.size()) == 1:  # if y_pred contains binary logits, then just compute the sigmoid to get probas
-        y_pred_indices = (torch.sigmoid(y_pred) > 0.5).cpu().long()  # .max(dim=1)[1]
-    elif len(y_pred.size()) == 2:  # then we are in the softmax case, and we take the max
-        _, y_pred_indices = y_pred.max(dim=1)
+    if len(input.size()) == 1:  # if y_pred contains binary logits, then just compute the sigmoid to get probas
+        y_pred_indices = (torch.sigmoid(input) > 0.5).cpu().long()  # .max(dim=1)[1]
+    elif len(input.size()) == 2:  # then we are in the softmax case, and we take the max
+        _, y_pred_indices = input.max(dim=1)
     else:
-        y_pred_indices = y_pred.max(dim=1)[1]
+        y_pred_indices = input.max(dim=1)[1]
 
-    n_correct = torch.eq(y_pred_indices, y_target).sum().item()
+    n_correct = torch.eq(y_pred_indices, target).sum().item()
     return n_correct / len(y_pred_indices) * 100
 
 
@@ -54,7 +54,7 @@ def make_training_state(args: Dict) -> Dict:
             'model_filename': args['model_state_file']}
 
 
-def update_train_state(args: Namespace, model: nn.Module, train_state: Dict):
+def update_train_state(config_args: Dict, model: nn.Module, train_state: Dict):
 
     # Save one model at least once
     if train_state['epoch_index'] == 0:
@@ -80,7 +80,7 @@ def update_train_state(args: Namespace, model: nn.Module, train_state: Dict):
 
         # Stop early ?
         train_state['stop_early'] = \
-            train_state['early_stopping_step'] >= args.early_stopping_criteria
+            train_state['early_stopping_step'] >= config_args['early_stopping_criteria']
 
     return train_state
 
@@ -153,8 +153,8 @@ def normalize_sizes(y_pred: torch.Tensor, y_true: torch.Tensor) -> Tuple[torch.T
     return y_pred, y_true
 
 
-def compute_accuracy_sequence(y_pred, y_true, mask_index):
-    y_pred, y_true = normalize_sizes(y_pred, y_true)
+def compute_accuracy_sequence(input, target, mask_index):
+    y_pred, y_true = normalize_sizes(y_pred=input, y_true=target)
 
     _, y_pred_indices = y_pred.max(dim=1)
 
@@ -167,6 +167,6 @@ def compute_accuracy_sequence(y_pred, y_true, mask_index):
     return n_correct / n_valid * 100
 
 
-def sequence_loss(y_pred, y_true, mask_index):
-    y_pred, y_true = normalize_sizes(y_pred=y_pred, y_true=y_true)
+def sequence_loss(input, target, mask_index):
+    y_pred, y_true = normalize_sizes(y_pred=input, y_true=target)
     return F.cross_entropy(input=y_pred, target=y_true, ignore_index=mask_index)

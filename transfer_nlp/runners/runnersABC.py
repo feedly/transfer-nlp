@@ -28,7 +28,7 @@ from tensorboardX import SummaryWriter
 from embeddings.embeddings import make_embedding_matrix
 from loaders.loaders import CustomDataset
 from loaders.vectorizers import Vectorizer
-from runners.instantiations import Scheduler, Loss, Model, Optimizer, Data
+from runners.instantiations import Scheduler, Loss, Model, Optimizer, Data, Generator, Metric
 from runners.utils import set_seed_everywhere, handle_dirs, make_training_state
 
 name = 'transfer_nlp.runners.runners'
@@ -50,14 +50,17 @@ class RunnerABC:
         self.vectorizer: Vectorizer = None
         self.loss_func: nn.modules.loss._Loss = None
         self.optimizer: optim.optimizer.Optimizer = None
-        self.scheduler: optim.lr_scheduler.ReduceLROnPlateau = None
+        self.scheduler: Scheduler = None
         self.is_output_continuous = True
         self.is_pred_continuous = True
         self.mask_index: int = None
         self.epoch_index: int = 0
         self.writer = SummaryWriter(log_dir=self.config_args['logs'])
         self.loss: Loss = None
-        self.model: Model = None
+        self.model: nn.Module = None
+        self.generator: Generator = None
+        self.metric: Metric = None
+        self.model_inputs: Dict = self.config_args['model']['modelInputs']
 
         self.instantiate()
 
@@ -128,17 +131,19 @@ class RunnerABC:
             self.config_args['weight'] = self.dataset.class_weights
 
         # Model
-        self.model: Model = Model(config_args=self.config_args)
+        self.model: Model = Model(config_args=self.config_args).model
         logger.info("Using the following classifier:")
-        logger.info(f"{self.model.model}")
-        self.model = self.model.model.to(self.config_args['device'])
+        logger.info(f"{self.model}")
+        self.model = self.model.to(self.config_args['device'])
 
         # Loss, Optimizer and Scheduler
         self.loss: Loss = Loss(config_args=self.config_args)
         self.config_args['params'] = self.model.parameters()
-        self.optimizer: Optimizer = Optimizer(config_args=self.config_args)
-        self.config_args['optimizer'] = self.optimizer.optimizer
+        self.optimizer: Optimizer = Optimizer(config_args=self.config_args).optimizer
+        self.config_args['optimizer'] = self.optimizer
         self.scheduler: Scheduler = Scheduler(config_args=self.config_args)
+        self.generator: Generator = Generator(config_args=self.config_args)
+        self.metric: Metric = Metric(config_args=self.config_args)
 
     def train_one_epoch(self):
         raise NotImplementedError
@@ -158,7 +163,7 @@ class RunnerABC:
         else:
             raise NotImplementedError("Error metric others than accuracy are not implemented yest")
 
-    def log_current_metric(self, metric: str = 'acc'):
+    def log_current_metric(self, epoch: int, metric: str = 'acc'):
 
         if metric == 'acc':
             tp = {
@@ -201,7 +206,7 @@ class RunnerABC:
                 logger.info("#" * 50)
                 self.train_one_epoch()
                 self.to_tensorboard(epoch=epoch, metric='acc')
-                self.log_current_metric(metric='acc')
+                self.log_current_metric(epoch=epoch, metric='acc')
                 if self.training_state['stop_early']:
                     break
 
