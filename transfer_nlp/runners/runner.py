@@ -266,12 +266,11 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'nmt.json'
+    args.config = args.config or 'feedlyGeneration.json'
     runner = run_experiment(config=args.config)
     runner.run()
 
-
-    # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=True)
+    generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
     # runner.visualize_nmt_test()
     # runner.visualize_results()
 

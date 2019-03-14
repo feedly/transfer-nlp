@@ -413,7 +413,7 @@ class FeedlyVectorizer(Vectorizer):
         return from_vector, to_vector
 
     @classmethod
-    def from_dataframe(cls, feedly_df: pd.DataFrame, cutoff: int = 50) -> Vectorizer:
+    def from_dataframe(cls, feedly_df: pd.DataFrame, cutoff: int = 10) -> Vectorizer:
 
         data_vocab = SequenceVocabulary()
         target_vocab = Vocabulary(add_unk=False)

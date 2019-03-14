@@ -374,9 +374,9 @@ class FeedlyDataset(CustomDataset):
         nationality_index = self._vectorizer.target_vocab.lookup_token(row.nationality)
 
         return {
-            'x_data': from_vector,
+            'x_in': from_vector,
             'y_target': to_vector,
-            'class_index': nationality_index}
+            'nationality_index': nationality_index}
 
 class NMTDataset(CustomDataset):
 
