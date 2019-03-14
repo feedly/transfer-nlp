@@ -6,6 +6,12 @@ To build a new experiment, you need:
 - A `CustomDataset` which will use your own dataset and create the vocabulary and vectorizer for you. A custom dataset class should extend the `CustomDataset` class
 - A model: you can see some examples in `models/`, to create a custom model you need to extend the `nn.Module` class from Pytorch
 - A `json` file containing all the experiments parameters (see `experiments/` for examples).
-- In `runners/runner.py`, add you dataset and model classes, and run you experiment from you `json` exoeriment file. 
+- Abstraction for the RunnerABC objects are defined in `runners/runnersABC.py` and `runners/instantiations.py`.
+- In `runners/runner.py`, implement the `train_one_epoch` method, and run you experiment from you `json` exoeriment file. 
+
+Important: an experiment `json` file must contain all necessary hyperparameters.
+For the model, it should clearly contain the names of hyperparameters and names of inputs of the model. Output names from the `__getitem__` method of the data loader should match the names of the model inputs.
+For Optimizer, Scheduler, Loss function, Generator, Data and (evaluation) Metric.
+See examples in the `/experiments/` folder.
 
 Visualize training details using `tensorboard --logdir path/to/tensorboard/logs`
