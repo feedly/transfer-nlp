@@ -20,10 +20,10 @@ from runners.utils import compute_accuracy_sequence, compute_accuracy
 class SequenceLoss:
 
     def __init__(self):
-        pass
+        self.mask: bool = True
 
     def __call__(self, *args, **kwargs):
-        return sequence_loss(args)
+        return sequence_loss(*args, **kwargs)
 
 
 MODEL_CLASSES = {

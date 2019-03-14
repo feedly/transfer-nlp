@@ -179,7 +179,7 @@ class SurnamesDatasetCNN(CustomDataset):
         nationality_index = self._vectorizer.target_vocab.lookup_token(row.nationality)
 
         return {
-            'x_data': surname_vector,
+            'x_in': surname_vector,
             'y_target': nationality_index}
 
 
@@ -213,7 +213,7 @@ class CBOWDataset(CustomDataset):
         target_index = self._vectorizer.data_vocab.lookup_token(row.target)
 
         return {
-            'x_data': context_vector,
+            'x_in': context_vector,
             'y_target': target_index}
 
 
@@ -257,7 +257,7 @@ class NewsDataset(CustomDataset):
         category_index = self._vectorizer.target_vocab.lookup_token(row.category)
 
         return {
-            'x_data': title_vector,
+            'x_in': title_vector,
             'y_target': category_index}
 
 
@@ -300,9 +300,9 @@ class SurnameDatasetRNN(CustomDataset):
         nationality_index = self._vectorizer.target_vocab.lookup_token(row.nationality)
 
         return {
-            'x_data': surname_vector,
+            'x_in': surname_vector,
             'y_target': nationality_index,
-            'x_length': vec_length}
+            'x_lengths': vec_length}
 
 
 class SurnameDatasetGeneration(CustomDataset):
@@ -335,9 +335,9 @@ class SurnameDatasetGeneration(CustomDataset):
         nationality_index = self._vectorizer.target_vocab.lookup_token(row.nationality)
 
         return {
-            'x_data': from_vector,
+            'x_in': from_vector,
             'y_target': to_vector,
-            'class_index': nationality_index}
+            'nationality_index': nationality_index}
 
 
 class FeedlyDataset(CustomDataset):
@@ -403,9 +403,9 @@ class NMTDataset(CustomDataset):
 
         return {
             "x_source": vector_dict["source_vector"],
-            "x_target": vector_dict["target_x_vector"],
+            "target_sequence": vector_dict["target_x_vector"],
             "y_target": vector_dict["target_y_vector"],
-            "x_source_length": vector_dict["source_length"]}
+            "x_source_lengths": vector_dict["source_length"]}
 
 
 def generate_batches(dataset: Dataset, batch_size: int, shuffle: bool=True, drop_last: bool=True, device: str='cpu') -> Dict:
@@ -426,7 +426,7 @@ def generate_nmt_batches(dataset: NMTDataset, batch_size: int, shuffle: bool=Tru
                             shuffle=shuffle, drop_last=drop_last)
 
     for data_dict in dataloader:
-        lengths = data_dict['x_source_length'].numpy()
+        lengths = data_dict['x_source_lengths'].numpy()
         sorted_length_indices = lengths.argsort()[::-1].tolist()
 
         out_data_dict = {}

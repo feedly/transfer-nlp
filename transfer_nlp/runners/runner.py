@@ -50,7 +50,7 @@ class Runner(RunnerABC):
     def train_one_epoch(self):
 
         self.epoch_index += 1
-        sample_probability = (20 + self.epoch_index) / self.config_args['num_epochs']
+        sample_probability = (20 + self.epoch_index) / self.config_args['num_epochs']  #TODO: include this into the NMT training part
 
         self.training_state['epoch_index'] += 1
 
@@ -75,38 +75,13 @@ class Runner(RunnerABC):
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
             y_pred = self.model(**model_inputs)
 
-            # if isinstance(self.model, SurnameConditionedGenerationModel):
-            #     y_pred = self.model(x_in=batch_dict['x_data'],
-            #                    nationality_index=batch_dict['class_index'])
-            #
-            # elif isinstance(self.model, SurnameClassifierRNN):
-            #     y_pred = self.model(x_in=batch_dict['x_data'],
-            #                         x_lengths=batch_dict['x_length'])
-            # elif isinstance(self.model, NMTModel):
-            #     y_pred = self.model(x_source=batch_dict['x_source'],
-            #                         x_source_lengths=batch_dict['x_source_length'],
-            #                         target_sequence=batch_dict['x_target'],
-            #                         sample_probability=sample_probability)
-            # else:
-            #     if self.is_pred_continuous:
-            #         y_pred = self.model(x_in=batch_dict['x_data'].float())
-            #     else:
-            #         y_pred = self.model(x_in=batch_dict['x_data'])
-
             loss_params = {"input": y_pred, "target": batch_dict['y_target']}
-            if self.mask_index:
+
+            if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
             if self.is_pred_continuous:
                 loss_params['target'] = loss_params['target'].float()
             loss = self.loss.loss(**loss_params)
-
-            # if self.mask_index:
-            #     loss = sequence_loss(y_pred=y_pred, y_true=batch_dict['y_target'], mask_index=self.mask_index)
-            # else:
-            #     if self.is_output_continuous:
-            #         loss = self.loss_func(y_pred, batch_dict['y_target'].float())
-            #     else:
-            #         loss = self.loss_func(y_pred, batch_dict['y_target'])
 
             loss_batch = loss.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
@@ -118,15 +93,11 @@ class Runner(RunnerABC):
             self.optimizer.step()
 
             loss_params = {"input": y_pred, "target": batch_dict['y_target']}
-            if self.mask_index:
+            if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
 
             acc_batch = self.metric.metric(**loss_params)
 
-            # if self.mask_index:
-            #     acc_batch = compute_accuracy_sequence(y_pred=y_pred, y_true=batch_dict['y_target'], mask_index=self.mask_index)
-            # else:
-            #     acc_batch = compute_accuracy(y_pred=y_pred, y_target=batch_dict['y_target'])
             running_acc += (acc_batch - running_acc) / (batch_index + 1)
 
         self.training_state['train_loss'].append(running_loss)
@@ -135,14 +106,6 @@ class Runner(RunnerABC):
         # Iterate over validation dataset
         self.dataset.set_split(split='val')
         batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
-
-        # if isinstance(self.dataset, NMTDataset):
-        #     batch_generator = generate_nmt_batches(dataset=self.dataset,
-        #                                            batch_size=self.args.batch_size,
-        #                                            device=self.args.device)
-        #
-        # else:
-        #     batch_generator = generate_batches(dataset=self.dataset, batch_size=self.args.batch_size, device=self.args.device)
 
         running_loss = 0
         running_acc = 0
@@ -159,53 +122,20 @@ class Runner(RunnerABC):
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
             y_pred = self.model(**model_inputs)
 
-            # if isinstance(self.model, SurnameConditionedGenerationModel):
-            #     y_pred = self.model(x_in=batch_dict['x_data'],
-            #                    nationality_index=batch_dict['class_index'])
-            #
-            # elif isinstance(self.model, SurnameClassifierRNN):
-            #     y_pred = self.model(x_in=batch_dict['x_data'],
-            #                         x_lengths=batch_dict['x_length'])
-            #
-            # elif isinstance(self.model, NMTModel):
-            #     y_pred = self.model(batch_dict['x_source'],
-            #                    batch_dict['x_source_length'],
-            #                    batch_dict['x_target'],
-            #                    sample_probability=sample_probability)
-            #
-            # else:
-            #     if self.is_pred_continuous:
-            #         y_pred = self.model(x_in=batch_dict['x_data'].float())
-            #     else:
-            #         y_pred = self.model(x_in=batch_dict['x_data'])
-
             loss_params = {"input": y_pred, "target": batch_dict['y_target']}
-            if self.mask_index:
-                loss_params['mask_index'] = self.mask_index
+
             if self.is_pred_continuous:
                 loss_params['target'] = loss_params['target'].float()
+            if hasattr(self.loss.loss, 'mask') and self.mask_index:
+                loss_params['mask_index'] = self.mask_index
             loss = self.loss.loss(**loss_params)
-
-            # if self.mask_index:
-            #     loss = sequence_loss(y_pred, batch_dict['y_target'], self.mask_index)
-            # else:
-            #     if self.is_output_continuous:
-            #         loss = self.loss_func(y_pred, batch_dict['y_target'].float())
-            #     else:
-            #         loss = self.loss_func(y_pred, batch_dict['y_target'])
-
             loss_batch = loss.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
             loss_params = {"input": y_pred, "target": batch_dict['y_target']}
-            if self.mask_index:
+            if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
             acc_batch = self.metric.metric(**loss_params)
-
-            # if self.mask_index:
-            #     acc_batch = compute_accuracy_sequence(y_pred=y_pred, y_true=batch_dict['y_target'], mask_index=self.mask_index)
-            # else:
-            #     acc_batch = compute_accuracy(y_pred=y_pred, y_target=batch_dict['y_target'])
             running_acc += (acc_batch - running_acc) / (batch_index + 1)
 
         self.training_state['val_loss'].append(running_loss)
@@ -220,15 +150,6 @@ class Runner(RunnerABC):
         batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
         num_batch = self.dataset.get_num_batches(batch_size=self.args.batch_size)
 
-
-        # if isinstance(self.dataset, NMTDataset):
-        #     batch_generator = generate_nmt_batches(dataset=self.dataset,
-        #                                            batch_size=self.args.batch_size,
-        #                                            device=self.args.device)
-        #
-        # else:
-        #     batch_generator = generate_batches(data=self.dataset, batch_size=self.args.batch_size, device=self.args.device)
-
         running_loss = 0
         running_acc = 0
         self.model.eval()
@@ -241,52 +162,21 @@ class Runner(RunnerABC):
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
             y_pred = self.model(**model_inputs)
 
-            # if isinstance(self.model, SurnameConditionedGenerationModel):
-            #     y_pred = self.model(x_in=batch_dict['x_data'],
-            #                    nationality_index=batch_dict['class_index'])
-            #
-            # elif isinstance(self.model, SurnameClassifierRNN):
-            #     y_pred = self.model(x_in=batch_dict['x_data'],
-            #                         x_lengths=batch_dict['x_length'])
-            #
-            # elif isinstance(self.model, NMTModel):
-            #     y_pred = self.model(batch_dict['x_source'],
-            #                    batch_dict['x_source_length'],
-            #                    batch_dict['x_target'])
-            #
-            # else:
-            #     if self.is_pred_continuous:
-            #         y_pred = self.model(x_in=batch_dict['x_data'].float())
-            #     else:
-            #         y_pred = self.model(x_in=batch_dict['x_data'])
-
             loss_params = {"y_pred": y_pred, "y_true": batch_dict['y_target']}
-            if self.mask_index:
+            if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
+
             if self.is_pred_continuous:
                 loss_params['target'] = loss_params['target'].float()
             loss = self.loss.loss(**loss_params)
-
-            # if self.mask_index:
-            #     loss = sequence_loss(y_pred, batch_dict['y_target'], self.mask_index)
-            # else:
-            #     if self.is_output_continuous:
-            #         loss = self.loss_func(y_pred, batch_dict['y_target'].float())
-            #     else:
-            #         loss = self.loss_func(y_pred, batch_dict['y_target'])
 
             loss_batch = loss.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
             loss_params = {"y_pred": y_pred, "y_true": batch_dict['y_target']}
-            if self.mask_index:
+            if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
             acc_batch = self.metric.metric(**loss_params)
-
-            # if self.mask_index:
-            #     acc_batch = compute_accuracy_sequence(y_pred=y_pred, y_true=batch_dict['y_target'], mask_index=self.mask_index)
-            # else:
-            #     acc_batch = compute_accuracy(y_pred=y_pred, y_target=batch_dict['y_target'])
             running_acc += (acc_batch - running_acc) / (batch_index + 1)
 
         self.training_state['test_loss'] = running_loss
@@ -376,7 +266,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'perceptron.json'
+    args.config = args.config or 'nmt.json'
     runner = run_experiment(config=args.config)
     runner.run()
 

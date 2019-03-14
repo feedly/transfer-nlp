@@ -26,7 +26,7 @@
 "Optimizer": {"optimizerName": "Adam", "optimizerParams": ["params", "lr"]},
 "scheduler": {"schedulerName": "ReduceLROnPlateau", "schedulerParams": ["optimizer", "mode", "factor", "patience"]},
 "gradient_clipping": 0.25,
-"is_pred_continuous": true,
+"is_pred_continuous": false,
 "is_output_continuous": false,
 "mode": "min",
 "factor": 0.5,
