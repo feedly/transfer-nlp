@@ -10,7 +10,7 @@ To build a new experiment, you need:
 - In `runners/runner.py`, implement the `train_one_epoch` method, and run you experiment from you `json` exoeriment file. 
 
 Important: an experiment `json` file must contain all necessary hyperparameters.
-For the model, it should clearly contain the names of hyperparameters and names of inputs of the model.
+For the model, it should clearly contain the names of hyperparameters and names of inputs of the model. Output names from the `__getitem__` method of the data loader should match the names of the model inputs.
 For Optimizer, Scheduler, Loss function, Generator, Data and (evaluation) Metric.
 See examples in the `/experiments/` folder.
 
