@@ -8,6 +8,7 @@ from pathlib import Path
 from random import shuffle
 from typing import List
 
+import numpy as np
 import pandas as pd
 import urllib3
 from bs4 import BeautifulSoup
@@ -48,16 +49,28 @@ class FeedlyDownloader:
         self.token = token
         self.df: pd.DataFrame = None
 
-    def get_entries(self, category: str, max_count: int) -> List[Entry]:
+    def get_entries(self, category: str, max_count: int, account: str='enterprise') -> List[Entry]:
 
         with FeedlySession(auth=self.token) as sess:
-            feeds = sess.user.get_enterprise_categories()
+            if account == 'enterprise':
+                feeds = sess.user.get_enterprise_categories()
+            elif account == 'personal':
+                feeds = sess.user.get_categories()
+            else:
+                raise ValueError("Only enterprise and personal account are taken into account")
             keep = None
             for feed in feeds:
                 if feeds[feed].json['label'] == category:
                     keep = feeds[feed]
+            print(keep)
             category_id = keep.stream_id.content_id
-            entries = sess.user.get_enterprise_category(category_id).stream_contents(options=StreamOptions(max_count=max_count))
+            entries = []
+            if account == 'enterprise':
+                entries = sess.user.get_enterprise_category(category_id).stream_contents(options=StreamOptions(max_count=max_count))
+            elif account == 'personal':
+                entries = sess.user.get_category(category_id).stream_contents(options=StreamOptions(max_count=max_count))
+            else:
+                raise ValueError("Only enterprise and personal account are taken into account")
             entries = list(entries)
 
         return entries
@@ -75,14 +88,42 @@ class FeedlyDownloader:
 
         self.df.to_csv(path_or_buf=save_path)
 
+    def build_multi_class_dataset(self, categories: List[str], max_count: int, save_path: Path):
+
+        entries = {category: self.get_entries(category=category, max_count=max_count, account='personal') for category in categories}
+        [shuffle(entries[category]) for category in entries]
+        entries = {category: build_dataframe(entries[category]) for category in entries}
+        for category in entries:
+            entries[category]['class'] = category
+        df = pd.concat([entries[category] for category in entries])
+        np.random.shuffle(df.values)
+        limits = [int(0.8*len(df)), int(0.1*len(df))]
+        split = ['train'] * limits[0] + ['val'] * limits[1]
+        split.extend(['test'] * (len(df) - len(split)))
+        df['split'] = split
+        self.df = df
+        self.df.to_csv(path_or_buf=save_path)
+
+
+
 
 if __name__ == "__main__":
 
-    token = "YourToken"
-    downloader = FeedlyDownloader(token=token)
-    save_path = Path.home() / 'work/experiments/nlp/data'
-    category = 'YourFeed'
-    max_count = 10000
-    save_path = save_path / 'feedly_data10000.csv'
-    downloader.build_dataset(category=category, max_count=max_count, save_path=save_path)
+    # token = "YourToken"
+    # downloader = FeedlyDownloader(token=token)
+    # save_path = Path.home() / 'work/experiments/nlp/data'
+    # category = 'YourFeed'
+    # max_count = 10000
+    # save_path = save_path / 'feedly_data10000.csv'
+    # downloader.build_dataset(category=category, max_count=max_count, save_path=save_path)
+
+    ##Multilingual
+    # token = "YourToken"
+    # downloader = FeedlyDownloader(token=token)
+    # categories = ["Category1", "Category2"]
+    # max_count = 1000
+    # save_path = Path.home() / 'work/experiments/nlp/data/feedly_multilingual.csv'
+    # downloader.build_multi_class_dataset(categories=categories, max_count=max_count, save_path=save_path)
+
+
 
