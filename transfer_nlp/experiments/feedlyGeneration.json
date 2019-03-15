@@ -1,37 +1,70 @@
-{"data_csv": "/Users/petermartigny/work/experiments/nlp/data/feedly_data.csv",
-"vectorizer_file": "vectorizerFeedlyGeneration.json",
-"model_state_file": "modelFeedlyGeneration.pth",
-"save_dir": "/Users/petermartigny/work/experiments/nlp/models/feedly_generation",
-"logs": "/Users/petermartigny/work/experiments/nlp/models/feedly_generation/logs/log1",
-"glove_filepath": "/Users/petermartigny/work/experiments/nlp/data/glove/glove.6B.100d.txt",
-"use_glove": false,
-"embedding_size": 100,
-"char_embedding_size": 100,
-"rnn_hidden_size": 100,
-"hidden_dim": 100,
-"num_channels": 10,
-"seed": 1337,
-"lr": 0.001,
-"dropout_p": 0.25,
-"batch_size": 32,
-"num_epochs": 1,
-"early_stopping_criteria":5,
-"cuda": true,
-"catch_keyboard_interrupt": true,
-"reload_from_files": false,
-"expand_filepaths_to_save_dir": true,
-"dataset_cls": "FeedlyDataset",
-"model": {"modelName": "SurnameConditionedGenerationModel", "modelParams": ["char_embedding_size", "char_vocab_size", "num_nationalities", "rnn_hidden_size", "padding_idx", "dropout_p", "conditioned"],
-"modelInputs": ["x_in", "nationality_index"]},
-"loss": {"lossName": "sequenceLoss", "lossParams": []},
-"Optimizer": {"optimizerName": "Adam", "optimizerParams": ["params", "lr"]},
-"scheduler": {"schedulerName": "ReduceLROnPlateau", "schedulerParams": ["optimizer", "mode", "factor", "patience"]},
-"gradient_clipping": 0.25,
-"conditioned": false,
-"is_pred_continuous": false,
-"is_output_continuous": false,
-"mode": "min",
-"factor": 0.5,
-"patience": 0.751,
-"batch_generator": "regular",
-"metric": "accuracySequence"}
+{
+  "data_csv": "/Users/petermartigny/work/experiments/nlp/data/feedly_data.csv",
+  "vectorizer_file": "vectorizerFeedlyGeneration.json",
+  "model_state_file": "modelFeedlyGeneration.pth",
+  "save_dir": "/Users/petermartigny/work/experiments/nlp/models/feedly_generation",
+  "logs": "/Users/petermartigny/work/experiments/nlp/models/feedly_generation/logs/log1",
+  "glove_filepath": "/Users/petermartigny/work/experiments/nlp/data/glove/glove.6B.100d.txt",
+  "use_glove": false,
+  "embedding_size": 100,
+  "char_embedding_size": 100,
+  "rnn_hidden_size": 100,
+  "hidden_dim": 100,
+  "num_channels": 10,
+  "seed": 1337,
+  "lr": 0.001,
+  "dropout_p": 0.25,
+  "batch_size": 32,
+  "num_epochs": 1,
+  "early_stopping_criteria": 5,
+  "cuda": true,
+  "catch_keyboard_interrupt": true,
+  "reload_from_files": false,
+  "expand_filepaths_to_save_dir": true,
+  "dataset_cls": "FeedlyDataset",
+  "model": {
+    "modelName": "SurnameConditionedGenerationModel",
+    "modelParams": [
+      "char_embedding_size",
+      "char_vocab_size",
+      "num_nationalities",
+      "rnn_hidden_size",
+      "padding_idx",
+      "dropout_p",
+      "conditioned"
+    ],
+    "modelInputs": [
+      "x_in",
+      "nationality_index"
+    ]
+  },
+  "loss": {
+    "lossName": "sequenceLoss",
+    "lossParams": []
+  },
+  "Optimizer": {
+    "optimizerName": "Adam",
+    "optimizerParams": [
+      "params",
+      "lr"
+    ]
+  },
+  "scheduler": {
+    "schedulerName": "ReduceLROnPlateau",
+    "schedulerParams": [
+      "optimizer",
+      "mode",
+      "factor",
+      "patience"
+    ]
+  },
+  "gradient_clipping": 0.25,
+  "conditioned": false,
+  "is_pred_continuous": false,
+  "is_output_continuous": false,
+  "mode": "min",
+  "factor": 0.5,
+  "patience": 0.751,
+  "batch_generator": "regular",
+  "metric": "accuracySequence"
+}
