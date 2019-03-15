@@ -8,7 +8,7 @@ from loaders.loaders import ReviewsDataset, SurnamesDataset, SurnamesDatasetCNN,
     SurnameDatasetGeneration, NMTDataset, FeedlyDataset
 from models.cbow import CBOWClassifier
 from models.cnn import SurnameClassifierCNN, NewsClassifier
-from models.generation import SurnameConditionedGenerationModel
+from models.generation import SurnameConditionedGenerationModel, ConditionedGenerationModel
 from models.nmt import NMTModel
 from models.perceptrons import MultiLayerPerceptron, Perceptron
 from models.rnn import SurnameClassifierRNN
@@ -34,6 +34,7 @@ MODEL_CLASSES = {
     'Perceptron': Perceptron,
     'SurnameClassifierRNN': SurnameClassifierRNN,
     'SurnameConditionedGenerationModel': SurnameConditionedGenerationModel,
+    'ConditionedGenerationModel': ConditionedGenerationModel,
     'NMTModel': NMTModel}
 
 LOSS_CLASSES = {

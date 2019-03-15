@@ -1,12 +1,13 @@
 import logging
 from typing import List
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from loaders.vectorizers import Vectorizer
 from common.utils import describe
+from loaders.vectorizers import Vectorizer
 
 name = 'transfer_nlp.models.generation'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -54,6 +55,71 @@ class SurnameConditionedGenerationModel(nn.Module):
         if self.conditioned:
             nationality_embedded = self.nation_emb(nationality_index).unsqueeze(0)
             y_out, _ = self.rnn(x_embedded, nationality_embedded)
+        else:
+            y_out, _ = self.rnn(x_embedded)
+
+        batch_size, seq_size, feat_size = y_out.shape
+        y_out = y_out.contiguous().view(batch_size * seq_size, feat_size)
+        y_out = self.fc(F.dropout(y_out, p=self._dropout_p))
+
+        if apply_softmax:
+            y_out = F.softmax(y_out, dim=1)
+
+        new_feat_size = y_out.shape[-1]
+        y_out = y_out.view(batch_size, seq_size, new_feat_size)
+
+        return y_out
+
+
+class ConditionedGenerationModel(nn.Module):
+
+    def __init__(self, embedding_size: int, num_embeddings: int, num_classes: int,
+                 rnn_hidden_size: int, batch_first: bool=True, padding_idx: int=0, dropout_p: float=0.5, pretrained_embeddings: np.array=None, conditioned: bool=False):
+
+        super(ConditionedGenerationModel, self).__init__()
+
+        if pretrained_embeddings is None:
+
+            self.emb: nn.Embedding = nn.Embedding(embedding_dim=embedding_size,
+                                    num_embeddings=num_embeddings,
+                                    padding_idx=padding_idx)
+        else:
+            pretrained_embeddings = torch.from_numpy(pretrained_embeddings).float()
+            self.emb: nn.Embedding = nn.Embedding(embedding_dim=embedding_size,
+                                    num_embeddings=num_embeddings,
+                                    padding_idx=padding_idx,
+                                    _weight=pretrained_embeddings)
+
+        self.nation_emb: nn.Embedding = None
+        self.conditioned = conditioned
+        if self.conditioned:
+            self.class_emb = nn.Embedding(num_embeddings=num_classes,
+                                       embedding_dim=rnn_hidden_size)
+        self.rnn: nn.GRU = nn.GRU(input_size=embedding_size,
+                          hidden_size=rnn_hidden_size,
+                          batch_first=batch_first)
+        self.fc: nn.Linear = nn.Linear(in_features=rnn_hidden_size,
+                            out_features=num_embeddings)
+        self._dropout_p: float = dropout_p
+
+    def forward(self, x_in: torch.Tensor, class_index: int=0, apply_softmax: bool=False) -> torch.Tensor:
+        """The forward pass of the model
+
+        Args:
+            x_in (torch.Tensor): an input data tensor.
+                x_in.shape should be (batch, max_seq_size)
+            nationality_index (torch.Tensor): The index of the nationality for each data point
+                Used to initialize the hidden state of the RNN
+            apply_softmax (bool): a flag for the softmax activation
+                should be false if used with the Cross Entropy losses
+        Returns:
+            the resulting tensor. tensor.shape should be (batch, char_vocab_size)
+        """
+        x_embedded = self.emb(x_in)
+        # hidden_size: (num_layers * num_directions, batch_size, rnn_hidden_size)
+        if self.conditioned:
+            class_embedded = self.class_emb(class_index).unsqueeze(0)
+            y_out, _ = self.rnn(x_embedded, class_embedded)
         else:
             y_out, _ = self.rnn(x_embedded)
 

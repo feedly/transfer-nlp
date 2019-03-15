@@ -5,7 +5,7 @@
   "save_dir": "/Users/petermartigny/work/experiments/nlp/models/feedly_generation",
   "logs": "/Users/petermartigny/work/experiments/nlp/models/feedly_generation/logs/log1",
   "glove_filepath": "/Users/petermartigny/work/experiments/nlp/data/glove/glove.6B.100d.txt",
-  "use_glove": false,
+  "use_glove": true,
   "embedding_size": 100,
   "char_embedding_size": 100,
   "rnn_hidden_size": 100,
@@ -23,19 +23,20 @@
   "expand_filepaths_to_save_dir": true,
   "dataset_cls": "FeedlyDataset",
   "model": {
-    "modelName": "SurnameConditionedGenerationModel",
+    "modelName": "ConditionedGenerationModel",
     "modelParams": [
-      "char_embedding_size",
-      "char_vocab_size",
-      "num_nationalities",
+      "embedding_size",
+      "num_embeddings",
+      "num_classes",
       "rnn_hidden_size",
       "padding_idx",
       "dropout_p",
-      "conditioned"
+      "conditioned",
+      "pretrained_embeddings"
     ],
     "modelInputs": [
       "x_in",
-      "nationality_index"
+      "class_index"
     ]
   },
   "loss": {

@@ -376,7 +376,7 @@ class FeedlyDataset(CustomDataset):
         return {
             'x_in': from_vector,
             'y_target': to_vector,
-            'nationality_index': nationality_index}
+            'class_index': nationality_index}
 
 class NMTDataset(CustomDataset):
 

@@ -270,7 +270,7 @@ if __name__ == "__main__":
     runner = run_experiment(config=args.config)
     runner.run()
 
-    generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
+    # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
     # runner.visualize_nmt_test()
     # runner.visualize_results()
 

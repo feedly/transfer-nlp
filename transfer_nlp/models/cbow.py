@@ -13,6 +13,7 @@ logging.info('')
 
 
 class CBOWClassifier(nn.Module):  # Simplified cbow Model
+
     def __init__(self, vocabulary_size: int, embedding_size: int, padding_idx: int=0):
 
         super(CBOWClassifier, self).__init__()
