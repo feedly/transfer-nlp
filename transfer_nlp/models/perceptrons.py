@@ -19,7 +19,7 @@ class Perceptron(nn.Module):
     def __init__(self, num_features):
 
         super(Perceptron, self).__init__()
-        self.fc = nn.Linear(in_features=num_features, out_features=1)
+        self.fc = nn.Linear(in_features=num_features, out_features=2)
 
     def forward(self, x_in: torch.Tensor, apply_sigmoid: bool = False) -> torch.Tensor:
         """

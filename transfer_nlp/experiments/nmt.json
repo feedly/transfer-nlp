@@ -63,8 +63,6 @@
   "source_embedding_size": 64,
   "target_embedding_size": 64,
   "encoding_size": 64,
-  "is_pred_continuous": false,
-  "is_output_continuous": false,
   "mode": "min",
   "factor": 0.5,
   "patience": 1,

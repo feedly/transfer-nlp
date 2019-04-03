@@ -51,8 +51,8 @@ class RunnerABC:
         self.loss_func: nn.modules.loss._Loss = None
         self.optimizer: optim.optimizer.Optimizer = None
         self.scheduler: Scheduler = None
-        self.is_output_continuous = True
-        self.is_pred_continuous = True
+        # self.is_output_continuous = True
+        # self.is_pred_continuous = True
         self.mask_index: int = None
         self.epoch_index: int = 0
         self.writer = SummaryWriter(log_dir=self.config_args['logs'])
@@ -125,7 +125,7 @@ class RunnerABC:
         if hasattr(self.vectorizer.target_vocab, 'begin_seq_index'):
             self.config_args['target_bos_index'] = self.vectorizer.target_vocab.begin_seq_index
         self.mask_index = self.vectorizer.data_vocab.mask_index if hasattr(self.vectorizer.data_vocab, 'mask_index') else None
-        self.is_pred_continuous = self.config_args['is_pred_continuous']
+        # self.is_pred_continuous = self.config_args['is_pred_continuous']
         if hasattr(self.dataset, 'class_weights'):
             self.dataset.class_weights = self.dataset.class_weights.to(self.config_args['device'])
             self.config_args['weight'] = self.dataset.class_weights

@@ -30,7 +30,7 @@
     ]
   },
   "loss": {
-    "lossName": "BCEWithLogitsLoss",
+    "lossName": "CrossEntropyLoss",
     "lossParams": []
   },
   "Optimizer": {
@@ -50,8 +50,6 @@
     ]
   },
   "gradient_clipping": 0.25,
-  "is_pred_continuous": true,
-  "is_output_continuous": false,
   "mode": "min",
   "factor": 0.5,
   "patience": 1,

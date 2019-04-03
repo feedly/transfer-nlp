@@ -23,7 +23,7 @@ import torch
 from embeddings.utils import pretty_print, get_closest
 from loaders.loaders import generate_nmt_batches
 from models.cnn import predict_category
-from models.generation import decode_samples, generate_names
+from models.generation import decode_samples, generate_names, generate
 from models.nmt import NMTSampler
 from models.perceptrons import predict_review, inspect_model
 from models.rnn import predict_nationalityRNN
@@ -79,10 +79,8 @@ class Runner(RunnerABC):
 
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
-            if self.is_pred_continuous:
-                loss_params['target'] = loss_params['target'].float()
-            loss = self.loss.loss(**loss_params)
 
+            loss = self.loss.loss(**loss_params)
             loss_batch = loss.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
@@ -124,8 +122,6 @@ class Runner(RunnerABC):
 
             loss_params = {"input": y_pred, "target": batch_dict['y_target']}
 
-            if self.is_pred_continuous:
-                loss_params['target'] = loss_params['target'].float()
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
             loss = self.loss.loss(**loss_params)
@@ -166,8 +162,6 @@ class Runner(RunnerABC):
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
 
-            if self.is_pred_continuous:
-                loss_params['target'] = loss_params['target'].float()
             loss = self.loss.loss(**loss_params)
 
             loss_batch = loss.item()
@@ -266,9 +260,10 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'feedlyGeneration.json'
+    args.config = args.config or 'perceptron.json'
     runner = run_experiment(config=args.config)
     runner.run()
+    # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
 
     # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
     # runner.visualize_nmt_test()

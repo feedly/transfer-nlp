@@ -235,6 +235,82 @@ def generate_names(model: SurnameConditionedGenerationModel, vectorizer: Vectori
             logger.info(sampled_surnames[i])
 
 
+def sample(model: ConditionedGenerationModel, vectorizer: Vectorizer, num_samples: int=1, sample_size: int=20,
+                      temperature: float=1.0) -> torch.Tensor:
+
+    begin_seq_index = [vectorizer.data_vocab.begin_seq_index
+                       for _ in range(num_samples)]
+    begin_seq_index = torch.tensor(begin_seq_index,
+                                   dtype=torch.int64).unsqueeze(dim=1)
+    indices = [begin_seq_index]
+    h_t = None
+
+    for time_step in range(sample_size):
+        x_t = indices[time_step]
+        x_emb_t = model.emb(x_t)
+        rnn_out_t, h_t = model.rnn(x_emb_t, h_t)
+        prediction_vector = model.fc(rnn_out_t.squeeze(dim=1))
+        probability_vector = F.softmax(prediction_vector / temperature, dim=1)
+        indices.append(torch.multinomial(probability_vector, num_samples=1))
+    indices = torch.stack(indices).squeeze().permute(1, 0)
+
+    return indices
+
+
+def decode(sampled_indices: torch.Tensor, vectorizer: Vectorizer) -> List[str]:
+
+    decoded_surnames = []
+    vocab = vectorizer.data_vocab
+
+    for sample_index in range(sampled_indices.shape[0]):
+        surname = []
+        for time_step in range(sampled_indices.shape[1]):
+            sample_item = sampled_indices[sample_index, time_step].item()
+            if sample_item == vocab.begin_seq_index:
+                continue
+            elif sample_item == vocab.end_seq_index:
+                break
+            else:
+                # print(vocab.lookup_index(sample_item))
+                surname += [vocab.lookup_index(sample_item)]
+
+        # if character:
+        #     surname = ''.join(surname)
+        # else:
+        surname = ' '.join(surname)
+        decoded_surnames.append(surname)
+
+    return decoded_surnames
+
+
+def generate(model: ConditionedGenerationModel, vectorizer: Vectorizer, sample_size: int = 20, num_samples: int = 1):
+
+    model = model.cpu()
+
+    if model.conditioned:
+        logger.info("Generating surnames conditioned on the nationality")
+        for index in range(len(vectorizer.target_vocab)):
+            nationality = vectorizer.target_vocab.lookup_index(index)
+            logger.info("Sampled for {}: ".format(nationality))
+            sampled_indices = sample_from_conditioned_model(model=model, vectorizer=vectorizer,
+                                                            nationalities=[index] * 3,
+                                                            temperature=0.7)
+            for sampled_surname in decode(sampled_indices=sampled_indices, vectorizer=vectorizer):
+                logger.info("-  " + sampled_surname)
+
+    else:
+        logger.info("Generating surnames unconditioned on the nationality")
+        # num_names = 10
+        # Generate nationality hidden state
+        sampled_surnames = decode(
+            sample(model=model, vectorizer=vectorizer, num_samples=num_samples, sample_size=sample_size, temperature=1.0),
+            vectorizer=vectorizer)
+        # Show results
+        logger.info("-" * 15)
+        for i in range(num_samples):
+            logger.info(sampled_surnames[i])
+
+
 if __name__ == "__main__":
 
     char_embedding_size = 32
