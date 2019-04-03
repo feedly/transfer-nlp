@@ -26,5 +26,14 @@ Structure of the library:
 
 `transfer-nlp/runners`: contains the full training pipeline, given a config file experiment
 
+ TODO:
+ - Unit-test everything
+ - Smooth the runner pipeline to enable multi-task training
+ - Include examples using state of the art pre-trained models
+ - Enable slack integration for model crashing / completion
+ - Enable embeddings visualisation (see this project https://projector.tensorflow.org/)
+ - Enable pre-trained models finetuning
+
+
 
 This library builds on the book <cite>["Natural Language Processing with PyTorch"](https://www.amazon.com/dp/1491978236/)<cite> by Delip Rao and Brian McMahan for the initial experiments.
