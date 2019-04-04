@@ -1,0 +1,63 @@
+{
+  "data_csv": "/content/transfer-nlp/data/surnames/surnames_with_splits.csv",
+  "vectorizer_file": "vectorizerMLP.json",
+  "model_state_file": "modelMLP.pth",
+  "save_dir": "/content/transfer-nlp/models/surnames/",
+  "logs": "/content/transfer-nlp/models/surnames/logs/log1",
+  "use_glove": false,
+  "embedding_size": 100,
+  "hidden_dim": 100,
+  "num_channels": 10,
+  "seed": 1337,
+  "lr": 0.001,
+  "dropout_p": 0.1,
+  "batch_size": 128,
+  "num_epochs": 10,
+  "early_stopping_criteria": 5,
+  "cuda": true,
+  "catch_keyboard_interrupt": true,
+  "reload_from_files": false,
+  "expand_filepaths_to_save_dir": true,
+  "dataset_cls": "SurnamesDataset",
+  "model": {
+    "modelName": "MultiLayerPerceptron",
+    "modelParams": [
+      "input_dim",
+      "hidden_dim",
+      "output_dim"
+    ],
+    "modelInputs": [
+      "x_in"
+    ]
+  },
+  "loss": {
+    "lossName": "CrossEntropyLoss",
+    "lossParams": []
+  },
+  "Optimizer": {
+    "optimizerName": "Adam",
+    "optimizerParams": [
+      "params",
+      "lr"
+    ]
+  },
+  "scheduler": {
+    "schedulerName": "ReduceLROnPlateau",
+    "schedulerParams": [
+      "optimizer",
+      "mode",
+      "factor",
+      "patience"
+    ]
+  },
+  "gradient_clipping": 0.25,
+  "is_pred_continuous": false,
+  "is_output_continuous": false,
+  "mode": "min",
+  "factor": 0.5,
+  "patience": 1,
+  "batch_generator": "regular",
+  "metrics": [
+    "accuracy"
+  ]
+}
