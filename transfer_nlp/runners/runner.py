@@ -237,10 +237,15 @@ class Runner(RunnerABC):
             plt.show()
 
 
-def run_experiment(config: str):
+def run_experiment(experiment_file: str):
+    """
+    Instantiate an experiment
+    :param experiment_file:
+    :return:
+    """
 
-    experiments_path = Path(__file__).resolve().parent.parent / 'experiments'
-    experiments_path /= config
+    experiments_path = Path(__file__).resolve().parent.parent
+    experiments_path /= experiment_file
 
     with open(experiments_path, 'r') as exp:
         experiment = json.load(exp)
@@ -260,8 +265,8 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'mlp.json'
-    runner = run_experiment(config=args.config)
+    args.config = args.config or 'experiments/mlp.json'
+    runner = run_experiment(experiment_file=args.config)
     runner.run(test_at_the_end=True)
     # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
 
