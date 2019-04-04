@@ -20,15 +20,15 @@ import numpy as np
 import seaborn as sns
 import torch
 
-from embeddings.utils import pretty_print, get_closest
-from loaders.loaders import generate_nmt_batches
-from models.cnn import predict_category
-from models.generation import decode_samples, generate_names, generate
-from models.nmt import NMTSampler
-from models.perceptrons import predict_review, inspect_model
-from models.rnn import predict_nationalityRNN
-from runners.runnersABC import RunnerABC
-from runners.utils import update_train_state, predict_nationality, \
+from transfer_nlp.embeddings.utils import pretty_print, get_closest
+from transfer_nlp.loaders.loaders import generate_nmt_batches
+from transfer_nlp.models.cnn import predict_category
+from transfer_nlp.models.generation import decode_samples, generate_names, generate
+from transfer_nlp.models.nmt import NMTSampler
+from transfer_nlp.models.perceptrons import predict_review, inspect_model
+from transfer_nlp.models.rnn import predict_nationalityRNN
+from transfer_nlp.runners.runnersABC import RunnerABC
+from transfer_nlp.runners.utils import update_train_state, predict_nationality, \
     predict_topk_nationality
 
 name = 'transfer_nlp.runners.runner'
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'feedlyGeneration.json'
+    args.config = args.config or 'mlp.json'
     runner = run_experiment(config=args.config)
     runner.run(test_at_the_end=True)
     # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)

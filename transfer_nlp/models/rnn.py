@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from common.utils import describe
-from loaders.vectorizers import Vectorizer
+from transfer_nlp.common.utils import describe
+from transfer_nlp.loaders.vectorizers import Vectorizer
 
 name = 'transfer_nlp.models.rnn'
 logging.getLogger(name).setLevel(level=logging.INFO)

@@ -3,18 +3,18 @@ from typing import Dict, List
 import torch.nn as nn
 import torch.optim as optim
 
-from loaders.loaders import ReviewsDataset, SurnamesDataset, SurnamesDatasetCNN, CBOWDataset, NewsDataset, \
+from transfer_nlp.loaders.loaders import ReviewsDataset, SurnamesDataset, SurnamesDatasetCNN, CBOWDataset, NewsDataset, \
     SurnameDatasetRNN, \
     SurnameDatasetGeneration, NMTDataset, FeedlyDataset
-from models.cbow import CBOWClassifier
-from models.cnn import SurnameClassifierCNN, NewsClassifier
-from models.generation import SurnameConditionedGenerationModel, ConditionedGenerationModel
-from models.nmt import NMTModel
-from models.perceptrons import MultiLayerPerceptron, Perceptron
-from models.rnn import SurnameClassifierRNN
-from runners.utils import sequence_loss
-from loaders.loaders import generate_nmt_batches, generate_batches
-from runners.utils import compute_accuracy_sequence, compute_accuracy
+from transfer_nlp.models.cbow import CBOWClassifier
+from transfer_nlp.models.cnn import SurnameClassifierCNN, NewsClassifier
+from transfer_nlp.models.generation import SurnameConditionedGenerationModel, ConditionedGenerationModel
+from transfer_nlp.models.nmt import NMTModel
+from transfer_nlp.models.perceptrons import MultiLayerPerceptron, Perceptron
+from transfer_nlp.models.rnn import SurnameClassifierRNN
+from transfer_nlp.runners.utils import sequence_loss
+from transfer_nlp.loaders.loaders import generate_nmt_batches, generate_batches
+from transfer_nlp.runners.utils import compute_accuracy_sequence, compute_accuracy
 
 
 class SequenceLoss:

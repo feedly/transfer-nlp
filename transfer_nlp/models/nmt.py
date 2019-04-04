@@ -7,9 +7,9 @@ import torch.nn.functional as F
 from nltk.translate import bleu_score
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from common.utils import describe
-from loaders.vectorizers import NMTVectorizer
-from loaders.vocabulary import SequenceVocabulary
+from transfer_nlp.common.utils import describe
+from transfer_nlp.loaders.vectorizers import NMTVectorizer
+from transfer_nlp.loaders.vocabulary import SequenceVocabulary
 
 chencherry = bleu_score.SmoothingFunction()
 

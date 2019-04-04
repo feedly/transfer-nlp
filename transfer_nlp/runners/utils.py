@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from loaders.vectorizers import Vectorizer
+from transfer_nlp.loaders.vectorizers import Vectorizer
 
 
 def compute_accuracy(input, target):

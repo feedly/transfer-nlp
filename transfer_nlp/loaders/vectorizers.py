@@ -6,8 +6,8 @@ from typing import Dict, Tuple, List, Any
 import numpy as np
 import pandas as pd
 
-from loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
-from common.tokenizers import tokenize
+from transfer_nlp.loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
+from transfer_nlp.common.tokenizers import tokenize
 
 # def tokenize(text: str) -> List[str]:
 #     """

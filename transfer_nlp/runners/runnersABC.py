@@ -25,11 +25,11 @@ import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 
-from embeddings.embeddings import make_embedding_matrix
-from loaders.loaders import CustomDataset
-from loaders.vectorizers import Vectorizer
-from runners.instantiations import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics
-from runners.utils import set_seed_everywhere, handle_dirs, make_training_state
+from transfer_nlp.embeddings.embeddings import make_embedding_matrix
+from transfer_nlp.loaders.loaders import CustomDataset
+from transfer_nlp.loaders.vectorizers import Vectorizer
+from transfer_nlp.runners.instantiations import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics
+from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
 
 name = 'transfer_nlp.runners.runners'
 logging.getLogger(name).setLevel(level=logging.INFO)

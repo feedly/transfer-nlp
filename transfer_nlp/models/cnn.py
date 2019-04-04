@@ -9,9 +9,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from common.tokenizers import tokenize
-from common.utils import describe
-from loaders.vectorizers import NewsVectorizer, Vectorizer
+from transfer_nlp.common.tokenizers import tokenize
+from transfer_nlp.common.utils import describe
+from transfer_nlp.loaders.vectorizers import NewsVectorizer, Vectorizer
 
 name = 'transfer_nlp.models.cnn'
 logging.getLogger(name).setLevel(level=logging.INFO)

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from common.utils import describe
+from transfer_nlp.common.utils import describe
 
 name = 'transfer_nlp.models.cbow'
 logging.getLogger(name).setLevel(level=logging.INFO)
