@@ -59,7 +59,7 @@ class Runner(RunnerABC):
         batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
 
         running_loss = 0
-        running_acc = 0
+        running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
 
         # Set the model object to train mode (torch optimizes the parameters)
         self.model.train()
@@ -90,23 +90,21 @@ class Runner(RunnerABC):
 
             self.optimizer.step()
 
-            loss_params = {"input": y_pred, "target": batch_dict['y_target']}
-            if hasattr(self.loss.loss, 'mask') and self.mask_index:
-                loss_params['mask_index'] = self.mask_index
-
-            acc_batch = self.metric.metric(**loss_params)
-
-            running_acc += (acc_batch - running_acc) / (batch_index + 1)
+            for metric in self.metrics.names:
+                metric_batch = self.metrics.metrics[metric](**loss_params)
+                running_metrics[f"running_{metric}"] += (metric_batch - running_metrics[f"running_{metric}"]) / (batch_index + 1)
 
         self.training_state['train_loss'].append(running_loss)
-        self.training_state['train_acc'].append(running_acc)
+        for metric in self.metrics.names:
+            self.training_state[f"train_{metric}"].append(running_metrics[f"running_{metric}"])
 
         # Iterate over validation dataset
         self.dataset.set_split(split='val')
         batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
 
         running_loss = 0
-        running_acc = 0
+        running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
+
         # Set the model object to val mode (torch does not optimize the parameters)
         self.model.eval()
 
@@ -128,14 +126,15 @@ class Runner(RunnerABC):
             loss_batch = loss.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
-            loss_params = {"input": y_pred, "target": batch_dict['y_target']}
-            if hasattr(self.loss.loss, 'mask') and self.mask_index:
-                loss_params['mask_index'] = self.mask_index
-            acc_batch = self.metric.metric(**loss_params)
-            running_acc += (acc_batch - running_acc) / (batch_index + 1)
+            for metric in self.metrics.names:
+                metric_batch = self.metrics.metrics[metric](**loss_params)
+                running_metrics[f"running_{metric}"] += (metric_batch - running_metrics[f"running_{metric}"]) / (batch_index + 1)
 
         self.training_state['val_loss'].append(running_loss)
-        self.training_state['val_acc'].append(running_acc)
+
+        for metric in self.metrics.names:
+            self.training_state[f"val_{metric}"].append(running_metrics[f"running_{metric}"])
+
         self.training_state = update_train_state(config_args=self.config_args, model=self.model,
                                                  train_state=self.training_state)
         self.scheduler.scheduler.step(self.training_state['val_loss'][-1])
@@ -144,10 +143,10 @@ class Runner(RunnerABC):
 
         self.dataset.set_split(split='test')
         batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
-        num_batch = self.dataset.get_num_batches(batch_size=self.args.batch_size)
+        num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
 
         running_loss = 0
-        running_acc = 0
+        running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
         self.model.eval()
 
         for batch_index, batch_dict in enumerate(batch_generator):
@@ -158,7 +157,9 @@ class Runner(RunnerABC):
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
             y_pred = self.model(**model_inputs)
 
-            loss_params = {"y_pred": y_pred, "y_true": batch_dict['y_target']}
+            loss_params = {
+                "input": y_pred,
+                "target": batch_dict['y_target']}
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
 
@@ -167,14 +168,13 @@ class Runner(RunnerABC):
             loss_batch = loss.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
-            loss_params = {"y_pred": y_pred, "y_true": batch_dict['y_target']}
-            if hasattr(self.loss.loss, 'mask') and self.mask_index:
-                loss_params['mask_index'] = self.mask_index
-            acc_batch = self.metric.metric(**loss_params)
-            running_acc += (acc_batch - running_acc) / (batch_index + 1)
+            for metric in self.metrics.names:
+                metric_batch = self.metrics.metrics[metric](**loss_params)
+                running_metrics[f"running_{metric}"] += (metric_batch - running_metrics[f"running_{metric}"]) / (batch_index + 1)
 
         self.training_state['test_loss'] = running_loss
-        self.training_state['test_acc'] = running_acc
+        for metric in self.metrics.names:
+            self.training_state[f"test_{metric}"].append(running_metrics[f"running_{metric}"])
 
     def visualize_nmt_test(self):
 
@@ -260,9 +260,9 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'perceptron.json'
+    args.config = args.config or 'feedlyGeneration.json'
     runner = run_experiment(config=args.config)
-    runner.run()
+    runner.run(test_at_the_end=True)
     # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
 
     # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)

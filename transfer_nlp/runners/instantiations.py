@@ -89,14 +89,14 @@ METRICS = {
 }
 
 
-class Metric:
+class Metrics:
 
     def __init__(self, config_args: Dict):
         """
         :param config_args: Contains the experiment configuration, with all necessary hyperparameters
         """
-        name = config_args['metric']
-        self.metric = METRICS[name]
+        self.names = config_args['metrics']
+        self.metrics = {name: METRICS[name] for name in self.names}
 
 
 class Generator:

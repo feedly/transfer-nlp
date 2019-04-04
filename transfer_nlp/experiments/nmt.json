@@ -67,5 +67,7 @@
   "factor": 0.5,
   "patience": 1,
   "batch_generator": "nmt",
-  "metric": "accuracySequence"
+  "metrics": [
+    "accuracySequence"
+  ]
 }

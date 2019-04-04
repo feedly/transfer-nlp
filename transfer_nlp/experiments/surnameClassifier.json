@@ -58,5 +58,7 @@
   "factor": 0.5,
   "patience": 1,
   "batch_generator": "regular",
-  "metric": "accuracy"
+  "metrics": [
+    "accuracy"
+  ]
 }

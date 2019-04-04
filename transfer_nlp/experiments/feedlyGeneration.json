@@ -65,5 +65,7 @@
   "factor": 0.5,
   "patience": 0.751,
   "batch_generator": "regular",
-  "metric": "accuracySequence"
+  "metrics": [
+    "accuracySequence"
+  ]
 }

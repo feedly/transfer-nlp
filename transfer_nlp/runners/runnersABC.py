@@ -17,7 +17,7 @@ might not be known in advance. Hence, The runner will add its own arguments duri
 import json
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import torch
@@ -28,7 +28,7 @@ from tensorboardX import SummaryWriter
 from embeddings.embeddings import make_embedding_matrix
 from loaders.loaders import CustomDataset
 from loaders.vectorizers import Vectorizer
-from runners.instantiations import Scheduler, Loss, Model, Optimizer, Data, Generator, Metric
+from runners.instantiations import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics
 from runners.utils import set_seed_everywhere, handle_dirs, make_training_state
 
 name = 'transfer_nlp.runners.runners'
@@ -42,24 +42,20 @@ class RunnerABC:
     def __init__(self, config_args: Dict):
 
         self.config_args = config_args
-
         self.dataset_cls = Data(config_args=self.config_args).dataset
-
         self.dataset: CustomDataset = None
         self.training_state: Dict = {}
         self.vectorizer: Vectorizer = None
         self.loss_func: nn.modules.loss._Loss = None
         self.optimizer: optim.optimizer.Optimizer = None
         self.scheduler: Scheduler = None
-        # self.is_output_continuous = True
-        # self.is_pred_continuous = True
         self.mask_index: int = None
         self.epoch_index: int = 0
         self.writer = SummaryWriter(log_dir=self.config_args['logs'])
         self.loss: Loss = None
         self.model: nn.Module = None
         self.generator: Generator = None
-        self.metric: Metric = None
+        self.metrics: Metrics = None
         self.model_inputs: Dict = self.config_args['model']['modelInputs']
 
         self.instantiate()
@@ -125,7 +121,6 @@ class RunnerABC:
         if hasattr(self.vectorizer.target_vocab, 'begin_seq_index'):
             self.config_args['target_bos_index'] = self.vectorizer.target_vocab.begin_seq_index
         self.mask_index = self.vectorizer.data_vocab.mask_index if hasattr(self.vectorizer.data_vocab, 'mask_index') else None
-        # self.is_pred_continuous = self.config_args['is_pred_continuous']
         if hasattr(self.dataset, 'class_weights'):
             self.dataset.class_weights = self.dataset.class_weights.to(self.config_args['device'])
             self.config_args['weight'] = self.dataset.class_weights
@@ -143,7 +138,7 @@ class RunnerABC:
         self.config_args['optimizer'] = self.optimizer
         self.scheduler: Scheduler = Scheduler(config_args=self.config_args)
         self.generator: Generator = Generator(config_args=self.config_args)
-        self.metric: Metric = Metric(config_args=self.config_args)
+        self.metrics: Metrics = Metrics(config_args=self.config_args)
 
     def train_one_epoch(self):
         raise NotImplementedError
@@ -151,41 +146,55 @@ class RunnerABC:
     def do_test(self):
         raise NotImplementedError
 
-    def to_tensorboard(self, epoch: int, metric: str = 'acc'):
+    def to_tensorboard(self, epoch: int, metrics: List[str]):
 
-        if metric == 'acc':
+        self.writer.add_scalar('Train/loss', self.training_state['train_loss'][-1], epoch)
+        self.writer.add_scalar('Val/loss', self.training_state['val_loss'][-1], epoch)
 
-            self.writer.add_scalar('Train/acc', self.training_state['train_acc'][-1], epoch)
-            self.writer.add_scalar('Train/loss', self.training_state['train_loss'][-1], epoch)
-            self.writer.add_scalar('Val/acc', self.training_state['val_acc'][-1], epoch)
-            self.writer.add_scalar('Val/loss', self.training_state['val_loss'][-1], epoch)
+        for metric in metrics:
 
-        else:
-            raise NotImplementedError("Error metric others than accuracy are not implemented yest")
+            if f"train_{metric}" in self.training_state and f"val_{metric}" in self.training_state:
+                self.writer.add_scalar(f"Train/{metric}", self.training_state.get(f"train_{metric}")[-1], epoch)
+                self.writer.add_scalar(f"Val/{metric}", self.training_state.get(f"val_{metric}")[-1], epoch)
 
-    def log_current_metric(self, epoch: int, metric: str = 'acc'):
+            else:
+                raise NotImplementedError(f"Error {metric} is not implemented yet")
 
-        if metric == 'acc':
-            tp = {
-                "tl": self.training_state['train_loss'][-1],
-                'ta': self.training_state['train_acc'][-1],
-                'vl': self.training_state['val_loss'][-1],
-                'va': self.training_state['val_acc'][-1]}
-            tp = {key: np.round(value, 3) for key, value in tp.items()}
-            logger.info(f"Epoch {epoch}: train loss: {tp['tl']} / val loss: {tp['vl']} / train acc: {tp['ta']} / val acc: {tp['va']}")
-        else:
-            raise NotImplementedError("Error metric others than accuracy are not implemented yest")
+    def log_current_metric(self, epoch: int, metrics: List[str]):
 
-    def log_test_metric(self, metric: str = 'acc'):
+        current_metrics = {'tl': self.training_state['train_loss'][-1],
+                           'vl':  self.training_state['val_loss'][-1]}
 
-        if metric == 'acc':
-            tp = {
-                "tl": self.training_state['test_loss'][-1],
-                'ta': self.training_state['test_acc'][-1]}
-            tp = {key: np.round(value, 3) for key, value in tp.items()}
-            logger.info(f"Epoch {epoch}: test loss: {tp['tl']} / test acc: {tp['ta']}")
-        else:
-            raise NotImplementedError("Error metric others than accuracy are not implemented yest")
+        for metric in metrics:
+
+            if f"train_{metric}" in self.training_state and f"val_{metric}" in self.training_state:
+                current_metrics[f"train_{metric}"] = self.training_state[f"train_{metric}"][-1]
+                current_metrics[f"val_{metric}"] = self.training_state[f"val_{metric}"][-1]
+            else:
+                raise NotImplementedError(f"Error {metric} is not implemented yet")
+        current_metrics = {key: np.round(value, 3) for key, value in current_metrics.items()}
+
+        logger.info(f"Epoch {epoch}: train loss: {current_metrics['tl']} / val loss: {current_metrics['vl']}")
+        for metric in metrics:
+            train = current_metrics[f'train_{metric}']
+            val = current_metrics[f'val_{metric}']
+            logger.info(f"Metric {metric} --> Train: {train} / Val: {val}")
+
+    def log_test_metric(self, metrics: List[str]):
+
+        current_metrics = {'tl': self.training_state['test_loss']}
+
+        for metric in metrics:
+            if f"test_{metric}" in self.training_state:
+                current_metrics[f"test_{metric}"] = self.training_state[f"test_{metric}"][-1]
+            else:
+                raise NotImplementedError(f"Error {metric} is not implemented yet")
+        current_metrics = {key: np.round(value, 3) for key, value in current_metrics.items()}
+
+        logger.info(f"Test loss: {current_metrics['tl']}")
+        for metric in metrics:
+            test = current_metrics[f'test_{metric}']
+            logger.info(f"Test on metric {metric}: {test}")
 
     def run(self, test_at_the_end: bool = False):
         """
@@ -205,8 +214,8 @@ class RunnerABC:
                 logger.info(f"Epoch {epoch + 1}/{self.config_args['num_epochs']}")
                 logger.info("#" * 50)
                 self.train_one_epoch()
-                self.to_tensorboard(epoch=epoch, metric='acc')
-                self.log_current_metric(epoch=epoch, metric='acc')
+                self.to_tensorboard(epoch=epoch, metrics=self.metrics.names)
+                self.log_current_metric(epoch=epoch, metrics=self.metrics.names)
                 if self.training_state['stop_early']:
                     break
 
@@ -219,7 +228,7 @@ class RunnerABC:
             logger.info("Entering the test phase...")
             logger.info("#" * 50)
             self.do_test()
-            logger.info(f"test loss: {self.training_state['test_loss']} / test acc: {self.training_state['test_acc']}")
+            self.log_test_metric(metrics=self.metrics.names)
 
 
 def build_experiment(config: str):
