@@ -5,6 +5,7 @@ import logging
 
 from transfer_nlp.models.perceptrons import MultiLayerPerceptron
 from transfer_nlp.models.cnn import SurnameClassifierCNN, NewsClassifier
+from transfer_nlp.models.rnn import ElmanRNN, SurnameClassifierRNN
 
 class MLPTest(unittest.TestCase):
 
@@ -52,6 +53,37 @@ class MLPTest(unittest.TestCase):
         tensor = torch.randint(low=1, high=num_embeddings, size=(batch_size, max_size))
         output = model(x_in=tensor)
 
+        self.assertEqual(first=tensor.size(dim=0), second=output.size(dim=0))
+        self.assertEqual(first=output.size(dim=1), second=num_classes)
+
+    def test_rnn(self):
+
+        batch_size = 32
+        input_size = 100
+        hidden_size = 200
+        seq_size = 50
+
+        model = ElmanRNN(input_size=input_size, hidden_size=hidden_size)
+
+        tensor = torch.randn(size=(batch_size, seq_size, input_size))
+        output = model(x_in=tensor)
+
+        self.assertEqual(first=tensor.size(dim=0), second=output.size(dim=0))
+        self.assertEqual(first=tensor.size(dim=1), second=output.size(dim=1))
+        self.assertEqual(first=tensor.size(dim=2), second=input_size)
+        self.assertEqual(first=output.size(dim=2), second=hidden_size)
+
+        embedding_size = 100
+        num_embeddings = 100
+        num_classes = 10
+        rnn_hidden_size = 64
+
+        model = SurnameClassifierRNN(embedding_size=embedding_size, num_embeddings=num_embeddings, num_classes=num_classes,
+                                     rnn_hidden_size=rnn_hidden_size)
+
+        tensor = torch.randint(low=1, high=num_embeddings, size=(batch_size, embedding_size))
+        lens = torch.randint(low=1, high=num_embeddings, size=(batch_size,))
+        output = model(x_in=tensor, x_lengths=lens)
         self.assertEqual(first=tensor.size(dim=0), second=output.size(dim=0))
         self.assertEqual(first=output.size(dim=1), second=num_classes)
 
