@@ -277,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/newsClassifier.json'
+    args.config = args.config or 'experiments/surnameClassifier.json'
     runner = run_experiment(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
@@ -285,9 +285,13 @@ if __name__ == "__main__":
     else:
         runner.run(test_at_the_end=False)
 
-    title = "Big Data"
-    prediction = predict_category(title=title, model=runner.model, vectorizer=runner.vectorizer, max_length=runner.dataset._max_seq_length + 1)
-    print(prediction)
+    surname = "Mueller"
+    surnames = ["Zhang", "McDonald", "Dupont", "Okinawa", "Mueller"]
+
+    for surname in surnames:
+        prediction = predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer)
+        print(f"{surname} --> {prediction}")
+
 
     # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
 
