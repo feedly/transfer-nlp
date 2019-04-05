@@ -30,7 +30,7 @@ Structure of the library:
 
  TODO:
  - Unit-test everything
- - Smooth the runner pipeline to enable multi-task training
+ - Smooth the runner pipeline to enable multi-task training (without constraining the way we do multi-task, whether linear, hierarchical or else...)
  - Include examples using state of the art pre-trained models
  - Enable slack integration for model crashing / completion
  - Enable embeddings visualisation (see this project https://projector.tensorflow.org/)
