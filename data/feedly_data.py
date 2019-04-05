@@ -4,6 +4,7 @@ Note: You need a Feedly account and a token to use this script.
 Visit the Feedly API page to generate a token: https://developer.feedly.com/
 """
 
+import os
 from pathlib import Path
 from random import shuffle
 from typing import List
@@ -152,6 +153,8 @@ class FeedlyDownloader:
             df['split'] = split
 
         df = pd.concat([df_category, df_boards])
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         df.to_csv(path_or_buf=save_path)
 
 
