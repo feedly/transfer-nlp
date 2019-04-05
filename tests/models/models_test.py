@@ -1,14 +1,15 @@
-from typing import Dict, Any
-import unittest
-import torch
 import logging
+import unittest
 
-from transfer_nlp.models.perceptrons import MultiLayerPerceptron
-from transfer_nlp.models.cnn import SurnameClassifierCNN, NewsClassifier
-from transfer_nlp.models.rnn import ElmanRNN, SurnameClassifierRNN
+import torch
+
 from transfer_nlp.models.cbow import CBOWClassifier
+from transfer_nlp.models.cnn import SurnameClassifierCNN, NewsClassifier
 from transfer_nlp.models.generation import SurnameConditionedGenerationModel
 from transfer_nlp.models.nmt import NMTEncoder
+from transfer_nlp.models.perceptrons import MultiLayerPerceptron
+from transfer_nlp.models.rnn import ElmanRNN, SurnameClassifierRNN
+
 
 class MLPTest(unittest.TestCase):
 
@@ -146,5 +147,6 @@ class MLPTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+
     logging.basicConfig(level=logging.INFO)
     unittest.main(exit=False)

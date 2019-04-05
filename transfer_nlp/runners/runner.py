@@ -9,7 +9,6 @@ This file aims at launching an experiments based on a config file
 
 """
 
-
 import json
 import logging
 from pathlib import Path
@@ -19,11 +18,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import torch
+from knockknock import slack_sender
 
 from transfer_nlp.embeddings.utils import pretty_print, get_closest
 from transfer_nlp.loaders.loaders import generate_nmt_batches
 from transfer_nlp.models.cnn import predict_category
-from transfer_nlp.models.generation import decode_samples, generate_names, generate
+from transfer_nlp.models.generation import decode_samples, generate_names
 from transfer_nlp.models.nmt import NMTSampler
 from transfer_nlp.models.perceptrons import predict_review, inspect_model
 from transfer_nlp.models.rnn import predict_nationalityRNN
@@ -35,7 +35,6 @@ name = 'transfer_nlp.runners.runner'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 logging.info('')
-
 
 UTILS_FUNCTIONS = [inspect_model, predict_review, predict_category, get_closest, pretty_print, predict_nationality,
                    predict_topk_nationality, decode_samples, predict_nationalityRNN, generate_names]
@@ -50,7 +49,7 @@ class Runner(RunnerABC):
     def train_one_epoch(self):
 
         self.epoch_index += 1
-        sample_probability = (20 + self.epoch_index) / self.config_args['num_epochs']  #TODO: include this into the NMT training part
+        sample_probability = (20 + self.epoch_index) / self.config_args['num_epochs']  # TODO: include this into the NMT training part
 
         self.training_state['epoch_index'] += 1
 
@@ -75,7 +74,9 @@ class Runner(RunnerABC):
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
             y_pred = self.model(**model_inputs)
 
-            loss_params = {"input": y_pred, "target": batch_dict['y_target']}
+            loss_params = {
+                "input": y_pred,
+                "target": batch_dict['y_target']}
 
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
@@ -118,7 +119,9 @@ class Runner(RunnerABC):
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
             y_pred = self.model(**model_inputs)
 
-            loss_params = {"input": y_pred, "target": batch_dict['y_target']}
+            loss_params = {
+                "input": y_pred,
+                "target": batch_dict['y_target']}
 
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
@@ -255,6 +258,15 @@ def run_experiment(experiment_file: str):
     return runner
 
 
+slack_webhook_url = "YourWebhookURL"
+slack_channel = "YourFavoriteSlackChannel"
+
+
+@slack_sender(webhook_url=slack_webhook_url, channel=slack_channel)
+def run_with_slack(runner, test_at_the_end: bool = False):
+    runner.run(test_at_the_end=test_at_the_end)
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -267,7 +279,11 @@ if __name__ == "__main__":
 
     args.config = args.config or 'experiments/mlp.json'
     runner = run_experiment(experiment_file=args.config)
-    runner.run(test_at_the_end=True)
+
+    if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
+        run_with_slack(runner=runner, test_at_the_end=False)
+    else:
+        runner.run(test_at_the_end=False)
     # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
 
     # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
@@ -275,7 +291,6 @@ if __name__ == "__main__":
     # runner.visualize_results()
 
     # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
-
 
     # classifier = runner.model.to("cpu")
     # for surname in ['McMahan', 'Nakamoto', 'Wan', 'Cho']:
@@ -287,7 +302,6 @@ if __name__ == "__main__":
     # logger.info(f"Review: {review} --> {predicted_rating}")
     # inspect_model(model=runner.model, vectorizer=runner.vectorizer)
 
-
     # runner = run_experiment(config='mlp.json')
     # surnames = ["McDonald", "Aleksander", "Mahmoud", "Zhang", "Dupont", "Rastapopoulos"]
     # for surname in surnames:
@@ -295,14 +309,12 @@ if __name__ == "__main__":
     #     print(predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer))
     # predict_topk_nationality(surname="Zhang", model=runner.model, vectorizer=runner.vectorizer, k=10)
 
-
     # runner = run_experiment(config='surnameClassifier.json')
     # surnames = ["McDonald", "Aleksander", "Mahmoud", "Zhang", "Dupont", "Rastapopoulos"]
     # for surname in surnames:
     #     print(surname)
     #     print(predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer))
     # predict_topk_nationality(surname="Zhang", model=runner.model, vectorizer=runner.vectorizer, k=10)
-
 
     # runner = run_experiment(config='cbow.json')
     # embeddings = runner.model.embedding.weight.data
@@ -319,7 +331,6 @@ if __name__ == "__main__":
     #         print("Not in vocabulary")
     #         continue
     #     pretty_print(get_closest(target_word=target_word, word_to_idx=word_to_idx, embeddings=embeddings, n=5))
-
 
     # runner = run_experiment(config='newsClassifier.json')
     # title = "This article is about business"

@@ -111,7 +111,7 @@ class RunnerABC:
         # Register useful parameters and objects useful for model instantiation #TODO: do proper testing on this part
         self.config_args['pretrained_embeddings'] = embeddings
         self.config_args['num_features'] = self.config_args['input_dim'] = self.config_args['vocabulary_size'] = self.config_args['initial_num_channels'] = \
-        self.config_args['num_embeddings'] = self.config_args['char_vocab_size'] = self.config_args['source_vocab_size'] = len(self.vectorizer.data_vocab)
+            self.config_args['num_embeddings'] = self.config_args['char_vocab_size'] = self.config_args['source_vocab_size'] = len(self.vectorizer.data_vocab)
         self.config_args['output_dim'] = self.config_args['num_classes'] = self.config_args['num_nationalities'] = self.config_args['target_vocab_size'] = len(
             self.vectorizer.target_vocab)
         if hasattr(self.vectorizer.data_vocab, 'mask_index'):
@@ -162,8 +162,9 @@ class RunnerABC:
 
     def log_current_metric(self, epoch: int, metrics: List[str]):
 
-        current_metrics = {'tl': self.training_state['train_loss'][-1],
-                           'vl':  self.training_state['val_loss'][-1]}
+        current_metrics = {
+            'tl': self.training_state['train_loss'][-1],
+            'vl': self.training_state['val_loss'][-1]}
 
         for metric in metrics:
 
@@ -182,7 +183,8 @@ class RunnerABC:
 
     def log_test_metric(self, metrics: List[str]):
 
-        current_metrics = {'tl': self.training_state['test_loss']}
+        current_metrics = {
+            'tl': self.training_state['test_loss']}
 
         for metric in metrics:
             if f"test_{metric}" in self.training_state:
@@ -222,7 +224,7 @@ class RunnerABC:
         except KeyboardInterrupt:
             logger.info("Leaving training phase early (Action taken by user)")
 
-        # Optional testing phase [Not recommended during development time!]
+        # Optional testing phase [Not a good practice during development time, use this only when you are sure of your modelling decisions!]
         if test_at_the_end:
             logger.info("#" * 50)
             logger.info("Entering the test phase...")
@@ -232,7 +234,6 @@ class RunnerABC:
 
 
 def build_experiment(config: str):
-
     experiments_path = Path(__file__).resolve().parent.parent / 'experiments'
     experiments_path /= config
     print(experiments_path)
@@ -245,6 +246,5 @@ def build_experiment(config: str):
 
 
 if __name__ == "__main__":
-
     experiment = "mlp.json"
     runner = build_experiment(config=experiment)
