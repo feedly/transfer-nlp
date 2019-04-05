@@ -109,21 +109,21 @@ class FeedlyDownloader:
 
 if __name__ == "__main__":
 
-    # token = "YourToken"
-    # downloader = FeedlyDownloader(token=token)
-    # save_path = Path.home() / 'work/experiments/nlp/data'
-    # category = 'YourFeed'
-    # max_count = 10000
-    # save_path = save_path / 'feedly_data10000.csv'
-    # downloader.build_dataset(category=category, max_count=max_count, save_path=save_path)
+    token = "YourToken"
+    downloader = FeedlyDownloader(token=token)
+    save_path = Path.home() / 'work/experiments/nlp/data'
+    category = 'YourFeed'
+    max_count = 10000
+    save_path = save_path / 'feedly_data10000.csv'
+    downloader.build_dataset(category=category, max_count=max_count, save_path=save_path)
 
-    ##Multilingual
-    # token = "YourToken"
-    # downloader = FeedlyDownloader(token=token)
-    # categories = ["Category1", "Category2"]
-    # max_count = 1000
-    # save_path = Path.home() / 'work/experiments/nlp/data/feedly_multilingual.csv'
-    # downloader.build_multi_class_dataset(categories=categories, max_count=max_count, save_path=save_path)
+    #Multilingual
+    token = "YourToken"
+    downloader = FeedlyDownloader(token=token)
+    categories = ["Category1", "Category2"]
+    max_count = 1000
+    save_path = Path.home() / 'work/experiments/nlp/data/feedly_multilingual.csv'
+    downloader.build_multi_class_dataset(categories=categories, max_count=max_count, save_path=save_path)
 
 
 
