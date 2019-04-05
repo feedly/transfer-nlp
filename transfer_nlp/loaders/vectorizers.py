@@ -1,4 +1,3 @@
-import re
 import string
 from collections import Counter
 from typing import Dict, Tuple, List, Any
@@ -6,21 +5,9 @@ from typing import Dict, Tuple, List, Any
 import numpy as np
 import pandas as pd
 
-from transfer_nlp.loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
 from transfer_nlp.common.tokenizers import tokenize
+from transfer_nlp.loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
 
-# def tokenize(text: str) -> List[str]:
-#     """
-#     Basic text preprocessing
-#     :param text:
-#     :return:
-#     """
-#
-#     text = text.lower()
-#     text = re.sub(r"([.,!?])", r" \1 ", text)
-#     text = re.sub(r"[^a-zA-Z.,!?]+", r" ", text)
-#
-#     return text.split(" ")
 
 class Vectorizer:
 

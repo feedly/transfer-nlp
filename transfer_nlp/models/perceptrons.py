@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from transfer_nlp.common.tokenizers import tokenize
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import Vectorizer
 
@@ -70,39 +69,37 @@ class MultiLayerPerceptron(nn.Module):
         return output
 
 
-def predict_review(review: str, model: nn.Module, vectorizer: Vectorizer, threshold: float = 0.5):
+def predict_mlp(input_string: str, model: nn.Module, vectorizer: Vectorizer, threshold: float = 0.5):
     """
     Do inference from a text review
-    :param review:
-    :param classifier:
+    :param input_string:
+    :param model:
     :param vectorizer:
     :param threshold:
     :return:
     """
 
-    review = tokenize(review)
-    vector = torch.tensor(vectorizer.vectorize(review=review))
+    vector = torch.tensor(vectorizer.vectorize(input_string=input_string))
     classifier = model.cpu()
-    result = classifier(vector.view(1, -1)).unsqueeze(dim=0)
+    result = classifier(vector.view(1, -1))#.unsqueeze(dim=0)
 
-    if len(result.size()) == 1:  # if y_pred contains binary logits, then just compute the sigmoid to get probas
-        result = (torch.sigmoid(result) > threshold).cpu().long().item()  # .max(dim=1)[1]
-    else:  # then we are in the softmax case, and we take the max
-        _, result = result.max(dim=1)
+    _, result = result.max(dim=1)
+    result = int(result[0])
 
     return vectorizer.target_vocab.lookup_index(index=result)
 
 
 def inspect_model(model: nn.Module, vectorizer: Vectorizer):
     """
-    Check the extreme words (positives and negatives) for linear models
-    :param classifier:
+    Check the extreme words (positives and negatives) for linear binary classification models
+    :param model:
     :param vectorizer:
     :return:
     """
 
     fc_weights = model.fc.weight.detach()[0]
     _, indices = torch.sort(fc_weights, dim=0, descending=True)
+    print(fc_weights.shape)
     indices = indices.numpy().tolist()
 
     logger.info("#"*50)

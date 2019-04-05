@@ -25,7 +25,7 @@ from transfer_nlp.loaders.loaders import generate_nmt_batches
 from transfer_nlp.models.cnn import predict_category
 from transfer_nlp.models.generation import decode_samples, generate_names
 from transfer_nlp.models.nmt import NMTSampler
-from transfer_nlp.models.perceptrons import predict_review, inspect_model
+from transfer_nlp.models.perceptrons import predict_mlp, inspect_model
 from transfer_nlp.models.rnn import predict_nationalityRNN
 from transfer_nlp.runners.runnersABC import RunnerABC
 from transfer_nlp.runners.utils import update_train_state, predict_nationality, \
@@ -36,7 +36,7 @@ logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 logging.info('')
 
-UTILS_FUNCTIONS = [inspect_model, predict_review, predict_category, get_closest, pretty_print, predict_nationality,
+UTILS_FUNCTIONS = [inspect_model, predict_mlp, predict_category, get_closest, pretty_print, predict_nationality,
                    predict_topk_nationality, decode_samples, predict_nationalityRNN, generate_names]
 
 
@@ -284,6 +284,10 @@ if __name__ == "__main__":
         run_with_slack(runner=runner, test_at_the_end=False)
     else:
         runner.run(test_at_the_end=False)
+
+    surname = "Zhang"
+    prediction = predict_mlp(input_string=surname, model=runner.model, vectorizer=runner.vectorizer)
+
     # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
 
     # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
