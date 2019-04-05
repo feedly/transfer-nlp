@@ -69,7 +69,7 @@ class MultiLayerPerceptron(nn.Module):
         return output
 
 
-def predict_mlp(input_string: str, model: nn.Module, vectorizer: Vectorizer, threshold: float = 0.5):
+def predict_mlp(input_string: str, model: nn.Module, vectorizer: Vectorizer):
     """
     Do inference from a text review
     :param input_string:

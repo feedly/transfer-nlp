@@ -3,6 +3,7 @@ CNN over character-lebvel one-hot encoding
 """
 
 import logging
+from typing import Dict
 
 import numpy as np
 import torch
@@ -11,7 +12,7 @@ import torch.nn.functional as F
 
 from transfer_nlp.common.tokenizers import tokenize
 from transfer_nlp.common.utils import describe
-from transfer_nlp.loaders.vectorizers import NewsVectorizer, Vectorizer
+from transfer_nlp.loaders.vectorizers import Vectorizer
 
 name = 'transfer_nlp.models.cnn'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -128,18 +129,17 @@ class NewsClassifier(nn.Module):
         return prediction_vector
 
 
-def predict_category(title: str, model: NewsClassifier, vectorizer: Vectorizer, max_length: int):
-    """Predict a News category for a new title
-
-    Args:
-        title (str): a raw title string
-        classifier (NewsClassifier): an instance of the trained classifier
-        vectorizer (NewsVectorizer): the corresponding vectorizer
-        max_length (int): the max sequence length
-            Note: CNNs are sensitive to the input data tensor size.
-                  This ensures to keep it the same size as the training data
+def predict_category(title: str, model: NewsClassifier, vectorizer: Vectorizer, max_length: int) -> Dict:
     """
-    title = tokenize(text=title)
+    Predict a News category for a new title
+    :param title:
+    :param model:
+    :param vectorizer:
+    :param max_length: CNNs are sensitive to the input data tensor size.
+                  This ensures to keep it the same size as the training data
+    :return:
+    """
+    # title = tokenize(text=title)
     vectorized_title = torch.tensor(vectorizer.vectorize(title=title, vector_length=max_length))
     result = model(x_in=vectorized_title.unsqueeze(0), apply_softmax=True)
     probability_values, indices = result.max(dim=1)
