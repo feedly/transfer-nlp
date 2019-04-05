@@ -133,7 +133,7 @@ class FeedlyDownloader:
         self.df = df
         self.df.to_csv(path_or_buf=save_path)
 
-    def build_like_board_dataset(self, category: str, boards: List[str], max_count: int, save_path: Path):
+    def build_like_board_dataset(self, category: str, boards: List[str], max_count: int, save_path: Path, name: str):
 
         category_entries = self.get_category_entries(category=category, max_count=max_count)
         shuffle(category_entries)
@@ -155,7 +155,7 @@ class FeedlyDownloader:
         df = pd.concat([df_category, df_boards])
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-        df.to_csv(path_or_buf=save_path)
+        df.to_csv(path_or_buf=save_path + name)
 
 
 if __name__ == "__main__":
