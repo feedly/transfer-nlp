@@ -299,7 +299,7 @@ if __name__ == "__main__":
     # runner.visualize_nmt_test()
     # runner.visualize_results()
 
-    # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
+    generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
 
     # classifier = runner.model.to("cpu")
     # for surname in ['McMahan', 'Nakamoto', 'Wan', 'Cho']:
