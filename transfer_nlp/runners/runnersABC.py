@@ -99,7 +99,7 @@ class RunnerABC:
         self.vectorizer = self.dataset.get_vectorizer()
 
         # Word Embeddings
-        if self.config_args['use_glove']:
+        if self.config_args.get('use_glove', False):
             words = self.vectorizer.data_vocab._token2id.keys()
             embeddings = make_embedding_matrix(glove_filepath=self.config_args['glove_filepath'],
                                                words=words)
