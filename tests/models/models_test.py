@@ -6,6 +6,8 @@ import logging
 from transfer_nlp.models.perceptrons import MultiLayerPerceptron
 from transfer_nlp.models.cnn import SurnameClassifierCNN, NewsClassifier
 from transfer_nlp.models.rnn import ElmanRNN, SurnameClassifierRNN
+from transfer_nlp.models.cbow import CBOWClassifier
+from transfer_nlp.models.generation import SurnameConditionedGenerationModel
 
 class MLPTest(unittest.TestCase):
 
@@ -86,6 +88,39 @@ class MLPTest(unittest.TestCase):
         output = model(x_in=tensor, x_lengths=lens)
         self.assertEqual(first=tensor.size(dim=0), second=output.size(dim=0))
         self.assertEqual(first=output.size(dim=1), second=num_classes)
+
+    def test_cbow(self):
+
+        vocabulary_size = 5000
+        embedding_size = 100
+        batch_size = 32
+
+        model = CBOWClassifier(vocabulary_size=vocabulary_size, embedding_size=embedding_size)
+
+        tensor = torch.randint(low=1, high=vocabulary_size, size=(batch_size, embedding_size))
+        output = model(x_in=tensor, apply_softmax=False)
+        self.assertEqual(first=tensor.size(dim=0), second=output.size(dim=0))
+        self.assertEqual(first=output.size(dim=1), second=vocabulary_size)
+
+    def test_generation(self):
+
+        char_embedding_size = 32
+        char_vocab_size = 256
+        rnn_hidden_size = 200
+        num_nationalities = 2
+        batch_size = 32
+        max_sequence = 100
+
+        model = SurnameConditionedGenerationModel(char_embedding_size=char_embedding_size, char_vocab_size=char_vocab_size, rnn_hidden_size=rnn_hidden_size,
+                                                  num_nationalities=num_nationalities, conditioned=True)
+
+        tensor = torch.ones(size=(batch_size, max_sequence)).long()
+        nationality_index = torch.zeros(size=(batch_size,), dtype=torch.int64)
+        output = model(x_in=tensor, nationality_index=nationality_index)
+
+        self.assertEqual(first=tensor.size(dim=0), second=output.size(dim=0))
+        self.assertEqual(first=output.size(dim=1), second=max_sequence)
+        self.assertEqual(first=output.size(dim=2), second=char_vocab_size)
 
 
 if __name__ == '__main__':
