@@ -8,6 +8,7 @@ from transfer_nlp.models.cnn import SurnameClassifierCNN, NewsClassifier
 from transfer_nlp.models.rnn import ElmanRNN, SurnameClassifierRNN
 from transfer_nlp.models.cbow import CBOWClassifier
 from transfer_nlp.models.generation import SurnameConditionedGenerationModel
+from transfer_nlp.models.nmt import NMTEncoder
 
 class MLPTest(unittest.TestCase):
 
@@ -121,6 +122,27 @@ class MLPTest(unittest.TestCase):
         self.assertEqual(first=tensor.size(dim=0), second=output.size(dim=0))
         self.assertEqual(first=output.size(dim=1), second=max_sequence)
         self.assertEqual(first=output.size(dim=2), second=char_vocab_size)
+
+    def test_nmt(self):
+
+        batch_size = 32
+        num_embeddings = 500
+        embedding_size = 100
+        rnn_hidden_size = 300
+        sequence_size = 1000
+
+        model = NMTEncoder(num_embeddings=num_embeddings, embedding_size=embedding_size, rnn_hidden_size=rnn_hidden_size)
+
+        tensor = torch.randint(low=1, high=num_embeddings, size=(batch_size, sequence_size))
+        lens = torch.randint(low=1, high=num_embeddings, size=(batch_size,))
+        lens = torch.sort(input=lens, descending=True)[0]
+        x_unpacked, x_birnn_h = model(x_source=tensor, x_lengths=lens)
+
+        self.assertEqual(first=tensor.size(dim=0), second=x_unpacked.size(dim=0))
+        self.assertEqual(first=tensor.size(dim=0), second=x_birnn_h.size(dim=0))
+        self.assertEqual(first=x_unpacked.size(dim=2), second=rnn_hidden_size * 2)
+        self.assertEqual(first=x_birnn_h.size(dim=1), second=rnn_hidden_size * 2)
+        self.assertEqual(first=x_unpacked.size(dim=1), second=max(lens))
 
 
 if __name__ == '__main__':
