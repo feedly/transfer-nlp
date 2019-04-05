@@ -137,13 +137,13 @@ class FeedlyDownloader:
         category_entries = self.get_category_entries(category=category, max_count=max_count)
         shuffle(category_entries)
         df_category = build_dataframe(entries=category_entries)
-        df_category['target'] = ['category'] * len(category_entries)
+        df_category['category'] = ['category'] * len(category_entries)
         boards_entries = []
         for board in boards:
             boards_entries.extend(self.get_board_entries(board=board, max_count=max_count))
         shuffle(boards_entries)
         df_boards = build_dataframe(entries=boards_entries)
-        df_boards['target'] = ['board'] * len(df_boards)
+        df_boards['category'] = ['board'] * len(df_boards)
 
         for df in [df_category, df_boards]:
             limits = [int(0.8 * len(df)), int(0.1 * len(df))]
