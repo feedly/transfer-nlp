@@ -13,7 +13,7 @@
   "lr": 0.001,
   "dropout_p": 0.1,
   "batch_size": 128,
-  "num_epochs": 1,
+  "num_epochs": 10,
   "early_stopping_criteria": 5,
   "cuda": true,
   "catch_keyboard_interrupt": true,
