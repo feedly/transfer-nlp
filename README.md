@@ -28,13 +28,16 @@ Structure of the library:
 
 `transfer-nlp/runners`: contains the full training pipeline, given a config file experiment
 
- TODO:
+ Some objectves to reach:
  - Unit-test everything
  - Smooth the runner pipeline to enable multi-task training (without constraining the way we do multi-task, whether linear, hierarchical or else...)
  - Include examples using state of the art pre-trained models
  - Enable slack integration for model crashing / completion
  - Enable embeddings visualisation (see this project https://projector.tensorflow.org/)
  - Enable pre-trained models finetuning
+ - Include linguistic properties to models
+ - Experiment with RL for sequential tasks
+ - Include probing tasks to try to understand the properties that are learned by the models
 
 
 
