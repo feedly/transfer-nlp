@@ -160,6 +160,12 @@ class RunnerABC:
             else:
                 raise NotImplementedError(f"Error {metric} is not implemented yet")
 
+        if hasattr(self.model.model, "embbeding"):
+            logger.info("Logging embeddings to Tensorboard!")
+            embeddings = self.model.model.embedding.weight.data
+            metadata = [self.vectorizer.data_vocab._id2token[token_index] for token_index in range(embeddings.shape[0])]
+            self.writer.add_embedding(mat=embeddings, metadata=metadata)
+
     def log_current_metric(self, epoch: int, metrics: List[str]):
 
         current_metrics = {
