@@ -11,9 +11,9 @@ setup(
     long_description=open("README.md", "r", encoding='utf-8').read(),
     long_description_content_type="text/markdown",
     author='Peter Martigny',
-    author_email='peter.martigny@gmail.com peter@feedly.com',
+    author_email='peter.martigny@gmail.com',
     url='https://github.com/feedly/transfer-nlp',
-    download_url='https://github.com/feedly/transfer-nlp/archive/v_01.tar.gz',
+    download_url='https://github.com/feedly/transfer-nlp/archive/0.0.1.zip',
     keywords=['NLP', 'transfer learning', 'language models', 'NLU'],
     install_requires=[
         'tqdm==4.31.1',
