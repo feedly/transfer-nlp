@@ -5,7 +5,7 @@
   "save_dir": "/Users/petermartigny/work/experiments/nlp/models/cbow",
   "logs": "/Users/petermartigny/work/experiments/nlp/models/cbow/logs/log1",
   "glove_filepath": "/Users/petermartigny/work/experiments/nlp/data/glove/glove.6B.100d.txt",
-  "use_glove": false,
+  "use_glove": true,
   "embedding_size": 100,
   "hidden_dim": 10,
   "num_channels": 10,

@@ -277,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/surnameClassifier.json'
+    args.config = args.config or 'experiments/cbow.json'
     runner = run_experiment(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
@@ -285,12 +285,12 @@ if __name__ == "__main__":
     else:
         runner.run(test_at_the_end=False)
 
-    surname = "Mueller"
-    surnames = ["Zhang", "McDonald", "Dupont", "Okinawa", "Mueller"]
-
-    for surname in surnames:
-        prediction = predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer)
-        print(f"{surname} --> {prediction}")
+    # surname = "Mueller"
+    # surnames = ["Zhang", "McDonald", "Dupont", "Okinawa", "Mueller"]
+    #
+    # for surname in surnames:
+    #     prediction = predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer)
+    #     print(f"{surname} --> {prediction}")
 
 
     # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
@@ -299,7 +299,7 @@ if __name__ == "__main__":
     # runner.visualize_nmt_test()
     # runner.visualize_results()
 
-    generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
+    # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
 
     # classifier = runner.model.to("cpu")
     # for surname in ['McMahan', 'Nakamoto', 'Wan', 'Cho']:
