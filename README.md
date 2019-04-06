@@ -3,6 +3,7 @@
 This library is a playground NLP library, built on top of Pytorch. The goal is to gradually build a design that enable researchers and engineers to quickly implement new ideas, train NLP models and serve them in production.
 
 You can have an overview of the high-level API on this [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=Xzu3HPdGrnza), which shows how to use the framework on several examples.
+All examples on these notebooks embed in-cell Tensorboard training monitoring!
 
 The ideal use of this library is to provide a minimal implementation of a dataset loader, a vectorizer and a model. Then, given a config file with the experiment parameters, `runner.py` takes care of the training pipeline.
 
