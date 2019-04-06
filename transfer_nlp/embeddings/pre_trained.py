@@ -16,7 +16,7 @@ class PreTrainedEmbeddings(object):
 
         self.index: AnnoyIndex = AnnoyIndex(len(word_vectors[0]), metric='euclidean')
         print("Building Index!")
-        for _, i in tqdm(self.w2i.items()), 'Anoy Index':
+        for _, i in tqdm(self.w2i.items(), 'Anoy Index'):
             self.index.add_item(i, self.word_vectors[i])
         self.index.build(50)
         print("Finished!")
