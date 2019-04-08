@@ -212,11 +212,36 @@ runner.run(test_at_the_end=False)
 This is very useful if you want to set up a very custom training strategy, but for usual cases the plugins that are already implemented will be sufficient.
 
 
+# Tensorboard training monitoring
+PyTorch comes with a handy TensorboardX integration that enable the use of Tensorboard.
+Once the training process in launched you can run:
+
+```
+
+```
+
+# Slack integration
+While experimenting with your own models / data, the training might take some time. To get notified when your training finishes or crashes, we recommend the simple library [knockknock](https://github.com/huggingface/knockknock) by folks at HuggingFace, which add a simple decorator to your running function to notify you via Slack, E-mail, etc.
+
+
+```
+from transfer_nlp.runners.runner import Runner
+
+slack_webhook_url = "YourWebhookURL"
+slack_channel = "YourFavoriteSlackChannel"
+config_args = {}
+runner = Runner(config_args=config_args)
+
+@slack_sender(webhook_url=slack_webhook_url, channel=slack_channel)
+def run_with_slack(runner):
+    runner.run()
+```
+
+
 # Some objectves to reach:
  - Unit-test everything
  - Smooth the runner pipeline to enable multi-task training (without constraining the way we do multi-task, whether linear, hierarchical or else...)
  - Include examples using state of the art pre-trained models
- - Enable slack integration for model crashing / completion
  - Enable embeddings visualisation (see this project https://projector.tensorflow.org/)
  - Enable pre-trained models finetuning
  - Include linguistic properties to models
