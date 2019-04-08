@@ -7,7 +7,7 @@ Welcome to the transfer-nlp library, a framework built on top of PyTorch whose g
 You can have an overview of the high-level API on this [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=Xzu3HPdGrnza), which shows how to use the framework on several examples.
 All examples on these notebooks embed in-cell Tensorboard training monitoring!
 
-Before starting using this repository:
+# Set up your environment
 
 - create a virtual environment: `mkvirtualenv YourEnvName`
 - clone the repository: `git clone https://github.com/feedly/transfer-nlp.git`
@@ -15,7 +15,7 @@ Before starting using this repository:
 
 The library is available on [Pypi](https://pypi.org/project/transfer-nlp/) but ```pip install transfer-nlp``` is not recommended yet.
 
-Structure of the library:
+# Structure of the library:
 
 `loaders`
 - `transfer-nlp/loaders/vocabulary.py`: contains classes for vocabularies
@@ -33,7 +33,7 @@ Structure of the library:
 `transfer-nlp/runners`: contains the full training pipeline, given a config file experiment
 
 
-#How to use the library?
+# How to use the library?
 
 You can have a look at the [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=IuBcpSdZtcmo) to get a simple sens of the library usage.
 
@@ -212,7 +212,7 @@ runner.run(test_at_the_end=False)
 This is very useful if you want to set up a very custom training strategy, but for usual cases the plugins that are already implemented will be sufficient.
 
 
- Some objectves to reach:
+# Some objectves to reach:
  - Unit-test everything
  - Smooth the runner pipeline to enable multi-task training (without constraining the way we do multi-task, whether linear, hierarchical or else...)
  - Include examples using state of the art pre-trained models
@@ -225,4 +225,5 @@ This is very useful if you want to set up a very custom training strategy, but f
 
 
 
+# Acknowledgment
 This library builds on the book <cite>["Natural Language Processing with PyTorch"](https://www.amazon.com/dp/1491978236/)<cite> by Delip Rao and Brian McMahan for the initial experiments.
