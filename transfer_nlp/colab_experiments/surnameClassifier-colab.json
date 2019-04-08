@@ -57,8 +57,8 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-  "batch_generator": "regular",
+  "batch_generator": "generate_batches",
   "metrics": [
-    "accuracy"
+    "compute_accuracy"
   ]
 }

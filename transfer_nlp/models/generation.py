@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import Vectorizer
+from transfer_nlp.plugins.registry import register_model
 
 name = 'transfer_nlp.models.generation'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -15,6 +16,7 @@ logger = logging.getLogger(name)
 logging.info('')
 
 
+@register_model
 class SurnameConditionedGenerationModel(nn.Module):
 
     def __init__(self, char_embedding_size: int, char_vocab_size: int, num_nationalities: int,
@@ -71,6 +73,7 @@ class SurnameConditionedGenerationModel(nn.Module):
         return y_out
 
 
+@register_model
 class ConditionedGenerationModel(nn.Module):
 
     def __init__(self, embedding_size: int, num_embeddings: int, num_classes: int,

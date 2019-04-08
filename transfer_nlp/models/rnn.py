@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import Vectorizer
+from transfer_nlp.plugins.registry import register_model
 
 name = 'transfer_nlp.models.rnn'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -25,6 +26,7 @@ def column_gather(y_out: torch.FloatTensor, x_lengths: torch.LongTensor) -> torc
     return torch.stack(out)
 
 
+@register_model
 class ElmanRNN(nn.Module):
 
     def __init__(self, input_size: int, hidden_size: int, batch_first: bool=False):
@@ -79,6 +81,7 @@ class ElmanRNN(nn.Module):
         return hiddens
 
 
+@register_model
 class SurnameClassifierRNN(nn.Module):
 
     def __init__(self, embedding_size: int, num_embeddings: int, num_classes: int,

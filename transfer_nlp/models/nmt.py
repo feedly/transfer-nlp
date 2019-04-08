@@ -10,10 +10,12 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import NMTVectorizer
 from transfer_nlp.loaders.vocabulary import SequenceVocabulary
+from transfer_nlp.plugins.registry import register_model
 
 chencherry = bleu_score.SmoothingFunction()
 
 
+@register_model
 class NMTEncoder(nn.Module):
 
     def __init__(self, num_embeddings: int, embedding_size: int, rnn_hidden_size: int):
@@ -75,6 +77,7 @@ def terse_attention(encoder_state_vectors: torch.Tensor, query_vector: torch.Ten
     return context_vectors, vector_probabilities
 
 
+@register_model
 class NMTDecoder(nn.Module):
 
     def __init__(self, num_embeddings: int, embedding_size: int, rnn_hidden_size: int, bos_index: int):
@@ -173,6 +176,7 @@ class NMTDecoder(nn.Module):
         return output_vectors
 
 
+@register_model
 class NMTModel(nn.Module):
     """ The Neural Machine Translation Model """
 
@@ -220,6 +224,7 @@ def sentence_from_indices(indices: List[int], vocab: SequenceVocabulary, strict:
         return out
 
 
+@register_model
 class NMTSampler:
 
     def __init__(self, vectorizer: NMTVectorizer, model: NMTModel):

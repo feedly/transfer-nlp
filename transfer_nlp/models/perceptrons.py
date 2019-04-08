@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import Vectorizer
+from transfer_nlp.plugins.registry import register_model
 
 name = 'transfer_nlp.models.perceptrons'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -13,6 +14,7 @@ logger = logging.getLogger(name)
 logging.info('')
 
 
+@register_model
 class Perceptron(nn.Module):
 
     def __init__(self, num_features):
@@ -35,6 +37,7 @@ class Perceptron(nn.Module):
         return y_out
 
 
+@register_model
 class MultiLayerPerceptron(nn.Module):
 
     def __init__(self, input_dim: int, hidden_dim: int, output_dim: int):
@@ -75,7 +78,6 @@ def predict_mlp(input_string: str, model: nn.Module, vectorizer: Vectorizer):
     :param input_string:
     :param model:
     :param vectorizer:
-    :param threshold:
     :return:
     """
 

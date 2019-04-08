@@ -1,48 +1,18 @@
+import logging
 from typing import Dict, List
 
 import torch.nn as nn
 import torch.optim as optim
 
-from transfer_nlp.loaders.loaders import ReviewsDataset, SurnamesDataset, SurnamesDatasetCNN, CBOWDataset, NewsDataset, \
-    SurnameDatasetRNN, \
-    SurnameDatasetGeneration, NMTDataset, FeedlyDataset
-from transfer_nlp.models.cbow import CBOWClassifier
-from transfer_nlp.models.cnn import SurnameClassifierCNN, NewsClassifier
-from transfer_nlp.models.generation import SurnameConditionedGenerationModel, ConditionedGenerationModel
-from transfer_nlp.models.nmt import NMTModel
-from transfer_nlp.models.perceptrons import MultiLayerPerceptron, Perceptron
-from transfer_nlp.models.rnn import SurnameClassifierRNN
-from transfer_nlp.runners.utils import sequence_loss
-from transfer_nlp.loaders.loaders import generate_nmt_batches, generate_batches
-from transfer_nlp.runners.utils import compute_accuracy_sequence, compute_accuracy
+name = 'transfer_nlp.plugins.registry'
+logging.getLogger(name).setLevel(level=logging.INFO)
+logger = logging.getLogger(name)
+logging.info('')
 
-
-class SequenceLoss:
-
-    def __init__(self):
-        self.mask: bool = True
-
-    def __call__(self, *args, **kwargs):
-        return sequence_loss(*args, **kwargs)
-
-
-MODEL_CLASSES = {
-    'NewsClassifier': NewsClassifier,
-    'CBOWClassifier': CBOWClassifier,
-    'SurnameClassifierCNN': SurnameClassifierCNN,
-    'MultiLayerPerceptron': MultiLayerPerceptron,
-    'Perceptron': Perceptron,
-    'SurnameClassifierRNN': SurnameClassifierRNN,
-    'SurnameConditionedGenerationModel': SurnameConditionedGenerationModel,
-    'ConditionedGenerationModel': ConditionedGenerationModel,
-    'NMTModel': NMTModel}
-
+MODEL_CLASSES = {}
 LOSS_CLASSES = {
     'CrossEntropyLoss': nn.CrossEntropyLoss,
-    'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
-    'sequenceLoss': SequenceLoss,
-}
-
+    'BCEWithLogitsLoss': nn.BCEWithLogitsLoss, }
 OPTIMIZER_CLASSES = {
     "Adam": optim.Adam,
     "SGD": optim.SGD,
@@ -53,11 +23,8 @@ OPTIMIZER_CLASSES = {
     "ASGD": optim.ASGD,
     "LBFGS": optim.LBFGS,
     "RMSPROP": optim.RMSprop,
-    "Rprop": optim.Rprop
-
-
+    "Rprop": optim.Rprop,
 }
-
 SCHEDULER_CLASSES = {
     "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
     "MultiStepLR": optim.lr_scheduler.MultiStepLR,
@@ -66,27 +33,51 @@ SCHEDULER_CLASSES = {
     "LambdaLR": optim.lr_scheduler.LambdaLR
 
 }
+DATASET_CLASSES = {}
+BATCH_GENERATORS = {}
+METRICS = {}
 
-DATASET_CLASSES = {
-    'NewsDataset': NewsDataset,
-    'CBOWDataset': CBOWDataset,
-    'SurnamesDatasetCNN': SurnamesDatasetCNN,
-    'SurnamesDataset': SurnamesDataset,
-    'ReviewsDataset': ReviewsDataset,
-    'SurnameDatasetRNN': SurnameDatasetRNN,
-    'SurnameDatasetGeneration': SurnameDatasetGeneration,
-    'NMTDataset': NMTDataset,
-    'FeedlyDataset': FeedlyDataset}
 
-BATCH_GENERATORS = {
-    'regular': generate_batches,
-    'nmt': generate_nmt_batches,
-}
+def register_model(model_class):
+    logger.info(f"Registring model {model_class.__name__} into registry")
+    MODEL_CLASSES[model_class.__name__] = model_class
+    return model_class
 
-METRICS = {
-    "accuracySequence": compute_accuracy_sequence,
-    "accuracy": compute_accuracy,
-}
+
+def register_loss(loss_class):
+    logger.info(f"Registring loss function {loss_class.__name__} into registry")
+    LOSS_CLASSES[loss_class.__name__] = loss_class
+    return loss_class
+
+
+def register_optimizer(optimizer_class):
+    logger.info(f"Registring optimizer {optimizer_class.__name__} into registry")
+    OPTIMIZER_CLASSES[optimizer_class.__name__] = optimizer_class
+    return optimizer_class
+
+
+def register_scheduler(scheduler_class):
+    logger.info(f"Registring scheduler {scheduler_class.__name__} into registry")
+    MODEL_CLASSES[scheduler_class.__name__] = scheduler_class
+    return scheduler_class
+
+
+def register_dataset(dataset_class):
+    logger.info(f"Registring dataset {dataset_class.__name__} into registry")
+    DATASET_CLASSES[dataset_class.__name__] = dataset_class
+    return dataset_class
+
+
+def register_batch_generator(batch_generator_class):
+    logger.info(f"Registring batch generator {batch_generator_class.__name__} into registry")
+    BATCH_GENERATORS[batch_generator_class.__name__] = batch_generator_class
+    return batch_generator_class
+
+
+def register_metric(metric_class):
+    logger.info(f"Registring metric {metric_class.__name__} into registry")
+    METRICS[metric_class.__name__] = metric_class
+    return metric_class
 
 
 class Metrics:

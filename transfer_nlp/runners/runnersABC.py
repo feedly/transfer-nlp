@@ -28,8 +28,9 @@ from tensorboardX import SummaryWriter
 from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
-from transfer_nlp.runners.instantiations import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics
+from transfer_nlp.plugins.registry import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics
 from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
+import transfer_nlp
 
 name = 'transfer_nlp.runners.runners'
 logging.getLogger(name).setLevel(level=logging.INFO)

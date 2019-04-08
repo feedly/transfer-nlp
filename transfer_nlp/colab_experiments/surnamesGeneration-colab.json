@@ -39,7 +39,7 @@
     ]
   },
   "loss": {
-    "lossName": "sequenceLoss",
+    "lossName": "SequenceLoss",
     "lossParams": []
   },
   "Optimizer": {
@@ -63,8 +63,8 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-  "batch_generator": "regular",
+  "batch_generator": "generate_batches",
   "metrics": [
-    "accuracySequence"
+    "compute_accuracy_sequence"
   ]
 }

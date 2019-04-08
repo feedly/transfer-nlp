@@ -16,9 +16,11 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
-from transfer_nlp.loaders.vectorizers import ReviewsVectorizer, SurnamesVectorizer, Vectorizer, SurnamesVectorizerCNN, CBOWVectorizer, NewsVectorizer, SurnameVectorizerRNN, \
-    SurnameVectorizerGeneration, NMTVectorizer, FeedlyVectorizer
 from transfer_nlp.common.tokenizers import tokenize
+from transfer_nlp.loaders.vectorizers import ReviewsVectorizer, SurnamesVectorizer, Vectorizer, SurnamesVectorizerCNN, CBOWVectorizer, NewsVectorizer, \
+    SurnameVectorizerRNN, \
+    SurnameVectorizerGeneration, NMTVectorizer, FeedlyVectorizer
+from transfer_nlp.plugins.registry import register_dataset
 
 
 class CustomDataset(Dataset):
@@ -79,6 +81,7 @@ class CustomDataset(Dataset):
         return self._target_size
 
 
+@register_dataset
 class ReviewsDataset(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -108,7 +111,7 @@ class ReviewsDataset(CustomDataset):
         return {'x_in': review_vector,
                 'y_target': rating_index}
 
-
+@register_dataset
 class SurnamesDataset(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -145,7 +148,7 @@ class SurnamesDataset(CustomDataset):
             'x_in': surname_vector,
             'y_target': nationality_index}
 
-
+@register_dataset
 class SurnamesDatasetCNN(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -182,7 +185,7 @@ class SurnamesDatasetCNN(CustomDataset):
             'x_in': surname_vector,
             'y_target': nationality_index}
 
-
+@register_dataset
 class CBOWDataset(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -216,7 +219,7 @@ class CBOWDataset(CustomDataset):
             'x_in': context_vector,
             'y_target': target_index}
 
-
+@register_dataset
 class NewsDataset(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -260,7 +263,7 @@ class NewsDataset(CustomDataset):
             'x_in': title_vector,
             'y_target': category_index}
 
-
+@register_dataset
 class SurnameDatasetRNN(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -304,7 +307,7 @@ class SurnameDatasetRNN(CustomDataset):
             'y_target': nationality_index,
             'x_lengths': vec_length}
 
-
+@register_dataset
 class SurnameDatasetGeneration(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -339,7 +342,7 @@ class SurnameDatasetGeneration(CustomDataset):
             'y_target': to_vector,
             'nationality_index': nationality_index}
 
-
+@register_dataset
 class FeedlyDataset(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
@@ -378,6 +381,8 @@ class FeedlyDataset(CustomDataset):
             'y_target': to_vector,
             'class_index': nationality_index}
 
+
+@register_dataset
 class NMTDataset(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: NMTVectorizer):
@@ -406,30 +411,3 @@ class NMTDataset(CustomDataset):
             "target_sequence": vector_dict["target_x_vector"],
             "y_target": vector_dict["target_y_vector"],
             "x_source_lengths": vector_dict["source_length"]}
-
-
-def generate_batches(dataset: Dataset, batch_size: int, shuffle: bool=True, drop_last: bool=True, device: str='cpu') -> Dict:
-
-    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
-
-    for data_dict in dataloader:
-        out_data_dict = {}
-        for name, tensor in data_dict.items():
-            out_data_dict[name] = data_dict[name].to(device)
-        yield out_data_dict
-
-
-def generate_nmt_batches(dataset: NMTDataset, batch_size: int, shuffle: bool=True,
-                         drop_last: bool=True, device: str="cpu") -> Dict:
-    """A generator function which wraps the PyTorch DataLoader.  The NMT Version """
-    dataloader = DataLoader(dataset=dataset, batch_size=batch_size,
-                            shuffle=shuffle, drop_last=drop_last)
-
-    for data_dict in dataloader:
-        lengths = data_dict['x_source_lengths'].numpy()
-        sorted_length_indices = lengths.argsort()[::-1].tolist()
-
-        out_data_dict = {}
-        for name, tensor in data_dict.items():
-            out_data_dict[name] = data_dict[name][sorted_length_indices].to(device)
-        yield out_data_dict

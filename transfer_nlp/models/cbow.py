@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from transfer_nlp.common.utils import describe
+from transfer_nlp.plugins.registry import register_model
 
 name = 'transfer_nlp.models.cbow'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -12,6 +13,7 @@ logger = logging.getLogger(name)
 logging.info('')
 
 
+@register_model
 class CBOWClassifier(nn.Module):  # Simplified cbow Model
 
     def __init__(self, vocabulary_size: int, embedding_size: int, padding_idx: int=0):

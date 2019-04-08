@@ -20,24 +20,15 @@ import seaborn as sns
 import torch
 from knockknock import slack_sender
 
-from transfer_nlp.embeddings.utils import pretty_print, get_closest
-from transfer_nlp.loaders.loaders import generate_nmt_batches
-from transfer_nlp.models.cnn import predict_category
-from transfer_nlp.models.generation import decode_samples, generate_names
 from transfer_nlp.models.nmt import NMTSampler
-from transfer_nlp.models.perceptrons import predict_mlp, inspect_model
-from transfer_nlp.models.rnn import predict_nationalityRNN
+from transfer_nlp.plugins.generators import generate_nmt_batches
 from transfer_nlp.runners.runnersABC import RunnerABC
-from transfer_nlp.runners.utils import update_train_state, predict_nationality, \
-    predict_topk_nationality
+from transfer_nlp.runners.utils import update_train_state
 
 name = 'transfer_nlp.runners.runner'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 logging.info('')
-
-UTILS_FUNCTIONS = [inspect_model, predict_mlp, predict_category, get_closest, pretty_print, predict_nationality,
-                   predict_topk_nationality, decode_samples, predict_nationalityRNN, generate_names]
 
 
 class Runner(RunnerABC):
@@ -179,6 +170,7 @@ class Runner(RunnerABC):
         for metric in self.metrics.names:
             self.training_state[f"test_{metric}"].append(running_metrics[f"running_{metric}"])
 
+    # The following methods are for NMT only #TODO: clean this part
     def visualize_nmt_test(self):
 
         model = self.model.eval().to(self.args.device)
@@ -277,7 +269,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/cbow.json'
+    args.config = args.config or 'experiments/surnameClassifier.json'
     runner = run_experiment(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
@@ -291,56 +283,3 @@ if __name__ == "__main__":
     # for surname in surnames:
     #     prediction = predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer)
     #     print(f"{surname} --> {prediction}")
-
-
-    # generate(model=runner.model, vectorizer=runner.vectorizer, sample_size=50, num_samples=1)
-
-    # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
-    # runner.visualize_nmt_test()
-    # runner.visualize_results()
-
-    # generate_names(model=runner.model, vectorizer=runner.vectorizer, character=False)
-
-    # classifier = runner.model.to("cpu")
-    # for surname in ['McMahan', 'Nakamoto', 'Wan', 'Cho']:
-    #     logger.info(predict_nationalityRNN(surname=surname, classifier=classifier, vectorizer=runner.vectorizer))
-
-    # runner = run_experiment(config='perceptron.json')
-    # review = "This book is amazing!"
-    # predicted_rating = predict_review(review=review, model=runner.model, vectorizer=runner.vectorizer)
-    # logger.info(f"Review: {review} --> {predicted_rating}")
-    # inspect_model(model=runner.model, vectorizer=runner.vectorizer)
-
-    # runner = run_experiment(config='mlp.json')
-    # surnames = ["McDonald", "Aleksander", "Mahmoud", "Zhang", "Dupont", "Rastapopoulos"]
-    # for surname in surnames:
-    #     print(surname)
-    #     print(predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer))
-    # predict_topk_nationality(surname="Zhang", model=runner.model, vectorizer=runner.vectorizer, k=10)
-
-    # runner = run_experiment(config='surnameClassifier.json')
-    # surnames = ["McDonald", "Aleksander", "Mahmoud", "Zhang", "Dupont", "Rastapopoulos"]
-    # for surname in surnames:
-    #     print(surname)
-    #     print(predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer))
-    # predict_topk_nationality(surname="Zhang", model=runner.model, vectorizer=runner.vectorizer, k=10)
-
-    # runner = run_experiment(config='cbow.json')
-    # embeddings = runner.model.embedding.weight.data
-    # word_to_idx = runner.vectorizer.data_vocab._token2id
-    #
-    # target_words = ['frankenstein', 'monster', 'science', 'sickness', 'lonely', 'happy']
-    #
-    # embeddings = runner.model.embedding.weight.data
-    # word_to_idx = runner.vectorizer.data_vocab._token2id
-    #
-    # for target_word in target_words:
-    #     print(f"======={target_word}=======")
-    #     if target_word not in word_to_idx:
-    #         print("Not in vocabulary")
-    #         continue
-    #     pretty_print(get_closest(target_word=target_word, word_to_idx=word_to_idx, embeddings=embeddings, n=5))
-
-    # runner = run_experiment(config='newsClassifier.json')
-    # title = "This article is about business"
-    # predict_category(title=title, model=runner.model, vectorizer=runner.vectorizer, max_length=runner.dataset._max_seq_length + 1)

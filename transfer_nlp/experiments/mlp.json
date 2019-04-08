@@ -10,7 +10,7 @@
   "seed": 1337,
   "lr": 0.001,
   "batch_size": 128,
-  "num_epochs": 10,
+  "num_epochs": 1,
   "early_stopping_criteria": 5,
   "cuda": true,
   "catch_keyboard_interrupt": true,
@@ -52,8 +52,8 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-  "batch_generator": "regular",
+  "batch_generator": "generate_batches",
   "metrics": [
-    "accuracy"
+    "compute_accuracy"
   ]
 }
