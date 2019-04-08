@@ -142,7 +142,14 @@ def generate_batches(dataset: Dataset, batch_size: int, shuffle: bool=True, drop
         for name, tensor in data_dict.items():
             out_data_dict[name] = data_dict[name].to(device)
         yield out_data_dict
+        
+config_args = {"batch_generator": "generate_batches",
+  ...}
+runner = Runner(config_args=config_args)
+runner.run(test_at_the_end=False)
 ```
+
+Example of a metric:
 
 ```
 from transfer_nlp.plugins.registry import register_metric
@@ -160,7 +167,47 @@ def compute_accuracy_sequence(input, target, mask_index):
     n_valid = valid_indices.sum().item()
 
     return n_correct / n_valid * 100
+    
+config_args = {"metrics": ["compute_accuracy_sequence"],
+  ...}
+runner = Runner(config_args=config_args)
+runner.run(test_at_the_end=False)
 ```
+
+Example of a loss function:
+
+```
+import torch.nn.functional as F
+
+from transfer_nlp.plugins.metrics import normalize_sizes
+from transfer_nlp.plugins.registry import register_loss
+
+
+def sequence_loss(input, target, mask_index):
+
+    y_pred, y_true = normalize_sizes(y_pred=input, y_true=target)
+    return F.cross_entropy(input=y_pred, target=y_true, ignore_index=mask_index)
+
+
+@register_loss
+class SequenceLoss:
+
+    def __init__(self):
+        self.mask: bool = True
+
+    def __call__(self, *args, **kwargs):
+        return sequence_loss(*args, **kwargs)
+    
+config_args = {"loss": {
+    "lossName": "SequenceLoss",
+    "lossParams": []
+  },
+  ...}
+runner = Runner(config_args=config_args)
+runner.run(test_at_the_end=False)
+```
+...and similarily for optimizers, schedulers, dataset loaders
+
 
 This is very useful if you want to set up a very custom training strategy, but for usual cases the plugins that are already implemented will be sufficient.
 
