@@ -122,6 +122,46 @@ Using decorators @register_{thing to register}, it is possible to customize thes
 - Loss functions
 - Batch generators
 
+Example of a batch generator:
+
+```
+from typing import Dict
+
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+
+from transfer_nlp.plugins.registry import register_batch_generator
+
+@register_batch_generator
+def generate_batches(dataset: Dataset, batch_size: int, shuffle: bool=True, drop_last: bool=True, device: str='cpu') -> Dict:
+
+    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
+
+    for data_dict in dataloader:
+        out_data_dict = {}
+        for name, tensor in data_dict.items():
+            out_data_dict[name] = data_dict[name].to(device)
+        yield out_data_dict
+```
+
+```
+from transfer_nlp.plugins.registry import register_metric
+
+@register_metric
+def compute_accuracy_sequence(input, target, mask_index):
+    y_pred, y_true = normalize_sizes(y_pred=input, y_true=target)
+
+    _, y_pred_indices = y_pred.max(dim=1)
+
+    correct_indices = torch.eq(y_pred_indices, y_true).float()
+    valid_indices = torch.ne(y_true, mask_index).float()
+
+    n_correct = (correct_indices * valid_indices).sum().item()
+    n_valid = valid_indices.sum().item()
+
+    return n_correct / n_valid * 100
+```
+
 This is very useful if you want to set up a very custom training strategy, but for usual cases the plugins that are already implemented will be sufficient.
 
 
