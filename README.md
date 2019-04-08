@@ -29,6 +29,13 @@ Structure of the library:
 
 `transfer-nlp/runners`: contains the full training pipeline, given a config file experiment
 
+Short-term To-Dos:
+
+- Implement a decorator pattern so that user-defined classes for data loaders, models etc can be accessed by the framework. 
+The current approach stores current available classes in fixed dictionaries, which does not enable to extend the library from
+a client perspective.
+- 
+
  Some objectves to reach:
  - Unit-test everything
  - Smooth the runner pipeline to enable multi-task training (without constraining the way we do multi-task, whether linear, hierarchical or else...)
