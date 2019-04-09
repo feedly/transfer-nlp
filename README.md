@@ -26,7 +26,7 @@ The library is available on [Pypi](https://pypi.org/project/transfer-nlp/) but `
 
 # How to use the library?
 
-You can have a look at the [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=IuBcpSdZtcmo) to get a simple sens of the library usage.
+You can have a look at the [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=IuBcpSdZtcmo) to get a simple sense of the library usage.
 
 A basic usage is:
 
