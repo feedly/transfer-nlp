@@ -9,29 +9,20 @@ All examples on these notebooks embed in-cell Tensorboard training monitoring!
 
 # Set up your environment
 
+```
+mkvirtualenv transfernlp
+workon transfernlp
+
+git clone https://github.com/feedly/transfer-nlp.git
+cd transfer-nlp
+pip install -r requirements.txt
+```
+
 - create a virtual environment: `mkvirtualenv YourEnvName`
 - clone the repository: `git clone https://github.com/feedly/transfer-nlp.git`
 - Install requirements: `pip install -r requirements.txt`
 
 The library is available on [Pypi](https://pypi.org/project/transfer-nlp/) but ```pip install transfer-nlp``` is not recommended yet.
-
-# Structure of the library:
-
-`loaders`
-- `transfer-nlp/loaders/vocabulary.py`: contains classes for vocabularies
-- `transfer-nlp/loaders/vectorizers.py`: classes for vectorizers
-- `transfer-nlp/loaders/loaders.py`: classes for dataset loaders
-
-`transfer-nlp/models/`: contains implementations of NLP models
-
-`transfer-nlp/embeddings`: contains utility functions for embeddings management
-
-`transfer-nlp/experiments`: each experiment is defined as a json config file, defining the whole experiment
-
-`transfer-nlp/colab_experiments`: experiments for colab notebooks
-
-`transfer-nlp/runners`: contains the full training pipeline, given a config file experiment
-
 
 # How to use the library?
 
