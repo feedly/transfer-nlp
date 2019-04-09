@@ -13,6 +13,7 @@ more elegant / pythonic!
 
 Here are a few ways you can contribute to this project in terms of ML content:
 
+- Implement a state of the art model and upload your custom classes on the project
 - Have a way to easily visualize learned embeddings. This might be using open tools such as the [Embedding Projector](https://projector.tensorflow.org/) project
 - Have a good design to incorporate multi-task training
 - Design pipelines to use / fine-tune pre-trained state of the art architecture
