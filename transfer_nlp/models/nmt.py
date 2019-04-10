@@ -26,17 +26,16 @@ class NMTEncoder(nn.Module):
         self.birnn: nn.GRU = nn.GRU(embedding_size, rnn_hidden_size, bidirectional=True, batch_first=True)
 
     def forward(self, x_source: torch.Tensor, x_lengths: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """The forward pass of the model
+        """
 
-        Args:
-            x_source (torch.Tensor): the input data tensor.
+        :param x_source: the input data tensor.
                 x_source.shape is (batch, seq_size)
-            x_lengths (torch.Tensor): a vector of lengths for each item in the batch
-        Returns:
-            a tuple: x_unpacked (torch.Tensor), x_birnn_h (torch.Tensor)
+        :param x_lengths: a vector of lengths for each item in the batch
+        :return: a tuple: x_unpacked (torch.Tensor), x_birnn_h (torch.Tensor)
                 x_unpacked.shape = (batch, seq_size, rnn_hidden_size * 2)
                 x_birnn_h.shape = (batch, rnn_hidden_size * 2)
         """
+
         x_embedded = self.source_embedding(x_source)
         # create PackedSequence; x_packed.data.shape=(number_items, embeddign_size)
         x_packed = pack_padded_sequence(x_embedded, x_lengths.detach().cpu().numpy(),
@@ -178,7 +177,6 @@ class NMTDecoder(nn.Module):
 
 @register_model
 class NMTModel(nn.Module):
-    """ The Neural Machine Translation Model """
 
     def __init__(self, source_vocab_size: int, source_embedding_size: int,
                  target_vocab_size: int, target_embedding_size: int, encoding_size: int,

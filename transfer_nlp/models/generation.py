@@ -40,18 +40,16 @@ class SurnameConditionedGenerationModel(nn.Module):
         self._dropout_p: float = dropout_p
 
     def forward(self, x_in: torch.Tensor, nationality_index: int=0, apply_softmax: bool=False) -> torch.Tensor:
-        """The forward pass of the model
-
-        Args:
-            x_in (torch.Tensor): an input data tensor.
-                x_in.shape should be (batch, max_seq_size)
-            nationality_index (torch.Tensor): The index of the nationality for each data point
-                Used to initialize the hidden state of the RNN
-            apply_softmax (bool): a flag for the softmax activation
-                should be false if used with the Cross Entropy losses
-        Returns:
-            the resulting tensor. tensor.shape should be (batch, char_vocab_size)
         """
+
+        :param x_in: input data tensor, x_in.shape should be (batch, max_seq_size)
+        :param nationality_index: The index of the nationality for each data point
+                Used to initialize the hidden state of the RNN
+        :param apply_softmax: flag for the softmax activation
+                should be false if used with the Cross Entropy losses
+        :return: the resulting tensor. tensor.shape should be (batch, char_vocab_size)
+        """
+
         x_embedded = self.char_emb(x_in)
         # hidden_size: (num_layers * num_directions, batch_size, rnn_hidden_size)
         if self.conditioned:
@@ -106,18 +104,17 @@ class ConditionedGenerationModel(nn.Module):
         self._dropout_p: float = dropout_p
 
     def forward(self, x_in: torch.Tensor, class_index: int=0, apply_softmax: bool=False) -> torch.Tensor:
-        """The forward pass of the model
-
-        Args:
-            x_in (torch.Tensor): an input data tensor.
-                x_in.shape should be (batch, max_seq_size)
-            nationality_index (torch.Tensor): The index of the nationality for each data point
-                Used to initialize the hidden state of the RNN
-            apply_softmax (bool): a flag for the softmax activation
-                should be false if used with the Cross Entropy losses
-        Returns:
-            the resulting tensor. tensor.shape should be (batch, char_vocab_size)
         """
+
+        :param x_in: input data tensor.
+                x_in.shape should be (batch, max_seq_size)
+        :param class_index: The index of the nationality for each data point
+                Used to initialize the hidden state of the RNN
+        :param apply_softmax: flag for the softmax activation
+                should be false if used with the Cross Entropy losses
+        :return: the resulting tensor. tensor.shape should be (batch, char_vocab_size)
+        """
+
         x_embedded = self.emb(x_in)
         # hidden_size: (num_layers * num_directions, batch_size, rnn_hidden_size)
         if self.conditioned:

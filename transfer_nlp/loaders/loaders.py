@@ -1,10 +1,8 @@
 """
 This file contains an abstract CustomDataset class, on which we can build up custom dataset classes.
 
-We include 2 dataset classes:
-
-- ReviewsDataset --> Yelp reviews dataset
-- SurnamesDataset --> Surnames dataset
+In your project, you will have to customize your data loader class. To let the framework interact with your class, you
+need to use the decorator @register_dataset, just as in the examples in this file
 """
 
 import json
@@ -13,7 +11,6 @@ from typing import Dict, Any
 
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
 from transfer_nlp.common.tokenizers import tokenize
@@ -65,17 +62,21 @@ class CustomDataset(Dataset):
 
     @classmethod
     def load_dataset_and_load_vectorizer(cls, dataset_df, vectorizer_filepath) -> 'CustomDataset':
+
         dataset_df = pd.read_csv(dataset_df)
         vectorizer = cls.load_vectorizer_only(vectorizer_filepath=vectorizer_filepath)
+
         return cls(dataset_df=dataset_df, vectorizer=vectorizer)
 
     @classmethod
     def load_dataset_and_make_vectorizer(cls, dataset_csv: str) -> 'CustomDataset':
-        pass
+
+        raise NotImplementedError
 
     @staticmethod
     def load_vectorizer_only(vectorizer_filepath: Path) -> Vectorizer:
-        pass
+
+        raise NotImplementedError
 
     def __len__(self):
         return self._target_size
@@ -126,8 +127,10 @@ class SurnamesDataset(CustomDataset):
 
     @classmethod
     def load_dataset_and_make_vectorizer(cls, dataset_csv: Path) -> CustomDataset:
+
         dataset_df = pd.read_csv(filepath_or_buffer=dataset_csv)
         train_df = dataset_df[dataset_df.split == 'train']
+
         return cls(dataset_df=dataset_df, vectorizer=SurnamesVectorizer.from_dataframe(train_df))
 
     @staticmethod
@@ -147,6 +150,7 @@ class SurnamesDataset(CustomDataset):
         return {
             'x_in': surname_vector,
             'y_target': nationality_index}
+
 
 @register_dataset
 class SurnamesDatasetCNN(CustomDataset):
@@ -185,6 +189,7 @@ class SurnamesDatasetCNN(CustomDataset):
             'x_in': surname_vector,
             'y_target': nationality_index}
 
+
 @register_dataset
 class CBOWDataset(CustomDataset):
 
@@ -219,15 +224,12 @@ class CBOWDataset(CustomDataset):
             'x_in': context_vector,
             'y_target': target_index}
 
+
 @register_dataset
 class NewsDataset(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
-        """
-        Args:
-            news_df (pandas.DataFrame): the dataset
-            vectorizer (NewsVectorizer): vectorizer instatiated from dataset
-        """
+
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
 
         # +1 if only using begin_seq, +2 if using both begin and end seq tokens
@@ -263,6 +265,7 @@ class NewsDataset(CustomDataset):
             'x_in': title_vector,
             'y_target': category_index}
 
+
 @register_dataset
 class SurnameDatasetRNN(CustomDataset):
 
@@ -278,13 +281,7 @@ class SurnameDatasetRNN(CustomDataset):
 
     @classmethod
     def load_dataset_and_make_vectorizer(cls, surname_csv: Path):
-        """Load dataset and make a new vectorizer from scratch
 
-        Args:
-            surname_csv (str): location of the dataset
-        Returns:
-            an instance of SurnameDataset
-        """
         dataset_df = pd.read_csv(surname_csv)
         train_surname_df = dataset_df[dataset_df.split == 'train']
         return cls(dataset_df=dataset_df, vectorizer=SurnameVectorizerRNN.from_dataframe(train_surname_df))
@@ -306,6 +303,7 @@ class SurnameDatasetRNN(CustomDataset):
             'x_in': surname_vector,
             'y_target': nationality_index,
             'x_lengths': vec_length}
+
 
 @register_dataset
 class SurnameDatasetGeneration(CustomDataset):
@@ -341,6 +339,7 @@ class SurnameDatasetGeneration(CustomDataset):
             'x_in': from_vector,
             'y_target': to_vector,
             'nationality_index': nationality_index}
+
 
 @register_dataset
 class FeedlyDataset(CustomDataset):

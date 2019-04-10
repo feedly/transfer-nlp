@@ -27,15 +27,12 @@ class CBOWClassifier(nn.Module):  # Simplified cbow Model
                              out_features=vocabulary_size)
 
     def forward(self, x_in: torch.Tensor, apply_softmax: bool=False) -> torch.Tensor:
-        """The forward pass of the classifier
+        """
 
-        Args:
-            x_in (torch.Tensor): an input data tensor.
-                x_in.shape should be (batch, input_dim)
-            apply_softmax (bool): a flag for the softmax activation
+        :param x_in: input data tensor. x_in.shape should be (batch, input_dim)
+        :param apply_softmax: flag for the softmax activation
                 should be false if used with the Cross Entropy losses
-        Returns:
-            the resulting tensor. tensor.shape should be (batch, output_dim)
+        :return: the resulting tensor. tensor.shape should be (batch, output_dim)
         """
 
         x_embedded_sum = F.dropout(self.embedding(x_in).sum(dim=1), 0.3)

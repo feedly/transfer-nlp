@@ -42,15 +42,13 @@ class ElmanRNN(nn.Module):
         return torch.zeros((batch_size, self.hidden_size))
 
     def forward(self, x_in: torch.Tensor, initial_hidden: torch.Tensor=None) -> torch.Tensor:
-        """The forward pass of the ElmanRNN
+        """
 
-        Args:
-            x_in (torch.Tensor): an input data tensor.
+        :param x_in: an input data tensor.
                 If self.batch_first: x_in.shape = (batch, seq_size, feat_size)
                 Else: x_in.shape = (seq_size, batch, feat_size)
-            initial_hidden (torch.Tensor): the initial hidden state for the RNN
-        Returns:
-            hiddens (torch.Tensor): The outputs of the RNN at each time step.
+        :param initial_hidden: the initial hidden state for the RNN
+        :return: The outputs of the RNN at each time step.
                 If self.batch_first: hiddens.shape = (batch, seq_size, hidden_size)
                 Else: hiddens.shape = (seq_size, batch, hidden_size)
         """
@@ -86,18 +84,7 @@ class SurnameClassifierRNN(nn.Module):
 
     def __init__(self, embedding_size: int, num_embeddings: int, num_classes: int,
                  rnn_hidden_size: int, batch_first: bool=True, padding_idx: int=0):
-        """
-        Args:
-            embedding_size (int): The size of the character embeddings
-            num_embeddings (int): The number of characters to embed
-            num_classes (int): The size of the prediction vector
-                Note: the number of nationalities
-            rnn_hidden_size (int): The size of the RNN's hidden state
-            batch_first (bool): Informs whether the input tensors will
-                have batch or the sequence on the 0th dimension
-            padding_idx (int): The index for the tensor padding;
-                see torch.nn.Embedding
-        """
+
         super(SurnameClassifierRNN, self).__init__()
 
         self.emb: nn.Embedding = nn.Embedding(num_embeddings=num_embeddings,
@@ -112,18 +99,16 @@ class SurnameClassifierRNN(nn.Module):
                           out_features=num_classes)
 
     def forward(self, x_in: torch.Tensor, x_lengths: torch.Tensor=None, apply_softmax: bool=False) -> torch.Tensor:
-        """The forward pass of the classifier
+        """
 
-         Args:
-             x_in (torch.Tensor): an input data tensor.
+        :param x_in: an input data tensor.
                  x_in.shape should be (batch, input_dim)
-             x_lengths (torch.Tensor): the lengths of each sequence in the batch.
+        :param x_lengths: the lengths of each sequence in the batch.
                  They are used to find the final vector of each sequence
-             apply_softmax (bool): a flag for the softmax activation
+        :param apply_softmax: a flag for the softmax activation
                  should be false if used with the Cross Entropy losses
-         Returns:
-             the resulting tensor. tensor.shape should be (batch, output_dim)
-         """
+        :return: the resulting tensor. tensor.shape should be (batch, output_dim)
+        """
 
         x_embedded = self.emb(x_in)
         y_out = self.rnn(x_embedded)

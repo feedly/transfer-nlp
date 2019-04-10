@@ -46,7 +46,7 @@ class SurnameClassifierCNN(nn.Module):
         """
         Conv -> ELU -> ELU -> Conv -> ELU -> Linear
         :param x_in: size (batch, initial_num_channels, max_sequence)
-        :param apply_sigmoid: False if used with the cross entropy loss, True if probability wanted
+        :param apply_softmax: False if used with the cross entropy loss, True if probability wanted
         :return:
         """
         features = self.convnet(x_in).squeeze(dim=2)
@@ -100,16 +100,14 @@ class NewsClassifier(nn.Module):
         self.fc2: nn.Linear = nn.Linear(hidden_dim, num_classes)
 
     def forward(self, x_in: torch.Tensor, apply_softmax: bool = False) -> torch.Tensor:
-        """The forward pass of the classifier
-
-        Args:
-            x_in (torch.Tensor): an input data tensor.
-                x_in.shape should be (batch, dataset._max_seq_length)
-            apply_softmax (bool): a flag for the softmax activation
-                should be false if used with the Cross Entropy losses
-        Returns:
-            the resulting tensor. tensor.shape should be (batch, num_classes)
         """
+
+        :param x_in: input data tensor
+        :param apply_softmax: flag for the softmax activation
+                should be false if used with the Cross Entropy losses
+        :return: the resulting tensor. tensor.shape should be (batch, num_classes)
+        """
+
         # embed and permute so features are channels
         x_embedded = self.emb(x_in).permute(0, 2, 1)
 
