@@ -54,7 +54,6 @@ ACTIVATION_FUNCTIONS = {"ReLU": nn.functional.relu,
                         "ELU": nn.functional.elu,
                         "Softmin": nn.functional.softmin,
                         "Softmax": nn.functional.softmax,
-                        "Softmax2d": nn.functional.softmax2d,
                         "LogSoftmax": nn.functional.log_softmax,
                         "GLU": nn.functional.glu,
                         "TanhShrink": nn.functional.tanhshrink
