@@ -10,7 +10,11 @@
   "hidden_dim": 10,
   "in_channels": 1,
   "out_channels": 10,
-  "kernel_heights": [3, 3, 3],
+  "kernel_heights": [
+    3,
+    3,
+    3
+  ],
   "stride": 1,
   "padding": 0,
   "seed": 1337,
@@ -55,6 +59,12 @@
       "lr"
     ]
   },
+  "Regularizer": {
+    "regularizerName": "L1",
+    "regularizerParams": [
+      "alpha"
+    ]
+  },
   "scheduler": {
     "schedulerName": "ReduceLROnPlateau",
     "schedulerParams": [
@@ -64,6 +74,7 @@
       "patience"
     ]
   },
+  "alpha": 0.01,
   "gradient_clipping": 0.25,
   "mode": "min",
   "factor": 0.5,

@@ -58,7 +58,7 @@ class Runner(RunnerABC):
 
         for batch_index, batch_dict in enumerate(batch_generator):
 
-            if batch_index % 1 == 0:
+            if batch_index % 30 == 0:
                 logger.info(f"Training batch {batch_index + 1} / {num_batch}")
             self.optimizer.zero_grad()
 
@@ -73,11 +73,7 @@ class Runner(RunnerABC):
                 loss_params['mask_index'] = self.mask_index
 
             loss = self.loss.loss(**loss_params)
-            penalty = 0
-
-            # Add regularization for training part only
-            for name, parameter in self.model.named_parameters():
-                penalty += self.regularizer.regularizer(parameter)
+            penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
 
             loss_batch = loss.item() + penalty.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
@@ -122,11 +118,10 @@ class Runner(RunnerABC):
 
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
+
             loss = self.loss.loss(**loss_params)
-            # Add regularization for training part only
-            penalty = 0
-            for name, parameter in self.model.named_parameters():
-                penalty += self.regularizer.regularizer(parameter)
+            penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
+
             loss_batch = loss.item() + penalty.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
@@ -168,10 +163,8 @@ class Runner(RunnerABC):
                 loss_params['mask_index'] = self.mask_index
 
             loss = self.loss.loss(**loss_params)
+            penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
 
-            penalty = 0
-            for name, parameter in self.model.named_parameters():
-                penalty += self.regularizer.regularizer(parameter)
             loss_batch = loss.item() + penalty.item()
 
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
@@ -283,7 +276,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/mlp.json'
+    args.config = args.config or 'experiments/surnamesRNN.json'
     runner = run_experiment(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":

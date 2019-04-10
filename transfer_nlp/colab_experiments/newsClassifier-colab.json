@@ -49,6 +49,12 @@
       "lr"
     ]
   },
+  "Regularizer": {
+    "regularizerName": "L1",
+    "regularizerParams": [
+      "alpha"
+    ]
+  },
   "scheduler": {
     "schedulerName": "ReduceLROnPlateau",
     "schedulerParams": [
@@ -58,7 +64,8 @@
       "patience"
     ]
   },
-  "gradient_clipping": 0.25,
+  "alpha": 0.01,
+  "gradient": 0.25,
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
