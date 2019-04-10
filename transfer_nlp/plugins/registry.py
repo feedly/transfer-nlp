@@ -37,51 +37,79 @@ DATASET_CLASSES = {}
 REGULARIZER_CLASSES = {}
 BATCH_GENERATORS = {}
 METRICS = {}
+ACTIVATION_FUNCTIONS = {"ReLU": nn.functional.relu,
+                        "LeakyReLU": nn.functional.leaky_relu,
+                        "Tanh": nn.functional.tanh,
+                        "Softsign": nn.functional.softsign,
+                        "Softshrink": nn.functional.softshrink,
+                        "Softplus": nn.functional.softplus,
+                        "Sigmoid": nn.functional.sigmoid,
+                        "SELU": nn.functional.selu,
+                        "RReLU": nn.functional.rrelu,
+                        "ReLU6": nn.functional.relu6,
+                        "PReLU": nn.functional.prelu,
+                        "LogSigmoid": nn.functional.logsigmoid,
+                        "Hardtanh": nn.functional.hardtanh,
+                        "Hardshrink": nn.functional.hardshrink,
+                        "ELU": nn.functional.elu,
+                        "Softmin": nn.functional.softmin,
+                        "Softmax": nn.functional.softmax,
+                        "Softmax2d": nn.functional.softmax2d,
+                        "LogSoftmax": nn.functional.log_softmax,
+                        "GLU": nn.functional.glu,
+                        "TanhShrink": nn.functional.tanhshrink
+                        }
+
+
+def register_activation(activation_class):
+    logger.info(f"Registering activation function class {activation_class.__name__} into registry")
+    ACTIVATION_FUNCTIONS[activation_class.__name__] = activation_class
+    return activation_class
 
 
 def register_model(model_class):
-    logger.info(f"Registring model {model_class.__name__} into registry")
+    logger.info(f"Registering model {model_class.__name__} into registry")
     MODEL_CLASSES[model_class.__name__] = model_class
     return model_class
 
 
 def register_loss(loss_class):
-    logger.info(f"Registring loss function {loss_class.__name__} into registry")
+    logger.info(f"Registering loss function {loss_class.__name__} into registry")
     LOSS_CLASSES[loss_class.__name__] = loss_class
     return loss_class
 
 
 def register_optimizer(optimizer_class):
-    logger.info(f"Registring optimizer {optimizer_class.__name__} into registry")
+    logger.info(f"Registering optimizer {optimizer_class.__name__} into registry")
     OPTIMIZER_CLASSES[optimizer_class.__name__] = optimizer_class
     return optimizer_class
 
 
 def register_scheduler(scheduler_class):
-    logger.info(f"Registring scheduler {scheduler_class.__name__} into registry")
+    logger.info(f"Registering scheduler {scheduler_class.__name__} into registry")
     MODEL_CLASSES[scheduler_class.__name__] = scheduler_class
     return scheduler_class
 
 
 def register_dataset(dataset_class):
-    logger.info(f"Registring dataset {dataset_class.__name__} into registry")
+    logger.info(f"Registering dataset {dataset_class.__name__} into registry")
     DATASET_CLASSES[dataset_class.__name__] = dataset_class
     return dataset_class
 
 
 def register_batch_generator(batch_generator_class):
-    logger.info(f"Registring batch generator {batch_generator_class.__name__} into registry")
+    logger.info(f"Registering batch generator {batch_generator_class.__name__} into registry")
     BATCH_GENERATORS[batch_generator_class.__name__] = batch_generator_class
     return batch_generator_class
 
 
 def register_metric(metric_class):
-    logger.info(f"Registring metric {metric_class.__name__} into registry")
+    logger.info(f"Registering metric {metric_class.__name__} into registry")
     METRICS[metric_class.__name__] = metric_class
     return metric_class
 
 def register_regularizer(regularizer_class):
-    logger.info(f"Registring regularizer {regularizer_class.__name__} into registry")
+    logger.info(f"Registering regularizer {regularizer_class.__name__} into registry")
     REGULARIZER_CLASSES[regularizer_class.__name__] = regularizer_class
     return regularizer_class
 
