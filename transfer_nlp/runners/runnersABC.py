@@ -28,7 +28,7 @@ from tensorboardX import SummaryWriter
 from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
-from transfer_nlp.plugins.registry import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics
+from transfer_nlp.plugins.registry import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics, Regularizer
 from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
 import transfer_nlp
 
@@ -57,6 +57,7 @@ class RunnerABC:
         self.model: nn.Module = None
         self.generator: Generator = None
         self.metrics: Metrics = None
+        self.regularizer: Regularizer = None
         self.model_inputs: Dict = self.config_args['model']['modelInputs']
 
         self.instantiate()
@@ -140,6 +141,9 @@ class RunnerABC:
         self.scheduler: Scheduler = Scheduler(config_args=self.config_args)
         self.generator: Generator = Generator(config_args=self.config_args)
         self.metrics: Metrics = Metrics(config_args=self.config_args)
+
+        # Regularizer
+        self.regularizer: Regularizer = Regularizer(config_args=self.config_args)
 
     def train_one_epoch(self):
         raise NotImplementedError

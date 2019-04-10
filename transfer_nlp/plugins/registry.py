@@ -34,6 +34,7 @@ SCHEDULER_CLASSES = {
 
 }
 DATASET_CLASSES = {}
+REGULARIZER_CLASSES = {}
 BATCH_GENERATORS = {}
 METRICS = {}
 
@@ -78,6 +79,11 @@ def register_metric(metric_class):
     logger.info(f"Registring metric {metric_class.__name__} into registry")
     METRICS[metric_class.__name__] = metric_class
     return metric_class
+
+def register_regularizer(regularizer_class):
+    logger.info(f"Registring regularizer {regularizer_class.__name__} into registry")
+    REGULARIZER_CLASSES[regularizer_class.__name__] = regularizer_class
+    return regularizer_class
 
 
 class Metrics:
@@ -188,3 +194,23 @@ class Scheduler:
                 raise ValueError(f"You need to specify the parameter {param} in the config file, of have the runner compute it")
 
         self.scheduler = SCHEDULER_CLASSES[self.name](**scheduler_params)
+
+
+class Regularizer:
+
+    def __init__(self, config_args: Dict):
+        """
+        :param config_args: Contains the experiment configuration, with all necessary hyperparameters
+        """
+        self.config_args: Dict = config_args
+        self.name: str = self.config_args['Regularizer']['regularizerName']
+        self.params: List[str] = self.config_args['Regularizer']['regularizerParams']
+
+        regularizer_params = {}
+        for param in self.params:
+            if self.config_args.get(param):
+                regularizer_params[param] = self.config_args[param]
+            else:
+                raise ValueError(f"You need to specify the parameter {param} in the config file, of have the runner compute it")
+
+        self.regularizer = REGULARIZER_CLASSES[self.name](**regularizer_params)

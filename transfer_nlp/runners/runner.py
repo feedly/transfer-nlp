@@ -73,7 +73,13 @@ class Runner(RunnerABC):
                 loss_params['mask_index'] = self.mask_index
 
             loss = self.loss.loss(**loss_params)
-            loss_batch = loss.item()
+            penalty = 0
+
+            # Add regularization for training part only
+            for name, parameter in self.model.named_parameters():
+                penalty += self.regularizer.regularizer(parameter)
+
+            loss_batch = loss.item() + penalty.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
             loss.backward()
@@ -117,7 +123,11 @@ class Runner(RunnerABC):
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
             loss = self.loss.loss(**loss_params)
-            loss_batch = loss.item()
+            # Add regularization for training part only
+            penalty = 0
+            for name, parameter in self.model.named_parameters():
+                penalty += self.regularizer.regularizer(parameter)
+            loss_batch = loss.item() + penalty.item()
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
             for metric in self.metrics.names:
@@ -159,7 +169,11 @@ class Runner(RunnerABC):
 
             loss = self.loss.loss(**loss_params)
 
-            loss_batch = loss.item()
+            penalty = 0
+            for name, parameter in self.model.named_parameters():
+                penalty += self.regularizer.regularizer(parameter)
+            loss_batch = loss.item() + penalty.item()
+
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
             for metric in self.metrics.names:
@@ -269,7 +283,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/surnameClassifier.json'
+    args.config = args.config or 'experiments/mlp.json'
     runner = run_experiment(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
