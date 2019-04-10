@@ -45,7 +45,7 @@ BATCH_GENERATORS = {}
 METRICS = {}
 ACTIVATION_FUNCTIONS = {"ReLU": nn.functional.relu,
                         "LeakyReLU": nn.functional.leaky_relu,
-                        "Tanh": nn.functional.anh,
+                        "Tanh": nn.functional.tanh,
                         "Softsign": nn.functional.softsign,
                         "Softshrink": nn.functional.softshrink,
                         "Softplus": nn.functional.softplus,
@@ -61,7 +61,6 @@ ACTIVATION_FUNCTIONS = {"ReLU": nn.functional.relu,
                         "ELU": nn.functional.elu,
                         "Softmin": nn.functional.softmin,
                         "Softmax": nn.functional.softmax,
-                        "Softmax2d": nn.functional.softmax2d,
                         "LogSoftmax": nn.functional.log_softmax,
                         "GLU": nn.functional.glu,
                         "TanhShrink": nn.functional.tanhshrink
