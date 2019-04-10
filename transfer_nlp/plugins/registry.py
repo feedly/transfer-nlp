@@ -1,3 +1,9 @@
+"""
+This file contains all necessary plugins classes that the framework will use to let a user interact with custom models, data loaders, etc...
+
+The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
+"""
+
 import logging
 from typing import Dict, List
 
@@ -39,11 +45,12 @@ BATCH_GENERATORS = {}
 METRICS = {}
 ACTIVATION_FUNCTIONS = {"ReLU": nn.functional.relu,
                         "LeakyReLU": nn.functional.leaky_relu,
-                        "Tanh": nn.functional.tanh,
+                        "Tanh": nn.functional.anh,
                         "Softsign": nn.functional.softsign,
                         "Softshrink": nn.functional.softshrink,
                         "Softplus": nn.functional.softplus,
-                        "Sigmoid": nn.functional.sigmoid,
+                        "Sigmoid": nn.Sigmoid,
+                        "CELU": nn.CELU,
                         "SELU": nn.functional.selu,
                         "RReLU": nn.functional.rrelu,
                         "ReLU6": nn.functional.relu6,
@@ -54,11 +61,11 @@ ACTIVATION_FUNCTIONS = {"ReLU": nn.functional.relu,
                         "ELU": nn.functional.elu,
                         "Softmin": nn.functional.softmin,
                         "Softmax": nn.functional.softmax,
+                        "Softmax2d": nn.functional.softmax2d,
                         "LogSoftmax": nn.functional.log_softmax,
                         "GLU": nn.functional.glu,
                         "TanhShrink": nn.functional.tanhshrink
                         }
-
 
 def register_activation(activation_class):
     logger.info(f"Registering activation function class {activation_class.__name__} into registry")
