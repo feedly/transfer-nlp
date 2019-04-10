@@ -9,29 +9,22 @@ This file aims at launching an experiments based on a config file
 
 """
 
-import json
 import logging
-from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict
 
-import matplotlib.pyplot as plt
-import numpy as np
-import seaborn as sns
 import torch
 from knockknock import slack_sender
 
-from transfer_nlp.models.nmt import NMTSampler
-from transfer_nlp.plugins.generators import generate_nmt_batches
 from transfer_nlp.runners.runnersABC import RunnerABC
 from transfer_nlp.runners.utils import update_train_state
 
-name = 'transfer_nlp.runners.runner'
+name = 'transfer_nlp.runners.single_task'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 logging.info('')
 
 
-class Runner(RunnerABC):
+class SingleTaskRunner(RunnerABC):
 
     def __init__(self, config_args: Dict):
 
@@ -177,85 +170,6 @@ class Runner(RunnerABC):
         for metric in self.metrics.names:
             self.training_state[f"test_{metric}"].append(running_metrics[f"running_{metric}"])
 
-    # The following methods are for NMT only #TODO: clean this part
-    def visualize_nmt_test(self):
-
-        model = self.model.eval().to(self.args.device)
-        sampler = NMTSampler(vectorizer=self.vectorizer, model=model)
-
-        self.dataset.set_split('test')
-        batch_generator = generate_nmt_batches(dataset=self.dataset,
-                                               batch_size=self.args.batch_size,
-                                               device=self.args.device)
-        test_results = []
-        for batch_dict in batch_generator:
-            sampler.apply_to_batch(batch_dict)
-            for i in range(self.args.batch_size):
-                test_results.append(sampler.get_ith_item(i, False))
-
-        plt.hist([r['bleu-4'] for r in test_results], bins=100)
-        plt.show()
-        average = np.mean([r['bleu-4'] for r in test_results])
-        median = np.median([r['bleu-4'] for r in test_results])
-        logger.info(f"Average Bleu: {average}")
-        logger.info(f"Median Bleu: {median}")
-
-    def get_best(self) -> List[Dict[str, Any]]:
-
-        self.dataset.set_split('val')
-        batch_generator = generate_nmt_batches(dataset=self.dataset,
-                                               batch_size=self.args.batch_size,
-                                               device=self.args.device)
-        batch_dict = next(batch_generator)
-
-        model = self.model.eval().to(self.args.device)
-        sampler = NMTSampler(self.vectorizer, model)
-        sampler.apply_to_batch(batch_dict)
-        all_results = []
-        for i in range(self.args.batch_size):
-            all_results.append(sampler.get_ith_item(i, False))
-        top_results = [x for x in all_results if x['bleu-4'] > 0.1]
-
-        return top_results
-
-    def visualize_results(self):
-
-        top_results = self.get_best()
-
-        for sample in top_results:
-            plt.figure()
-            target_len = len(sample['sampled'])
-            source_len = len(sample['source'])
-
-            attention_matrix = sample['attention'][:target_len, :source_len + 2].transpose()  # [::-1]
-            ax = sns.heatmap(attention_matrix, center=0.0)
-            ylabs = ["<BOS>"] + sample['source'] + ["<EOS>"]
-            # ylabs = sample['source']
-            # ylabs = ylabs[::-1]
-            ax.set_yticklabels(ylabs, rotation=0)
-            ax.set_xticklabels(sample['sampled'], rotation=90)
-            ax.set_xlabel("Target Sentence")
-            ax.set_ylabel("Source Sentence\n\n")
-            plt.show()
-
-
-def run_experiment(experiment_file: str):
-    """
-    Instantiate an experiment
-    :param experiment_file:
-    :return:
-    """
-
-    experiments_path = Path(__file__).resolve().parent.parent
-    experiments_path /= experiment_file
-
-    with open(experiments_path, 'r') as exp:
-        experiment = json.load(exp)
-
-    runner = Runner(config_args=experiment)
-    # runner.run()
-    return runner
-
 
 slack_webhook_url = "YourWebhookURL"
 slack_channel = "YourFavoriteSlackChannel"
@@ -277,16 +191,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.config = args.config or 'experiments/surnamesRNN.json'
-    runner = run_experiment(experiment_file=args.config)
+    runner = SingleTaskRunner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
         run_with_slack(runner=runner, test_at_the_end=False)
     else:
         runner.run(test_at_the_end=False)
-
-    # surname = "Mueller"
-    # surnames = ["Zhang", "McDonald", "Dupont", "Okinawa", "Mueller"]
-    #
-    # for surname in surnames:
-    #     prediction = predict_nationality(surname=surname, model=runner.model, vectorizer=runner.vectorizer)
-    #     print(f"{surname} --> {prediction}")

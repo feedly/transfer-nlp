@@ -62,6 +62,22 @@ class RunnerABC:
 
         self.instantiate()
 
+    @classmethod
+    def load_from_project(cls, experiment_file: str):
+        """
+        Instantiate an experiment
+        :param experiment_file:
+        :return:
+        """
+
+        experiments_path = Path(__file__).resolve().parent.parent
+        experiments_path /= experiment_file
+
+        with open(experiments_path, 'r') as exp:
+            experiment = json.load(exp)
+
+        return cls(config_args=experiment)
+
     def instantiate(self):
 
         # Manage file directories
