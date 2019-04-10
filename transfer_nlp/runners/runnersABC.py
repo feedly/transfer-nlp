@@ -184,7 +184,7 @@ class RunnerABC:
         if hasattr(self.model, "embedding"):
             logger.info("Logging embeddings to Tensorboard!")
             embeddings = self.model.embedding.weight.data
-            metadata = [self.vectorizer.data_vocab._id2token[token_index] for token_index in range(embeddings.shape[0])]
+            metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
             self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=epoch)
 
     def log_current_metric(self, epoch: int, metrics: List[str]):
