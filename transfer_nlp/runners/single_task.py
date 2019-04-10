@@ -24,7 +24,7 @@ logger = logging.getLogger(name)
 logging.info('')
 
 
-class SingleTaskRunner(RunnerABC):
+class Runner(RunnerABC):
 
     def __init__(self, config_args: Dict):
 
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.config = args.config or 'experiments/mlp.json'
-    runner = SingleTaskRunner.load_from_project(experiment_file=args.config)
+    runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
         run_with_slack(runner=runner, test_at_the_end=False)

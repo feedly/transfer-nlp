@@ -8,7 +8,7 @@ from knockknock import slack_sender
 
 from transfer_nlp.models.nmt import NMTSampler
 from transfer_nlp.plugins.generators import generate_nmt_batches
-from transfer_nlp.runners.single_task import SingleTaskRunner
+from transfer_nlp.runners.single_task import Runner
 
 name = 'transfer_nlp.runners.nmt_runner'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -16,7 +16,7 @@ logger = logging.getLogger(name)
 logging.info('')
 
 
-class NMT_runner(SingleTaskRunner):
+class RunnerNMT(Runner):
 
     def __init__(self, config_args: Dict):
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     args.config = args.config or 'experiments/nmt.json'
-    runner = SingleTaskRunner.load_from_project(experiment_file=args.config)
+    runner = RunnerNMT.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
         run_with_slack(runner=runner, test_at_the_end=False)
