@@ -30,7 +30,7 @@ You can have a look at the [Colab Notebook](https://colab.research.google.com/dr
 
 A basic usage is:
 
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet1.png)
+![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet.png)
 
 You can use this code with all existing experiments built in the repo.
 
