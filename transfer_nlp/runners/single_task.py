@@ -14,6 +14,7 @@ from typing import Dict
 
 import torch
 from knockknock import slack_sender
+from tqdm import tqdm
 
 from transfer_nlp.runners.runnersABC import RunnerABC
 from transfer_nlp.runners.utils import update_train_state
@@ -21,7 +22,6 @@ from transfer_nlp.runners.utils import update_train_state
 name = 'transfer_nlp.runners.single_task'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
-logging.info('')
 
 
 class Runner(RunnerABC):
@@ -49,10 +49,8 @@ class Runner(RunnerABC):
 
         num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
 
-        for batch_index, batch_dict in enumerate(batch_generator):
+        for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Training batches'):
 
-            if batch_index % 30 == 0:
-                logger.info(f"Training batch {batch_index + 1} / {num_batch}")
             self.optimizer.zero_grad()
 
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
@@ -97,10 +95,7 @@ class Runner(RunnerABC):
 
         num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
 
-        for batch_index, batch_dict in enumerate(batch_generator):
-
-            if batch_index % 30 == 0:
-                logger.info(f"Validation batch {batch_index + 1} / {num_batch}")
+        for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Validation batches'):
 
             model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
             y_pred = self.model(**model_inputs)
@@ -141,7 +136,7 @@ class Runner(RunnerABC):
         running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
         self.model.eval()
 
-        for batch_index, batch_dict in enumerate(batch_generator):
+        for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Test batches'):
 
             if batch_index % 30 == 0:
                 logger.info(f"Test batch {batch_index + 1} / {num_batch}")
@@ -194,6 +189,6 @@ if __name__ == "__main__":
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
-        run_with_slack(runner=runner, test_at_the_end=False)
+        run_with_slack(runner=runner, test_at_the_end=True)
     else:
         runner.run(test_at_the_end=False)

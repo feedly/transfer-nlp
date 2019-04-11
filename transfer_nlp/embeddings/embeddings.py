@@ -1,9 +1,14 @@
+import logging
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
 from tqdm import tqdm
+
+name = 'transfer_nlp.runners.single_task'
+logging.getLogger(name).setLevel(level=logging.INFO)
+logger = logging.getLogger(name)
 
 
 def load_glove_from_file(glove_filepath: Path) -> Tuple[Dict[str, int], np.array]:
@@ -36,7 +41,7 @@ def make_embedding_matrix(glove_filepath: Path, words: List[str]) -> np.array:
 
     final_embeddings = np.zeros((len(words), embedding_size))
 
-    for i, word in enumerate(words):
+    for i, word in tqdm(enumerate(words), total=len(words), desc='Loading pre-trained word embeddings'):
         if word in w2i:
             final_embeddings[i, :] = glove_embeddings[w2i[word]]
         else:
