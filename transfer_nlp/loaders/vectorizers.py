@@ -171,10 +171,12 @@ class CBOWVectorizer(Vectorizer):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
         self.data_vocab: CBOWVocabulary = data_vocab
         self.target_vocab: CBOWVocabulary = target_vocab
+        self.tokenizer = CustomTokenizer()
 
     def vectorize(self, context: str, vector_length: int=-1) -> np.array:
 
-        indices = [self.data_vocab.lookup_token(token) for token in context.split(' ')]
+        tokens = self.tokenizer.tokenize(text=context)
+        indices = [self.data_vocab.lookup_token(token) for token in tokens]
         if vector_length < 0:
             vector_length = len(indices)
 
@@ -187,9 +189,11 @@ class CBOWVectorizer(Vectorizer):
     @classmethod
     def from_dataframe(cls, cbow_df: pd.DataFrame) -> Vectorizer:
 
+        tokenizer = CustomTokenizer()
+
         data_vocab = CBOWVocabulary()
         for index, row in cbow_df.iterrows():
-            for token in row.context.split(' '):
+            for token in tokenizer.tokenize(text=row.context):
                 data_vocab.add_token(token)
                 data_vocab.add_token(row.target)
 
@@ -211,12 +215,14 @@ class NewsVectorizer(Vectorizer):
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
 
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
+        self.tokenizer = CustomTokenizer()
 
     def vectorize(self, title: str, vector_length: int=-1) -> np.array:
 
+        tokens = self.tokenizer.tokenize(text=title)
         indices = [self.data_vocab.begin_seq_index]
         indices.extend(self.data_vocab.lookup_token(token)
-                       for token in title.split(" "))
+                       for token in tokens)
         indices.append(self.data_vocab.end_seq_index)
 
         if vector_length < 0:
@@ -231,13 +237,15 @@ class NewsVectorizer(Vectorizer):
     @classmethod
     def from_dataframe(cls, news_df: pd.DataFrame, cutoff=25) -> Vectorizer:
 
+        tokenizer = CustomTokenizer()
+
         target_vocab = Vocabulary(add_unk=False)
         for category in sorted(set(news_df.category)):
             target_vocab.add_token(category)
 
         word_counts = Counter()
         for title in news_df.title:
-            for token in title.split(" "):
+            for token in tokenizer.tokenize(text=title):
                 if token not in string.punctuation:
                     word_counts[token] += 1
 
@@ -266,12 +274,14 @@ class SurnameVectorizerRNN(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
+        self.tokenizer = CharacterTokenizer()
 
     def vectorize(self, surname: str, vector_length: int=-1) -> Tuple[np.array, int]:
 
+        tokens = self.tokenizer.tokenize(text=surname)
         indices = [self.data_vocab.begin_seq_index]
         indices.extend(self.data_vocab.lookup_token(token)
-                       for token in surname)
+                       for token in tokens)
         indices.append(self.data_vocab.end_seq_index)
 
         if vector_length < 0:
@@ -285,12 +295,13 @@ class SurnameVectorizerRNN(Vectorizer):
 
     @classmethod
     def from_dataframe(cls, surname_df: pd.DataFrame) -> Vectorizer:
+        tokenizer = CharacterTokenizer()
 
         data_vocab = SequenceVocabulary()
         target_vocab = Vocabulary(add_unk=False)
 
         for index, row in surname_df.iterrows():
-            data_vocab.add_many(tokens=row.surname)
+            data_vocab.add_many(tokens=tokenizer.tokenize(text=row.surname))
             target_vocab.add_token(row.nationality)
 
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
@@ -311,12 +322,15 @@ class SurnameVectorizerGeneration(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
+        self.tokenizer = CharacterTokenizer()
 
     def vectorize(self, surname: str, vector_length: int=-1) -> Tuple[np.array, np.array]:
 
+        tokens = self.tokenizer.tokenize(text=surname)
+
         indices = [self.data_vocab.begin_seq_index]
         indices.extend(self.data_vocab.lookup_token(token)
-                       for token in surname)
+                       for token in tokens)
         indices.append(self.data_vocab.end_seq_index)
 
         if vector_length < 0:
@@ -337,11 +351,13 @@ class SurnameVectorizerGeneration(Vectorizer):
     @classmethod
     def from_dataframe(cls, surname_df: pd.DataFrame) -> Vectorizer:
 
+        tokenizer = CharacterTokenizer()
+
         data_vocab = SequenceVocabulary()
         target_vocab = Vocabulary(add_unk=False)
 
         for index, row in surname_df.iterrows():
-            data_vocab.add_many(tokens=row.surname)
+            data_vocab.add_many(tokens=tokenizer.tokenize(row.surname))
             target_vocab.add_token(row.nationality)
 
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
@@ -362,13 +378,14 @@ class FeedlyVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
+        self.tokenizer = CustomTokenizer()
 
     def vectorize(self, content: str, vector_length: int=-1) -> Tuple[np.array, np.array]:
 
-        content = content.lower()
+        content = self.tokenizer.tokenize(text=content)
         indices = [self.data_vocab.begin_seq_index]
         indices.extend(self.data_vocab.lookup_token(token)
-                       for token in tokenize(text=content))
+                       for token in content)
         indices.append(self.data_vocab.end_seq_index)
 
         if vector_length < 0:
@@ -430,6 +447,9 @@ class NMTVectorizer(object):
         self.max_source_length: int = max_source_length
         self.max_target_length: int = max_target_length
 
+        self.source_tokenizer = CustomTokenizer()
+        self.target_tokenizer = CustomTokenizer()
+
     def _vectorize(self, indices: List[int], vector_length: int=-1, mask_index: int=0) -> np.array:
 
         if vector_length < 0:
@@ -443,14 +463,18 @@ class NMTVectorizer(object):
 
     def _get_source_indices(self, text: str) -> List[int]:
 
+        tokens = self.source_tokenizer.tokenize(text=text)
+
         indices = [self.data_vocab.begin_seq_index]
-        indices.extend(self.data_vocab.lookup_token(token) for token in text.split(" "))
+        indices.extend(self.data_vocab.lookup_token(token) for token in tokens)
         indices.append(self.data_vocab.end_seq_index)
         return indices
 
     def _get_target_indices(self, text: str) -> Tuple[List[int], List[int]]:
 
-        indices = [self.target_vocab.lookup_token(token) for token in text.split(" ")]
+        tokens = self.target_tokenizer.tokenize(text=text)
+
+        indices = [self.target_vocab.lookup_token(token) for token in tokens]
         x_indices = [self.target_vocab.begin_seq_index] + indices
         y_indices = indices + [self.target_vocab.end_seq_index]
         return x_indices, y_indices
@@ -487,17 +511,19 @@ class NMTVectorizer(object):
 
         data_vocab = SequenceVocabulary()
         target_vocab = SequenceVocabulary()
+        source_tokenizer = CustomTokenizer()
+        target_tokenizer = CustomTokenizer()
 
         max_source_length = 0
         max_target_length = 0
 
         for _, row in bitext_df.iterrows():
-            source_tokens = row["source_language"].split(" ")
+            source_tokens = source_tokenizer.tokenize(row["source_language"])
             if len(source_tokens) > max_source_length:
                 max_source_length = len(source_tokens)
             data_vocab.add_many(source_tokens)
 
-            target_tokens = row["target_language"].split(" ")
+            target_tokens = target_tokenizer.tokenize(row["target_language"])
             if len(target_tokens) > max_target_length:
                 max_target_length = len(target_tokens)
             target_vocab.add_many(target_tokens)

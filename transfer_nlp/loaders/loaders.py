@@ -196,8 +196,9 @@ class CBOWDataset(CustomDataset):
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
 
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
+        self.tokenizer = CustomTokenizer()
 
-        measure_len = lambda context: len(context.split(" "))
+        measure_len = lambda context: len(self.tokenizer.tokenize(text=context))
         self._max_seq_length = max(map(measure_len, dataset_df.context))
 
     @classmethod
@@ -233,7 +234,8 @@ class NewsDataset(CustomDataset):
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
 
         # +1 if only using begin_seq, +2 if using both begin and end seq tokens
-        measure_len = lambda context: len(context.split(" "))
+        self.tokenizer = CustomTokenizer()
+        measure_len = lambda context: len(self.tokenizer.tokenize(text=context))
         self._max_seq_length = max(map(measure_len, dataset_df.title)) + 2
 
         # Class weights
@@ -272,8 +274,12 @@ class SurnameDatasetRNN(CustomDataset):
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
 
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
+        self.tokenizer = CharacterTokenizer()
 
-        self._max_seq_length = max(map(len, self.dataset_df.surname)) + 2
+        measure_len = lambda surname: len(self.tokenizer.tokenize(text=surname))
+        self._max_seq_length = max(map(measure_len, dataset_df.surname)) + 2
+
+        # self._max_seq_length = max(map(len, self.dataset_df.surname)) + 2
         class_counts = self.train_df.nationality.value_counts().to_dict()
         sorted_counts = sorted(class_counts.items(), key=lambda x: self._vectorizer.target_vocab.lookup_token(x[0]))
         frequencies = [count for _, count in sorted_counts]
@@ -311,8 +317,10 @@ class SurnameDatasetGeneration(CustomDataset):
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
 
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
+        self.tokenizer = CharacterTokenizer()
 
-        self._max_seq_length = max(map(len, self.dataset_df.surname)) + 2
+        measure_len = lambda surname: len(self.tokenizer.tokenize(text=surname))
+        self._max_seq_length = max(map(measure_len, dataset_df.surname)) + 2
 
     @classmethod
     def load_dataset_and_make_vectorizer(cls, surname_csv: Path):
@@ -348,11 +356,10 @@ class FeedlyDataset(CustomDataset):
 
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
 
-        self._max_seq_length = 0# = max(map(len, self.dataset_df.content)) + 2
-        for index, row in dataset_df.iterrows():
-            content = [token for token in tokenize(row.content)]
-            self._max_seq_length = max(len(content), self._max_seq_length)
-        self._max_seq_length += 2
+        self.tokenizer = CharacterTokenizer()
+
+        measure_len = lambda content: len(self.tokenizer.tokenize(text=content))
+        self._max_seq_length = max(map(measure_len, dataset_df.content)) + 2
 
     @classmethod
     def load_dataset_and_make_vectorizer(cls, surname_csv: Path):
