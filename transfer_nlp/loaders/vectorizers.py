@@ -5,7 +5,7 @@ from typing import Dict, Tuple, List, Any
 import numpy as np
 import pandas as pd
 
-from transfer_nlp.common.tokenizers import tokenize
+from transfer_nlp.common.tokenizers import CustomTokenizer, CharacterTokenizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
 
 
@@ -39,12 +39,14 @@ class ReviewsVectorizer(Vectorizer):
     def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
 
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
+        self.tokenizer = CustomTokenizer()
 
     def vectorize(self, input_string: str) -> np.array:
 
         encoding = np.zeros(len(self.data_vocab), dtype=np.float32)
+        tokens = self.tokenizer.tokenize(text=input_string)
 
-        for token in input_string.split(" "):
+        for token in tokens:
             index = self.data_vocab.lookup_token(token=token)
             encoding[index] = 1
 
@@ -52,6 +54,7 @@ class ReviewsVectorizer(Vectorizer):
 
     @classmethod
     def from_dataframe(cls, review_df: pd.DataFrame, cutoff: int = 25) -> Vectorizer:
+        tokenizer = CustomTokenizer()
 
         data_vocab = Vocabulary(add_unk=True)
         target_vocab = Vocabulary(add_unk=False)
@@ -63,7 +66,7 @@ class ReviewsVectorizer(Vectorizer):
         # Add tokens from data to vocab
         word_counts = Counter()
         for review in review_df.review:
-            for token in review.split(" "):
+            for token in tokenizer.tokenize(text=review):
                 if token not in string.punctuation:
                     word_counts[token] += 1
 
@@ -79,17 +82,21 @@ class SurnamesVectorizer(Vectorizer):
     def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
 
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
+        self.tokenizer = CharacterTokenizer()
 
     def vectorize(self, input_string: str) -> np.array:
 
         encoding = np.zeros(shape=len(self.data_vocab), dtype=np.float32)
-        for character in input_string:
+        tokens = self.tokenizer.tokenize(text=input_string)
+        for character in tokens:
             encoding[self.data_vocab.lookup_token(token=character)] = 1
 
         return encoding
 
     @classmethod
     def from_dataframe(cls, surnames_df: pd.DataFrame) -> Vectorizer:
+
+        tokenizer = CharacterTokenizer()
 
         data_vocab = Vocabulary(unk_token='@')
         target_vocab = Vocabulary(add_unk=False)
@@ -99,7 +106,7 @@ class SurnamesVectorizer(Vectorizer):
 
             surname = row.surname
             nationality = row.nationality
-            data_vocab.add_many(tokens=surname)
+            data_vocab.add_many(tokens=tokenizer.tokenize(text=surname))
             target_vocab.add_token(token=nationality)
 
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
@@ -111,18 +118,21 @@ class SurnamesVectorizerCNN(Vectorizer):
 
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
         self._max_surname = max_surname
+        self.tokenizer = CharacterTokenizer()
 
     def vectorize(self, input_string: str) -> np.array:
 
         encoding = np.zeros(shape=(len(self.data_vocab), self._max_surname), dtype=np.float32)
-
-        for char_index, character in enumerate(input_string):
+        tokens = self.tokenizer.tokenize(text=input_string)
+        for char_index, character in enumerate(tokens):
             encoding[self.data_vocab.lookup_token(token=character)][char_index] = 1
 
         return encoding
 
     @classmethod
     def from_dataframe(cls, surnames_df: pd.DataFrame) -> Vectorizer:
+
+        tokenizer = CharacterTokenizer()
 
         data_vocab = Vocabulary(unk_token='@')
         target_vocab = Vocabulary(add_unk=False)
@@ -133,7 +143,7 @@ class SurnamesVectorizerCNN(Vectorizer):
 
             surname = row.surname
             nationality = row.nationality
-            data_vocab.add_many(tokens=surname)
+            data_vocab.add_many(tokens=tokenizer.tokenize(text=surname))
             target_vocab.add_token(token=nationality)
             max_surname = max(max_surname, len(surname))
 

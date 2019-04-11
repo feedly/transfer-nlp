@@ -13,7 +13,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from transfer_nlp.common.tokenizers import tokenize
+from transfer_nlp.common.tokenizers import CustomTokenizer, CharacterTokenizer
 from transfer_nlp.loaders.vectorizers import ReviewsVectorizer, SurnamesVectorizer, Vectorizer, SurnamesVectorizerCNN, CBOWVectorizer, NewsVectorizer, \
     SurnameVectorizerRNN, \
     SurnameVectorizerGeneration, NMTVectorizer, FeedlyVectorizer
