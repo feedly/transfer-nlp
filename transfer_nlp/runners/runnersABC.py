@@ -106,11 +106,9 @@ class RunnerABC:
         logger.info("Loading the data and getting the vectorizer ready")
         if self.config_args['reload_from_files']:
             # training from a checkpoint
-            logger.info("Loading dataset and vectorizer")
             self.dataset = self.dataset_cls.load_dataset_and_load_vectorizer(self.config_args['data_csv'],
                                                                              self.config_args['vectorizer_file'])
         else:
-            logger.info("Loading dataset and creating vectorizer")
             # create dataset and vectorizer
             self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer(self.config_args['data_csv'])
             self.dataset.save_vectorizer(self.config_args['vectorizer_file'])
@@ -232,16 +230,12 @@ class RunnerABC:
         """
 
         # Train/Val loop
-        logger.info("#" * 50)
         logger.info("Entering the training loop...")
-        logger.info("#" * 50)
 
         try:
             for epoch in range(self.config_args['num_epochs']):
 
-                logger.info("#" * 50)
                 logger.info(f"Epoch {epoch + 1}/{self.config_args['num_epochs']}")
-                logger.info("#" * 50)
                 self.train_one_epoch()
                 self.to_tensorboard(epoch=epoch, metrics=self.metrics.names)
                 self.log_current_metric(epoch=epoch, metrics=self.metrics.names)
@@ -253,9 +247,7 @@ class RunnerABC:
 
         # Optional testing phase [Not a good practice during development time, use this only when you are sure of your modelling decisions!]
         if test_at_the_end:
-            logger.info("#" * 50)
             logger.info("Entering the test phase...")
-            logger.info("#" * 50)
             self.do_test()
             self.log_test_metric(metrics=self.metrics.names)
 

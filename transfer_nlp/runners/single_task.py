@@ -178,14 +178,12 @@ def run_with_slack(runner, test_at_the_end: bool = False):
 if __name__ == "__main__":
     import argparse
 
-    logger.info('Starting...')
-
     parser = argparse.ArgumentParser(description="launch an experiment")
 
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/cbow.json'
+    args.config = args.config or 'experiments/mlp.json'
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
