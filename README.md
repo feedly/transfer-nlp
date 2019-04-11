@@ -1,8 +1,8 @@
 # transfer-nlp
 Welcome to the transfer-nlp library, a framework built on top of PyTorch whose goal is to progressively achieve 2 kinds of Transfer:
 
-- easy trasfer of code --> the framework should be modular enough so that you don't have to re-write everything each time you experiment with a new architecture / a new kind of task
-- easy transfer learning --> the framework should be able to easliy interact with pre-trained models and manipulate them in order to fine-tune some of their parts.
+- easy transfer of code --> the framework should be modular enough so that you don't have to re-write everything each time you experiment with a new architecture / a new kind of task
+- easy transfer learning --> the framework should be able to easily interact with pre-trained models and manipulate them in order to fine-tune some of their parts.
 
 You can have an overview of the high-level API on this [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=Xzu3HPdGrnza), which shows how to use the framework on several examples.
 All examples on these notebooks embed in-cell Tensorboard training monitoring!
