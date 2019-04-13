@@ -75,7 +75,7 @@
     ]
   },
   "alpha": 0.01,
-  "gradient_clipping": 0.25,
+  "gradient_clipping": {"value": 0.25},
   "mode": "min",
   "factor": 0.5,
   "patience": 1,

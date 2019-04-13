@@ -5,9 +5,15 @@ The Registry pattern used here is inspired from this post: https://realpython.co
 """
 
 from typing import Dict, List
+import logging
 
 import torch.nn as nn
 import torch.optim as optim
+import inspect
+
+name = 'transfer_nlp.plugins.registry'
+logging.getLogger(name).setLevel(level=logging.INFO)
+logger = logging.getLogger(name)
 
 MODEL_CLASSES = {}
 LOSS_CLASSES = {
@@ -193,33 +199,85 @@ class Data:
                 f"Please check your implementation and experiment config file match")
 
 
-class Model:
+class Model(nn.Module):
+    """
+    The aim of this class is to load a PyTorch nn.Module model from a json file containing a model definition as:
 
-    def __init__(self, config_args: Dict):
+    "model": {
+    "modelName": "MultiLayerPerceptron",
+    "modelParams": [
+      "input_dim",
+      "hidden_dim",
+      "output_dim"
+    ],
+    "modelInputs": [
+      "x_in"
+    ]
+  }
+   The motivation for this is that we want the framework to be usable with any model with custom signature.
+   Please note that the input variables names should match the outputs of te batch generators, as the Model will
+   directly take tne generator's output as input to the forward method.
+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(Model, self).__init__()
+
+    @classmethod
+    def from_config(cls, config_args: Dict):
         """
         :param config_args: Contains the experiment configuration, with all necessary hyperparameters
         """
-        self.config_args: Dict = config_args
-        self.name: str = self.config_args['model']['modelName']
-        self.params: List[str] = self.config_args['model']['modelParams']
+        config_args: Dict = config_args
+        try:
+            name = config_args['model']['modelName']
+            params_names = config_args['model']['modelParams']
+            inputs_names = config_args['model']['modelInputs']
+        except KeyError as k:
+            raise KeyError(f"{k} is missing from the config file")
+
         existing = list(MODEL_CLASSES.keys())
 
         model_params = {}
-        for param in self.params:
+        for param in params_names:
             try:
                 # Some parameters of the model cannot be set in advance and have to be computed in the runner instantiation step
                 # For example if a model needs a vocabulary size, this might be computed by the data loader, and then this value
                 # will be accessible in the config dictionary, which we pull here:
-                model_params[param] = self.config_args[param]
+                model_params[param] = config_args[param]
             except KeyError as k:
-                raise KeyError(f"{k} is not a parameter for {self.name}, Please check your implementation and experiment config file match")
+                raise KeyError(f"{k} is not a parameter for {name}, Please check your implementation and experiment config file match")
 
         try:
-            self.model = MODEL_CLASSES[self.name](**model_params)
+            model = MODEL_CLASSES[name](**model_params)
         except KeyError as k:
             raise KeyError(
-                f"{k} is not among the registered {self.__class__.__name__}: {existing}. "
+                f"{k} is not among the registered {cls.__name__}: {existing}. "
                 f"Please check that your implementation and experiment config file match")
+
+        # Get the names of variables for model inputs and store them
+        args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations = inspect.getfullargspec(model.forward)
+
+        if defaults:
+            optional_args_start = len(args) - len(defaults)
+            options = {args[optional_args_start + i]: defaults[i] for i in range(len(defaults))}
+
+            args = args[:-len(defaults)]
+            logger.info(f"Inputs of forward method: {args[1:]}")
+            logger.info(f"Optional inputs parameters of forward method: {options}")
+        for arg in args[1:]:  # index 0 is 'self' so we don't use it
+            if arg not in inputs_names:
+                raise ValueError(f"{arg} does not match any of the model input names")
+
+        # We decorate the nn.Module model with names of the model class, param names and input names
+        model.name = name
+        model.params_names = params_names
+        model.inputs_names = inputs_names
+
+        return model
+
+    def forward(self, *input, **kwargs):
+        return self.forward(*input, **kwargs)
 
 
 class Loss:
@@ -229,8 +287,12 @@ class Loss:
         :param config_args: Contains the experiment configuration, with all necessary hyperparameters
         """
         self.config_args: Dict = config_args
-        self.name: str = self.config_args['loss']['lossName']
-        self.params: List[str] = self.config_args['loss']['lossParams']
+        try:
+            self.name: str = self.config_args['loss']['lossName']
+            self.params: List[str] = self.config_args['loss']['lossParams']
+        except KeyError as k:
+            raise KeyError(f"{k} is missing from the config file")
+
         existing = list(LOSS_CLASSES.keys())
 
         loss_params = {}
@@ -256,8 +318,12 @@ class Optimizer:
         :param config_args: Contains the experiment configuration, with all necessary hyperparameters
         """
         self.config_args: Dict = config_args
-        self.name: str = self.config_args['Optimizer']['optimizerName']
-        self.params: List[str] = self.config_args['Optimizer']['optimizerParams']
+        try:
+            self.name: str = self.config_args['Optimizer']['optimizerName']
+            self.params: List[str] = self.config_args['Optimizer']['optimizerParams']
+        except KeyError as k:
+            raise KeyError(f"{k} is missing from the config file")
+
         existing = list(OPTIMIZER_CLASSES.keys())
 
         optimizer_params = {}
@@ -283,8 +349,12 @@ class Scheduler:
         :param config_args: Contains the experiment configuration, with all necessary hyperparameters
         """
         self.config_args: Dict = config_args
-        self.name: str = self.config_args['scheduler']['schedulerName']
-        self.params: List[str] = self.config_args['scheduler']['schedulerParams']
+        try:
+            self.name: str = self.config_args['scheduler']['schedulerName']
+            self.params: List[str] = self.config_args['scheduler']['schedulerParams']
+        except KeyError as k:
+            raise KeyError(f"{k} is missing from the config file")
+
         existing = list(SCHEDULER_CLASSES.keys())
 
         scheduler_params = {}
@@ -310,8 +380,12 @@ class Regularizer:
         :param config_args: Contains the experiment configuration, with all necessary hyperparameters
         """
         self.config_args: Dict = config_args
-        self.name: str = self.config_args['Regularizer']['regularizerName']
-        self.params: List[str] = self.config_args['Regularizer']['regularizerParams']
+        try:
+            self.name: str = self.config_args['Regularizer']['regularizerName']
+            self.params: List[str] = self.config_args['Regularizer']['regularizerParams']
+        except KeyError as k:
+            raise KeyError(f"{k} is missing from the config file")
+
         existing = list(REGULARIZER_CLASSES.keys())
 
         regularizer_params = {}
@@ -328,3 +402,6 @@ class Regularizer:
             raise KeyError(
                 f"{k} is not among the registered {self.__class__.__name__}: {existing}. "
                 f"Please check your implementation and experiment config file match")
+
+    def __str__(self):
+        return self.regularizer.__str__()

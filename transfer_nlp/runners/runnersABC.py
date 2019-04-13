@@ -56,8 +56,11 @@ class RunnerABC:
         self.model: nn.Module = None
         self.generator: Generator = None
         self.metrics: Metrics = None
-        self.regularizer: Regularizer = None
-        self.model_inputs: Dict = self.config_args['model']['modelInputs']
+        if self.config_args.get('Regularizer'):
+            self.regularizer: Regularizer = None
+        if self.config_args.get('gradient_clipping'):
+            self.gradient_clipping = self.config_args['gradient_clipping']['value']
+            logger.info(f"Clipping gradients at value {self.gradient_clipping}")
 
         self.instantiate()
 
@@ -141,7 +144,7 @@ class RunnerABC:
             self.config_args['weight'] = self.dataset.class_weights
 
         # Model
-        self.model: Model = Model(config_args=self.config_args).model
+        self.model: nn.Module = Model.from_config(config_args=self.config_args)
         logger.info("Using the following classifier:")
         logger.info(f"{self.model}")
         self.model = self.model.to(self.config_args['device'])
@@ -156,7 +159,9 @@ class RunnerABC:
         self.metrics: Metrics = Metrics(config_args=self.config_args)
 
         # Regularizer
-        self.regularizer: Regularizer = Regularizer(config_args=self.config_args)
+        if self.config_args.get('Regularizer'):
+            self.regularizer: Regularizer = Regularizer(config_args=self.config_args)
+            logger.info(f"Using regularizer {self.regularizer}")
 
     def train_one_epoch(self):
         raise NotImplementedError

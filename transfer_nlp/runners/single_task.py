@@ -53,7 +53,7 @@ class Runner(RunnerABC):
 
             self.optimizer.zero_grad()
 
-            model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
+            model_inputs = {inp: batch_dict[inp] for inp in self.model.inputs_names}
             y_pred = self.model(**model_inputs)
 
             loss_params = {
@@ -64,8 +64,9 @@ class Runner(RunnerABC):
                 loss_params['mask_index'] = self.mask_index
 
             loss = self.loss.loss(**loss_params)
-            # TODO: make it optional
-            penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
+            penalty = torch.Tensor([0])
+            if hasattr(self, "regularizer"):
+                penalty += self.regularizer.regularizer.compute_penalty(model=self.model)
 
             loss_batch = loss.item() + penalty.item()
             #TODO: see if we can improve the online avertage (check exponential average)
@@ -73,8 +74,8 @@ class Runner(RunnerABC):
 
             loss.backward()
             # Gradient clipping
-            # TODO: make it optional
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config_args['gradient_clipping'])
+            if hasattr(self, 'gradient_clipping'):
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)
 
             self.optimizer.step()
 
@@ -100,7 +101,7 @@ class Runner(RunnerABC):
 
         for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Validation batches'):
 
-            model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
+            model_inputs = {inp: batch_dict[inp] for inp in self.model.inputs_names}
             y_pred = self.model(**model_inputs)
 
             loss_params = {
@@ -112,7 +113,9 @@ class Runner(RunnerABC):
 
             loss = self.loss.loss(**loss_params)
             # TODO: make it optional
-            penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
+            penalty = torch.Tensor([0])
+            if hasattr(self, "regularizer"):
+                penalty += self.regularizer.regularizer.compute_penalty(model=self.model)
 
             loss_batch = loss.item() + penalty.item()
             # TODO: see other averaging
@@ -146,7 +149,7 @@ class Runner(RunnerABC):
             if batch_index % 30 == 0:
                 logger.info(f"Test batch {batch_index + 1} / {num_batch}")
 
-            model_inputs = {inp: batch_dict[inp] for inp in self.model_inputs}
+            model_inputs = {inp: batch_dict[inp] for inp in self.model.inputs_names}
             y_pred = self.model(**model_inputs)
 
             loss_params = {
@@ -156,7 +159,9 @@ class Runner(RunnerABC):
                 loss_params['mask_index'] = self.mask_index
 
             loss = self.loss.loss(**loss_params)
-            penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
+            penalty = torch.Tensor([0])
+            if hasattr(self, "regularizer"):
+                penalty += self.regularizer.regularizer.compute_penalty(model=self.model)
 
             loss_batch = loss.item() + penalty.item()
 
@@ -188,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/mlp.json'
+    args.config = args.config or 'experiments/surnameClassifier.json'
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
