@@ -10,6 +10,10 @@ from typing import Dict, List
 import torch.nn as nn
 import torch.optim as optim
 
+#TODO: prevent user to override existing plugins
+#TODO: add message errors when key is missing
+
+
 name = 'transfer_nlp.plugins.registry'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)

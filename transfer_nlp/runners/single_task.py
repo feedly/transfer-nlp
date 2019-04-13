@@ -64,13 +64,16 @@ class Runner(RunnerABC):
                 loss_params['mask_index'] = self.mask_index
 
             loss = self.loss.loss(**loss_params)
+            # TODO: make it optional
             penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
 
             loss_batch = loss.item() + penalty.item()
+            #TODO: see if we can improve the online avertage (check exponential average)
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
             loss.backward()
             # Gradient clipping
+            # TODO: make it optional
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config_args['gradient_clipping'])
 
             self.optimizer.step()
@@ -108,9 +111,11 @@ class Runner(RunnerABC):
                 loss_params['mask_index'] = self.mask_index
 
             loss = self.loss.loss(**loss_params)
+            # TODO: make it optional
             penalty = self.regularizer.regularizer.compute_penalty_uniform(model=self.model)
 
             loss_batch = loss.item() + penalty.item()
+            # TODO: see other averaging
             running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
             for metric in self.metrics.names:
@@ -183,7 +188,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'customCNN.json'
+    args.config = args.config or 'experiments/source2vec.json'
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
