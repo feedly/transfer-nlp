@@ -26,12 +26,20 @@ def make_training_state(args: Dict) -> Dict:
     state = {'stop_early': False,
             'early_stopping_step': 0,
             'early_stopping_best_val': 1e8,
-            'learning_rate': args['lr'],
+            'learning_rate': 0,
             'epoch_index': 0,
             'train_loss': [],
             'val_loss': [],
             'test_loss': -1,
-            'model_filename': args['model_state_file']}
+            'model_filename': ''}
+    try:
+        state['learning_rate'] = args['lr']
+    except KeyError as k:
+        raise KeyError(f"You need to specify {k} in the config file")
+    try:
+        state['model_filename'] = args['model_state_file']
+    except KeyError as k:
+        raise KeyError(f"You need to specify {k} in the config file")
 
     for metric in args['metrics']:
         state[f"train_{metric}"] = []
