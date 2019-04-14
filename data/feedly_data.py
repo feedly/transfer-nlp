@@ -184,6 +184,3 @@ if __name__ == "__main__":
     # max_count = 100
     # save_path = save_path / 'feedly_data_lb.csv'
     # downloader.build_dataset(category=category, boards=boards, max_count=max_count, save_path=save_path)
-
-
-
