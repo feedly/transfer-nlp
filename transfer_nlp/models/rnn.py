@@ -176,6 +176,3 @@ if __name__ == "__main__":
     describe(lens)
     output = model(x_in=tensor, x_lengths=lens)
     describe(output)
-
-
-
