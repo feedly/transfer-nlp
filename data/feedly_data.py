@@ -25,7 +25,7 @@ def get_text(entry: Entry) -> BeautifulSoup:
   content = entry.json["content"]["content"] if "content" in entry.json else ""
   summary = entry.json["summary"]["content"] if "summary" in entry.json else ""
   title = entry.json["title"]
-  best=max(full_content, content, summary, title, key=len)
+  best = max(full_content, content, summary, title, key=len)
 
   return BeautifulSoup(best.replace("\n", ""), 'html.parser').text
 
@@ -160,7 +160,7 @@ class FeedlyDownloader:
 
 if __name__ == "__main__":
 
-    token ="YourToken"
+    token = "YourToken"
     downloader = FeedlyDownloader(token=token)
 
     # # One category
