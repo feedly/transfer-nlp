@@ -193,7 +193,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/surnameClassifier.json'
+    args.config = args.config or 'experiments/cbow.json'
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":

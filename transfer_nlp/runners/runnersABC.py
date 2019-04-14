@@ -17,7 +17,7 @@ might not be known in advance. Hence, The runner will add its own arguments duri
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Any
 
 import numpy as np
 import torch
@@ -58,9 +58,23 @@ class RunnerABC:
         self.metrics: Metrics = None
         if self.config_args.get('Regularizer'):
             self.regularizer: Regularizer = None
+        else:
+            logger.info("Are you sure you don't want to use a regularizer? y / n")
+            response = input()
+            if response == 'n':
+                exit()
+            print('Resuming...')
         if self.config_args.get('gradient_clipping'):
             self.gradient_clipping = self.config_args['gradient_clipping']['value']
             logger.info(f"Clipping gradients at value {self.gradient_clipping}")
+        else:
+            logger.info("Are you sure you don't want to use a gradient clipping? y / n")
+            response = input()
+            if response == 'n':
+                logger.info("which value?")
+                response = input()
+                self.gradient_clipping = float(response)
+            print('Resuming...')
 
         self.instantiate()
 
@@ -151,14 +165,12 @@ class RunnerABC:
 
         # Loss, Optimizer and Scheduler
         self.loss: Loss = Loss(config_args=self.config_args)
-        self.config_args['params'] = self.model.parameters()
+        self.config_args['params'] = self.model.parameters()  # parameters that will be optimized by the optimizer
         self.optimizer: Optimizer = Optimizer(config_args=self.config_args).optimizer
         self.config_args['optimizer'] = self.optimizer
         self.scheduler: Scheduler = Scheduler(config_args=self.config_args)
         self.generator: Generator = Generator(config_args=self.config_args)
         self.metrics: Metrics = Metrics(config_args=self.config_args)
-
-        # Regularizer
         if self.config_args.get('Regularizer'):
             self.regularizer: Regularizer = Regularizer(config_args=self.config_args)
             logger.info(f"Using regularizer {self.regularizer}")
@@ -254,6 +266,43 @@ class RunnerABC:
             logger.info("Entering the test phase...")
             self.do_test()
             self.log_test_metric(metrics=self.metrics.names)
+
+    # Methods used for transfer learning
+    def freeze_params(self, to_freeze: List[str]):
+        """
+        Freeze all parameters from a sublist of named_parameters
+        E.g. self.freeze_params(to_freeze=["fc1.weight"])
+        :param to_freeze: list of model parameters to be frozen
+        :return:
+        """
+        [parameter.requires_grad_(False) for name, parameter in self.model.named_parameters() if name in to_freeze]
+
+    def freeze_attr_params(self, to_freeze: List[Any]):
+        """
+        Freeze all parameters from a sublist of model attributes
+        E.g. self.freeze_attr_params(to_freeze=["fc1"])
+        :param to_freeze: list of model attributes whose parameters should be frozen
+        :return:
+        """
+        [parameter.requires_grad_(False) for attr in to_freeze for name, parameter in self.model.__getattr__(name=attr).named_parameters()]
+
+    def unfreeze_params(self, to_unfreeze: List[str]):
+        """
+        Unfreeze all parameters from a sublist of named_parameters
+        E.g. self.unfreeze_params(to_freeze=["fc1.weight"])
+        :param to_unfreeze: list of model parameters to be unfrozen
+        :return:
+        """
+        [parameter.requires_grad_(True) for name, parameter in self.model.named_parameters() if name in to_unfreeze]
+
+    def unfreeze_attr_params(self, to_unfreeze: List[Any]):
+        """
+        Unfreeze all parameters from a sublist of model attributes
+        E.g. self.unfreeze_attr_params(to_unfreeze=["fc1"])
+        :param to_unfreeze: list of model attributes whose parameters should be unfrozen
+        :return:
+        """
+        [parameter.requires_grad_(True) for attr in to_unfreeze for name, parameter in self.model.__getattr__(name=attr).named_parameters()]
 
 
 def build_experiment(config: str):

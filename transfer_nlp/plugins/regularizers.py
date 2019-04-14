@@ -14,7 +14,7 @@ class RegularizerABC:
     def __repr__(self):
         return self.__repr__()
 
-    def compute_penalty(self, model: torch.nn.modules):
+    def compute_penalty(self, model: torch.nn.Module):
         raise NotImplementedError
 
 
@@ -30,7 +30,7 @@ class L1(RegularizerABC):
     def __str__(self):
         return f"L1(alpha={self.alpha})"
 
-    def compute_penalty(self, model: torch.nn.modules):
+    def compute_penalty(self, model: torch.nn.Module):
         """
         Compute a penalty value uniformly over layers
         :param self:
@@ -58,7 +58,7 @@ class L2(RegularizerABC):
     def __call__(self, parameter: torch.Tensor) -> torch.Tensor:
         return self.alpha * torch.sum(torch.pow(parameter, 2))
 
-    def compute_penalty(self, model: torch.nn.modules):
+    def compute_penalty(self, model: torch.nn.Module):
         """
         Compute a penalty value uniformly over layers
         :param self:
