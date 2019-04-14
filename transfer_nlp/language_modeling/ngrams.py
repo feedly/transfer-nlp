@@ -120,4 +120,3 @@ if __name__ == '__main__':
     lm = NgramLM(n=5)
     lm.build_from_dataframe(data_path=save_path)
     lm.generate(first_token='the', number_token=20)
-
