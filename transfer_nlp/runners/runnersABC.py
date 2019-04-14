@@ -30,7 +30,6 @@ from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.registry import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics, Regularizer
 from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
-import transfer_nlp
 
 name = 'transfer_nlp.runners.runnersABC'
 logging.getLogger(name).setLevel(level=logging.INFO)
