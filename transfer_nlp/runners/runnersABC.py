@@ -18,6 +18,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Any
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -29,7 +30,7 @@ from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.registry import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics, Regularizer
-from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
+from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state, update_train_state
 import transfer_nlp
 
 name = 'transfer_nlp.runners.runnersABC'
@@ -159,27 +160,22 @@ class RunnerABC:
 
         # Model
         self.model: nn.Module = Model.from_config(config_args=self.config_args)
-        logger.info("Using the following classifier:")
-        logger.info(f"{self.model}")
-        self.model = self.model.to(self.config_args['device'])
-
-        # Loss, Optimizer and Scheduler
+        # Loss
         self.loss: Loss = Loss(config_args=self.config_args)
-        self.config_args['params'] = self.model.parameters()  # parameters that will be optimized by the optimizer
+        # Optimizer
+        self.config_args['params'] = [p for p in self.model.parameters() if p.requires_grad]   # parameters that will be optimized by the optimizer
         self.optimizer: Optimizer = Optimizer(config_args=self.config_args).optimizer
         self.config_args['optimizer'] = self.optimizer
+        # Scheduler
         self.scheduler: Scheduler = Scheduler(config_args=self.config_args)
+        # Batch generator
         self.generator: Generator = Generator(config_args=self.config_args)
+        # Metrics
         self.metrics: Metrics = Metrics(config_args=self.config_args)
+        # Regularizer
         if self.config_args.get('Regularizer'):
             self.regularizer: Regularizer = Regularizer(config_args=self.config_args)
             logger.info(f"Using regularizer {self.regularizer}")
-
-    def train_one_epoch(self):
-        raise NotImplementedError
-
-    def do_test(self):
-        raise NotImplementedError
 
     def to_tensorboard(self, epoch: int, metrics: List[str]):
 
@@ -239,6 +235,51 @@ class RunnerABC:
             test = current_metrics[f'test_{metric}']
             logger.info(f"Test on metric {metric}: {test}")
 
+    def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool=True):
+        raise NotImplementedError
+
+    def train_and_validate_one_epoch(self):
+
+        self.epoch_index += 1
+        # sample_probability = (20 + self.epoch_index) / self.config_args['num_epochs']  # TODO: include this into the NMT training part
+
+        self.training_state['epoch_index'] += 1
+
+        # Set the dataset object to train mode such that the dataset used is the training data
+        self.dataset.set_split(split='train')
+        batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
+        running_loss = 0
+        running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
+        # Set the model object to train mode (torch optimizes the parameters)
+        self.model.train()
+        num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
+        for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Training batches'):
+            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics, batch_index=batch_index, compute_gradient=True)
+
+        self.training_state['train_loss'].append(running_loss)
+        for metric in self.metrics.names:
+            self.training_state[f"train_{metric}"].append(running_metrics[f"running_{metric}"])
+
+
+        # Iterate over validation dataset
+        self.dataset.set_split(split='val')
+        batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
+        running_loss = 0
+        running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
+        # Set the model object to val mode (torch does not optimize the parameters)
+        self.model.eval()
+        num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
+        for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Validation batches'):
+            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics, batch_index=batch_index, compute_gradient=False)
+
+        self.training_state['val_loss'].append(running_loss)
+        for metric in self.metrics.names:
+            self.training_state[f"val_{metric}"].append(running_metrics[f"running_{metric}"])
+
+        self.training_state = update_train_state(config_args=self.config_args, model=self.model,
+                                                 train_state=self.training_state)
+        self.scheduler.scheduler.step(self.training_state['val_loss'][-1])
+
     def run(self, test_at_the_end: bool = False):
         """
         Training loop
@@ -252,7 +293,11 @@ class RunnerABC:
             for epoch in range(self.config_args['num_epochs']):
 
                 logger.info(f"Epoch {epoch + 1}/{self.config_args['num_epochs']}")
-                self.train_one_epoch()
+                # self.train_one_epoch()
+
+                self.train_and_validate_one_epoch()
+
+
                 self.to_tensorboard(epoch=epoch, metrics=self.metrics.names)
                 self.log_current_metric(epoch=epoch, metrics=self.metrics.names)
                 if self.training_state['stop_early']:
@@ -263,9 +308,40 @@ class RunnerABC:
 
         # Optional testing phase [Not a good practice during development time, use this only when you are sure of your modelling decisions!]
         if test_at_the_end:
+
             logger.info("Entering the test phase...")
-            self.do_test()
+
+            self.dataset.set_split(split='test')
+            batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
+            num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
+            running_loss = 0
+            running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
+            self.model.eval()
+            for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Test batches'):
+                running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics,
+                                                            batch_index=batch_index, compute_gradient=False)
+            self.training_state['test_loss'] = running_loss
+            for metric in self.metrics.names:
+                self.training_state[f"test_{metric}"].append(running_metrics[f"running_{metric}"])
+            # self.do_test()
             self.log_test_metric(metrics=self.metrics.names)
+
+    # # we want to freeze the fc2 layer this time: only train fc1 and fc3
+    # net.fc2.weight.requires_grad = False
+    # net.fc2.bias.requires_grad = False
+    #
+    # # passing only those parameters that explicitly requires grad
+    # optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=0.1)
+    #
+    # # then do the normal execution of loss calculation and backward propagation
+    #
+    # #  unfreezing the fc2 layer for extra tuning if needed
+    # net.fc2.weight.requires_grad = True
+    # net.fc2.bias.requires_grad = True
+    #
+    # # add the unfrozen fc2 weight to the current optimizer
+    # optimizer.add_param_group({
+    #                               'params': net.fc2.parameters()})
 
     # Methods used for transfer learning
     def freeze_params(self, to_freeze: List[str]):
@@ -275,7 +351,14 @@ class RunnerABC:
         :param to_freeze: list of model parameters to be frozen
         :return:
         """
+        # Setting given parameters to requires_grad=False
+        logger.info(f"Freezing params {[name for name, parameter in self.model.named_parameters() if name in to_freeze]}")
         [parameter.requires_grad_(False) for name, parameter in self.model.named_parameters() if name in to_freeze]
+
+        # Initializing the optimimzer with the trainable parameters only
+        self.config_args['params'] = [p for p in self.model.parameters() if p.requires_grad]  # parameters that will be optimized by the optimizer
+        self.optimizer: Optimizer = Optimizer(config_args=self.config_args).optimizer
+        self.config_args['optimizer'] = self.optimizer
 
     def freeze_attr_params(self, to_freeze: List[Any]):
         """
@@ -284,7 +367,13 @@ class RunnerABC:
         :param to_freeze: list of model attributes whose parameters should be frozen
         :return:
         """
+        # Setting given parameters to requires_grad=False
+        logger.info(f"Freezing attributes {[{attr: [name for name, parameter in self.model.__getattr__(name=attr).named_parameters()]} for attr in to_freeze]}")
         [parameter.requires_grad_(False) for attr in to_freeze for name, parameter in self.model.__getattr__(name=attr).named_parameters()]
+        # Initializing the optimimzer with the trainable parameters only
+        self.config_args['params'] = [p for p in self.model.parameters() if p.requires_grad]  # parameters that will be optimized by the optimizer
+        self.optimizer: Optimizer = Optimizer(config_args=self.config_args).optimizer
+        self.config_args['optimizer'] = self.optimizer
 
     def unfreeze_params(self, to_unfreeze: List[str]):
         """
@@ -293,7 +382,17 @@ class RunnerABC:
         :param to_unfreeze: list of model parameters to be unfrozen
         :return:
         """
+        # Set the parameters to requires_grad=True
+        logger.info(f"Unfreezing params {[name for name, parameter in self.model.named_parameters() if name in to_unfreeze]}")
         [parameter.requires_grad_(True) for name, parameter in self.model.named_parameters() if name in to_unfreeze]
+        # Add those parameters to the optimizer's list of parameters to optimize
+        for name, parameter in self.model.named_parameters():
+            if name in to_unfreeze:
+                try:
+                    self.optimizer.add_param_group({'params': parameter})
+                except ValueError as e:
+                    logger.info(f"Parameters {name} are already in the optimimzer's list!")
+                    logger.info(e)
 
     def unfreeze_attr_params(self, to_unfreeze: List[Any]):
         """
@@ -302,7 +401,18 @@ class RunnerABC:
         :param to_unfreeze: list of model attributes whose parameters should be unfrozen
         :return:
         """
+        # Set the parameters to requires_grad=True
+        logger.info(f"Unfreezing attributes {[{attr: [name for name, parameter in self.model.__getattr__(name=attr).named_parameters()]} for attr in to_unfreeze]}")
+        # logger.info(f"Unfreezing attributes {[name for attr in to_unfreeze for name, parameter in self.model.__getattr__(name=attr).named_parameters()]}")
         [parameter.requires_grad_(True) for attr in to_unfreeze for name, parameter in self.model.__getattr__(name=attr).named_parameters()]
+        # Add those parameters to the optimizer's list of parameters to optimize
+        for attr in to_unfreeze:
+            for name, parameter in self.model.__getattr__(name=attr).named_parameters():
+                try:
+                    self.optimizer.add_param_group({'params': parameter})
+                except ValueError as e:
+                    logger.info(f"Parameters {name} from attribute {attr} are already in the optimimzer's list!")
+                    logger.info(e)
 
 
 def build_experiment(config: str):

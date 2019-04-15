@@ -273,7 +273,9 @@ class Model(nn.Module):
         model.name = name
         model.params_names = params_names
         model.inputs_names = inputs_names
-
+        logger.info("Using the following classifier:")
+        logger.info(f"{model}")
+        model = model.to(config_args['device'])
         return model
 
     def forward(self, *input, **kwargs):
