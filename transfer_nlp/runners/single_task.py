@@ -17,7 +17,8 @@ from knockknock import slack_sender
 from ignite.engine import Events
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
     GradsScalarHandler, GradsHistHandler
-# from ignite.contrib.handlers.tensorboard_logger import *
+from ignite.handlers import ModelCheckpoint
+from ignite.handlers import EarlyStopping
 
 from transfer_nlp.runners.runnersABC import RunnerABC
 
@@ -72,6 +73,18 @@ class Runner(RunnerABC):
                 embeddings = self.model.embedding.weight.data
                 metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
                 self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
+
+        handler = ModelCheckpoint(dirname=self.config_args['save_dir'], filename_prefix='experiment', save_interval=2, n_saved=2, create_dir=True, require_empty=False)
+        self.trainer.add_event_handler(Events.EPOCH_COMPLETED, handler, {
+            'mymodel': self.model})
+
+        def score_function(engine):
+            val_loss = engine.state.metrics['loss']
+            return -val_loss
+
+        handler = EarlyStopping(patience=10, score_function=score_function, trainer=self.trainer)
+        # Note: the handler is attached to an *Evaluator* (runs one epoch on validation dataset).
+        self.evaluator.add_event_handler(Events.COMPLETED, handler)
 
     def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool = True):
         """
@@ -137,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/newsClassifier.json'
+    args.config = args.config or 'experiments/mlp.json'
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":

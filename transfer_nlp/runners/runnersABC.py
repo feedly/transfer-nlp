@@ -237,10 +237,17 @@ class RunnerABC:
         if self.config_args['device']:
             self.model.to(self.config_args['device'])
 
+        # Gradient accumulation trick adapted from :
+        # https://medium.com/huggingface/training-larger-batches-practical-tips-on-1-gpu-multi-gpu-distributed-setups-ec88c3e51255
+        accumulation_steps = 4
+
         def _update(engine, batch):
 
             self.model.train()
-            self.optimizer.zero_grad()
+
+            if engine.state.iteration % accumulation_steps == 0:
+                self.optimizer.zero_grad()
+
             batch = prepare_batch(batch, device=self.config_args['device'], non_blocking=non_blocking)
             model_inputs = {inp: batch[inp] for inp in self.model.inputs_names}
             y_pred = self.model(**model_inputs)
@@ -254,7 +261,9 @@ class RunnerABC:
 
             loss = self.loss.loss(**loss_params)
             loss.backward()
-            self.optimizer.step()
+
+            if engine.state.iteration % accumulation_steps == 0:
+                self.optimizer.step()
 
             return loss.item()
 
