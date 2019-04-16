@@ -13,12 +13,12 @@ import logging
 from typing import Dict
 
 import torch
+from knockknock import slack_sender
+from ignite.engine import Events
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
     GradsScalarHandler, GradsHistHandler
-from ignite.engine import Events
-from ignite.handlers import EarlyStopping
 from ignite.handlers import ModelCheckpoint, TerminateOnNan
-from knockknock import slack_sender
+from ignite.handlers import EarlyStopping
 
 from transfer_nlp.runners.runnersABC import RunnerABC
 
@@ -66,12 +66,19 @@ class Runner(RunnerABC):
             logger.info("Training completed")
             tb_logger.close()
 
-        @self.trainer.on(Events.EPOCH_COMPLETED)
+        @self.trainer.on(Events.COMPLETED)
         def log_embeddings(trainer):
+
             if hasattr(self.model, "embedding"):
                 logger.info("Logging embeddings to Tensorboard!")
                 embeddings = self.model.embedding.weight.data
                 metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
+                self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
+
+            if hasattr(self.model, "entity_embedding"):
+                logger.info("Logging entities embeddings to Tensorboard!")
+                embeddings = self.model.entity_embedding.weight.data
+                metadata = [str(self.vectorizer.target_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
                 self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
 
         handler = ModelCheckpoint(dirname=self.config_args['save_dir'], filename_prefix='experiment', save_interval=2, n_saved=2, create_dir=True, require_empty=False)
@@ -85,7 +92,6 @@ class Runner(RunnerABC):
         handler = EarlyStopping(patience=10, score_function=score_function, trainer=self.trainer)
         # Note: the handler is attached to an *Evaluator* (runs one epoch on validation dataset).
         self.evaluator.add_event_handler(Events.COMPLETED, handler)
-
         # Terminate if NaNs are created after an iteration
         self.trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
 
@@ -153,7 +159,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/mlp.json'
+    args.config = args.config or 'experiments/cbow.json'
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
