@@ -14,6 +14,7 @@ from typing import Dict
 
 import torch
 from knockknock import slack_sender
+from ignite.engine import Events
 
 from transfer_nlp.runners.runnersABC import RunnerABC
 
@@ -28,7 +29,12 @@ class Runner(RunnerABC):
 
         super().__init__(config_args=config_args)
 
-    def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool=True):
+        # To add custom events in addition to those available in the RunnerABC class, just do:
+        @self.trainer.on(Events.COMPLETED)
+        def custom_event(trainer):
+            logger.info("Training completed")
+
+    def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool = True):
         """
         If compute_gradient is True, this is a training update, otherwise this is a validation / test pass
         :param batch_dict:
@@ -61,7 +67,7 @@ class Runner(RunnerABC):
         running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
         if compute_gradient:
-            loss.backward()  #TODO: See if we want to optimize loss or loss + penalty
+            loss.backward()  # TODO: See if we want to optimize loss or loss + penalty
             # Gradient clipping
             if hasattr(self, 'gradient_clipping'):
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)
@@ -98,4 +104,5 @@ if __name__ == "__main__":
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
         run_with_slack(runner=runner, test_at_the_end=True)
     else:
-        runner.run(test_at_the_end=True)
+        # runner.run(test_at_the_end=True)
+        runner.run_pipeline()

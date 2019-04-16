@@ -1,17 +1,14 @@
 """
-This class contains abstraction interfaces to customize runners.
+This class contains the abstraction interface to customize runners.
+For the training loop, we temporarily let the choice between 2 alternatives, both customizable:
 
-Ideally, a runner can work with any model. Hence, we instantiate the model parameters names in the experiment json file
-{...,
-"model": {"modelName": modelName,
-          "paramNames": ["input_dim", "output_dim", "embeddings_size"]
-          },
-...
-}
+- Defining the training engine explicitely, including all events handling
+- Defining the training engine using pytorch-ignite
 
-The runner will build a Model object, based on the config file. The config file gives acces to model names and parameters names, but those parameter values
-might not be known in advance. Hence, The runner will add its own arguments during model runner instantiation (e.g. vocabulary size, max sequence length, etc...)
+Check transfer_nlp.experiments for examples of experiment json files
 
+This class also provide useful methods to freeze / unfreeze components of a model.
+We will use them in examples of transfer learning
 """
 
 import json
@@ -25,7 +22,9 @@ import torch.nn as nn
 import torch.optim as optim
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.engine import Events
+from ignite.engine.engine import Engine
 from ignite.metrics import Accuracy, Loss
+from ignite.utils import convert_tensor
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
 
@@ -33,7 +32,6 @@ from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.registry import Scheduler, LossFunction, Model, Optimizer, Data, Generator, Metrics, Regularizer
-from transfer_nlp.runners.trainers import create_supervised_trainer, create_supervised_evaluator
 from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state, update_train_state
 
 name = 'transfer_nlp.runners.runnersABC'
@@ -82,30 +80,32 @@ class RunnerABC:
 
         self.instantiate()
 
-        # Setup
+        # Ignite Setup
         self.custom_metrics = {
             "accuracy": Accuracy(),
             "loss": Loss(self.loss.loss),
         }
-        self.trainer = create_supervised_trainer(experiment=self)
-        self.evaluator = create_supervised_evaluator(experiment=self, metrics=self.custom_metrics)
+        self.trainer = self.create_supervised_trainer()
+        self.evaluator = self.create_supervised_evaluator(metrics=self.custom_metrics)
 
         self.dataset.set_split(split='train')
         self.train_loader = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'],
-                                                      device=self.config_args['device'])
+                                                     device=self.config_args['device'])
 
         self.dataset.set_split(split='val')
         self.val_loader = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'],
-                                                    device=self.config_args['device'])
+                                                   device=self.config_args['device'])
 
         self.dataset.set_split(split='test')
         self.test_loader = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'],
-                                                     device=self.config_args['device'])
+                                                    device=self.config_args['device'])
 
         pbar = ProgressBar()
-        pbar.attach(self.trainer, ['running_loss'])
+        pbar.attach(self.trainer)
         pbar.attach(self.evaluator)
 
+        # A few events handler. To add / modify the events handler, you need to extend the __init__ method of RunnerABC
+        # Ignite provides the necessary abstractions and a furnished repository of useful tools
         @self.trainer.on(Events.EPOCH_COMPLETED)
         def log_training_results(trainer):
             self.evaluator.run(self.train_loader)
@@ -119,7 +119,6 @@ class RunnerABC:
                 metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
                 self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
 
-
         @self.trainer.on(Events.EPOCH_COMPLETED)
         def log_validation_results(trainer):
             self.evaluator.run(self.val_loader)
@@ -128,15 +127,15 @@ class RunnerABC:
             for metric in metrics:
                 self.writer.add_scalar(f"Validation {metric}", metrics[metric], self.trainer.state.epoch)
 
+            self.scheduler.scheduler.step(metrics['loss'])
+
         @self.trainer.on(Events.COMPLETED)
         def log_test_results(trainer):
             self.evaluator.run(self.test_loader)
             metrics = self.evaluator.state.metrics
             logger.info(f"Test Results - Epoch: {self.trainer.state.epoch} Acc: {metrics['accuracy']} | Loss: {metrics['loss']}")
 
-    def run_pipeline(self):
-        self.trainer.run(self.train_loader, max_epochs=self.config_args['num_epochs'])
-
+    # Methods to load the experiment file and convert it into a Runner object that can be used for training
     @classmethod
     def load_from_project(cls, experiment_file: str):
         """
@@ -221,7 +220,7 @@ class RunnerABC:
         # Loss
         self.loss: LossFunction = LossFunction(config_args=self.config_args)
         # Optimizer
-        self.config_args['params'] = [p for p in self.model.parameters() if p.requires_grad]   # parameters that will be optimized by the optimizer
+        self.config_args['params'] = [p for p in self.model.parameters() if p.requires_grad]  # parameters that will be optimized by the optimizer
         self.optimizer: Optimizer = Optimizer(config_args=self.config_args).optimizer
         self.config_args['optimizer'] = self.optimizer
         # Scheduler
@@ -235,6 +234,65 @@ class RunnerABC:
             self.regularizer: Regularizer = Regularizer(config_args=self.config_args)
             logger.info(f"Using regularizer {self.regularizer}")
 
+    def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
+        """Prepare batch for training: pass to a device with options.
+
+        """
+        result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
+        return result
+
+    def create_supervised_trainer(self, prepare_batch=_prepare_batch, non_blocking=False):
+
+        if self.config_args['device']:
+            self.model.to(self.config_args['device'])
+
+        def _update(engine, batch):
+
+            self.model.train()
+            self.optimizer.zero_grad()
+            batch = prepare_batch(batch, device=self.config_args['device'], non_blocking=non_blocking)
+            model_inputs = {inp: batch[inp] for inp in self.model.inputs_names}
+            y_pred = self.model(**model_inputs)
+
+            loss_params = {
+                "input": y_pred,
+                "target": batch['y_target']}
+
+            if hasattr(self.loss.loss, 'mask') and self.mask_index:
+                loss_params['mask_index'] = self.mask_index
+
+            loss = self.loss.loss(**loss_params)
+            loss.backward()
+            self.optimizer.step()
+
+            return loss.item()
+
+        return Engine(_update)
+
+    def create_supervised_evaluator(self, metrics: Dict, prepare_batch=_prepare_batch, non_blocking=False):
+
+        if self.config_args['device']:
+            self.model.to(self.config_args['device'])
+
+        def _inference(engine, batch):
+            self.model.eval()
+            with torch.no_grad():
+                batch = prepare_batch(batch, device=self.config_args['device'], non_blocking=non_blocking)
+                model_inputs = {inp: batch[inp] for inp in self.model.inputs_names}
+                y_pred = self.model(**model_inputs)
+                return y_pred, batch['y_target']
+
+        engine = Engine(_inference)
+
+        for name, metric in metrics.items():
+            metric.attach(engine, name)
+
+        return engine
+
+    def run_pipeline(self):
+        self.trainer.run(self.train_loader, max_epochs=self.config_args['num_epochs'])
+
+    # Methods used if you don't want to use ignite
     def to_tensorboard(self, epoch: int, metrics: List[str]):
 
         self.writer.add_scalar('Train/loss', self.training_state['train_loss'][-1], epoch)
@@ -293,7 +351,7 @@ class RunnerABC:
             test = current_metrics[f'test_{metric}']
             logger.info(f"Test on metric {metric}: {test}")
 
-    def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool=True):
+    def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool = True):
         raise NotImplementedError
 
     def train_and_validate_one_epoch(self):
@@ -312,12 +370,12 @@ class RunnerABC:
         self.model.train()
         num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
         for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Training batches'):
-            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics, batch_index=batch_index, compute_gradient=True)
+            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics,
+                                                        batch_index=batch_index, compute_gradient=True)
 
         self.training_state['train_loss'].append(running_loss)
         for metric in self.metrics.names:
             self.training_state[f"train_{metric}"].append(running_metrics[f"running_{metric}"])
-
 
         # Iterate over validation dataset
         self.dataset.set_split(split='val')
@@ -328,7 +386,8 @@ class RunnerABC:
         self.model.eval()
         num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
         for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Validation batches'):
-            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics, batch_index=batch_index, compute_gradient=False)
+            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics,
+                                                        batch_index=batch_index, compute_gradient=False)
 
         self.training_state['val_loss'].append(running_loss)
         for metric in self.metrics.names:
@@ -354,7 +413,6 @@ class RunnerABC:
                 # self.train_one_epoch()
 
                 self.train_and_validate_one_epoch()
-
 
                 self.to_tensorboard(epoch=epoch, metrics=self.metrics.names)
                 self.log_current_metric(epoch=epoch, metrics=self.metrics.names)
@@ -385,6 +443,8 @@ class RunnerABC:
             self.log_test_metric(metrics=self.metrics.names)
 
     # Methods used for transfer learning
+    # The pattern for updating the optimizer is adapted from this discussion:
+    #  https://discuss.pytorch.org/t/how-the-pytorch-freeze-network-in-some-layers-only-the-rest-of-the-training/7088/8
     def freeze_params(self, to_freeze: List[str]):
         """
         Freeze all parameters from a sublist of named_parameters
@@ -430,7 +490,8 @@ class RunnerABC:
         for name, parameter in self.model.named_parameters():
             if name in to_unfreeze:
                 try:
-                    self.optimizer.add_param_group({'params': parameter})
+                    self.optimizer.add_param_group({
+                                                       'params': parameter})
                 except ValueError as e:
                     logger.info(f"Parameters {name} are already in the optimimzer's list!")
                     logger.info(e)
@@ -443,14 +504,16 @@ class RunnerABC:
         :return:
         """
         # Set the parameters to requires_grad=True
-        logger.info(f"Unfreezing attributes {[{attr: [name for name, parameter in self.model.__getattr__(name=attr).named_parameters()]} for attr in to_unfreeze]}")
+        logger.info(
+            f"Unfreezing attributes {[{attr: [name for name, parameter in self.model.__getattr__(name=attr).named_parameters()]} for attr in to_unfreeze]}")
         # logger.info(f"Unfreezing attributes {[name for attr in to_unfreeze for name, parameter in self.model.__getattr__(name=attr).named_parameters()]}")
         [parameter.requires_grad_(True) for attr in to_unfreeze for name, parameter in self.model.__getattr__(name=attr).named_parameters()]
         # Add those parameters to the optimizer's list of parameters to optimize
         for attr in to_unfreeze:
             for name, parameter in self.model.__getattr__(name=attr).named_parameters():
                 try:
-                    self.optimizer.add_param_group({'params': parameter})
+                    self.optimizer.add_param_group({
+                                                       'params': parameter})
                 except ValueError as e:
                     logger.info(f"Parameters {name} from attribute {attr} are already in the optimimzer's list!")
                     logger.info(e)
@@ -469,6 +532,6 @@ def build_experiment(config: str):
 
 
 if __name__ == "__main__":
-    experiment = "experiments/mlp.json"
+    experiment = "experiments/newsClassifier.json"
     runner = RunnerABC.load_from_project(experiment_file=experiment)
     runner.run_pipeline()
