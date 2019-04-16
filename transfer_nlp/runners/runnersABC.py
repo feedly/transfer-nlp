@@ -128,10 +128,11 @@ class RunnerABC:
 
     # Methods to load the experiment file and convert it into a Runner object that can be used for training
     @classmethod
-    def load_from_project(cls, experiment_file: str):
+    def load_from_project(cls, experiment_file: str, **kwargs: str):
         """
         Instantiate an experiment
         :param experiment_file:
+        :param kwargs: substitution args. it's recommended to use all caps to avoid naming conflicts
         :return:
         """
 
@@ -140,6 +141,13 @@ class RunnerABC:
 
         with open(experiments_path, 'r') as exp:
             experiment = json.load(exp)
+
+        for k in list(experiment.keys()):
+            v = experiment[k]
+
+            if isinstance(v, str):
+                for param_name, param_val in kwargs.items():
+                    experiment[k] = v.replace(param_name, param_val)
 
         return cls(config_args=experiment)
 
