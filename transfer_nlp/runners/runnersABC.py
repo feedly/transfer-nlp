@@ -111,21 +111,12 @@ class RunnerABC:
             self.evaluator.run(self.train_loader)
             metrics = self.evaluator.state.metrics
             logger.info(f"Training Results - Epoch: {trainer.state.epoch} Acc: {metrics['accuracy']}| Loss: {metrics['loss']}")
-            for metric in metrics:
-                self.writer.add_scalar(f"Train {metric}", metrics[metric], self.trainer.state.epoch)
-            if hasattr(self.model, "embedding"):
-                logger.info("Logging embeddings to Tensorboard!")
-                embeddings = self.model.embedding.weight.data
-                metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
-                self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
 
         @self.trainer.on(Events.EPOCH_COMPLETED)
         def log_validation_results(trainer):
             self.evaluator.run(self.val_loader)
             metrics = self.evaluator.state.metrics
             logger.info(f"Validation Results - Epoch: {self.trainer.state.epoch} Acc: {metrics['accuracy']} | Loss: {metrics['loss']}")
-            for metric in metrics:
-                self.writer.add_scalar(f"Validation {metric}", metrics[metric], self.trainer.state.epoch)
 
             self.scheduler.scheduler.step(metrics['loss'])
 

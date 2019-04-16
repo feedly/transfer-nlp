@@ -15,9 +15,9 @@ from typing import Dict
 import torch
 from knockknock import slack_sender
 from ignite.engine import Events
-# from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
-#     GradsScalarHandler, GradsHistHandler
-from ignite.contrib.handlers.tensorboard_logger import *
+from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
+    GradsScalarHandler, GradsHistHandler
+# from ignite.contrib.handlers.tensorboard_logger import *
 
 from transfer_nlp.runners.runnersABC import RunnerABC
 
@@ -64,6 +64,14 @@ class Runner(RunnerABC):
         def end_tensorboard(trainer):
             logger.info("Training completed")
             tb_logger.close()
+
+        @self.trainer.on(Events.EPOCH_COMPLETED)
+        def log_embeddings(trainer):
+            if hasattr(self.model, "embedding"):
+                logger.info("Logging embeddings to Tensorboard!")
+                embeddings = self.model.embedding.weight.data
+                metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
+                self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
 
     def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool = True):
         """
@@ -129,7 +137,7 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/mlp.json'
+    args.config = args.config or 'experiments/newsClassifier.json'
     runner = Runner.load_from_project(experiment_file=args.config)
 
     if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
