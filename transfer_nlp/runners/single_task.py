@@ -61,7 +61,7 @@ class Runner(RunnerABC):
         running_loss += (loss_batch - running_loss) / (batch_index + 1)
 
         if compute_gradient:
-            loss.backward()
+            loss.backward()  #TODO: See if we want to optimize loss or loss + penalty
             # Gradient clipping
             if hasattr(self, 'gradient_clipping'):
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)

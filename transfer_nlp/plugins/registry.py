@@ -282,7 +282,7 @@ class Model(nn.Module):
         return self.forward(*input, **kwargs)
 
 
-class Loss:
+class LossFunction:
 
     def __init__(self, config_args: Dict):
         """

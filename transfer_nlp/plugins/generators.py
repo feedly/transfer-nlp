@@ -11,18 +11,19 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
 from transfer_nlp.plugins.registry import register_batch_generator
-
+#TODO: create a simpler abstraction for generators that fit well into ignite
 
 @register_batch_generator
 def generate_batches(dataset: Dataset, batch_size: int, shuffle: bool=True, drop_last: bool=True, device: str='cpu') -> Dict:
 
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last)
+    return dataloader
 
-    for data_dict in dataloader:
-        out_data_dict = {}
-        for name, tensor in data_dict.items():
-            out_data_dict[name] = data_dict[name].to(device)
-        yield out_data_dict
+    # for data_dict in dataloader:
+    #     out_data_dict = {}
+    #     for name, tensor in data_dict.items():
+    #         out_data_dict[name] = data_dict[name].to(device)
+    #     yield out_data_dict
 
 
 @register_batch_generator

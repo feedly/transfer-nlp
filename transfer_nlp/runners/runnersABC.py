@@ -18,20 +18,23 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, List, Any
-from tqdm import tqdm
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from ignite.contrib.handlers.tqdm_logger import ProgressBar
+from ignite.engine import Events
+from ignite.metrics import Accuracy, Loss
 from tensorboardX import SummaryWriter
+from tqdm import tqdm
 
 from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
-from transfer_nlp.plugins.registry import Scheduler, Loss, Model, Optimizer, Data, Generator, Metrics, Regularizer
+from transfer_nlp.plugins.registry import Scheduler, LossFunction, Model, Optimizer, Data, Generator, Metrics, Regularizer
+from transfer_nlp.runners.trainers import create_supervised_trainer, create_supervised_evaluator
 from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state, update_train_state
-import transfer_nlp
 
 name = 'transfer_nlp.runners.runnersABC'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -53,7 +56,7 @@ class RunnerABC:
         self.mask_index: int = None
         self.epoch_index: int = 0
         self.writer = SummaryWriter(log_dir=self.config_args['logs'])
-        self.loss: Loss = None
+        self.loss: LossFunction = None
         self.model: nn.Module = None
         self.generator: Generator = None
         self.metrics: Metrics = None
@@ -78,6 +81,61 @@ class RunnerABC:
             print('Resuming...')
 
         self.instantiate()
+
+        # Setup
+        self.custom_metrics = {
+            "accuracy": Accuracy(),
+            "loss": Loss(self.loss.loss),
+        }
+        self.trainer = create_supervised_trainer(experiment=self)
+        self.evaluator = create_supervised_evaluator(experiment=self, metrics=self.custom_metrics)
+
+        self.dataset.set_split(split='train')
+        self.train_loader = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'],
+                                                      device=self.config_args['device'])
+
+        self.dataset.set_split(split='val')
+        self.val_loader = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'],
+                                                    device=self.config_args['device'])
+
+        self.dataset.set_split(split='test')
+        self.test_loader = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'],
+                                                     device=self.config_args['device'])
+
+        pbar = ProgressBar()
+        pbar.attach(self.trainer, ['running_loss'])
+        pbar.attach(self.evaluator)
+
+        @self.trainer.on(Events.EPOCH_COMPLETED)
+        def log_training_results(trainer):
+            self.evaluator.run(self.train_loader)
+            metrics = self.evaluator.state.metrics
+            logger.info(f"Training Results - Epoch: {trainer.state.epoch} Acc: {metrics['accuracy']}| Loss: {metrics['loss']}")
+            for metric in metrics:
+                self.writer.add_scalar(f"Train {metric}", metrics[metric], self.trainer.state.epoch)
+            if hasattr(self.model, "embedding"):
+                logger.info("Logging embeddings to Tensorboard!")
+                embeddings = self.model.embedding.weight.data
+                metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
+                self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
+
+
+        @self.trainer.on(Events.EPOCH_COMPLETED)
+        def log_validation_results(trainer):
+            self.evaluator.run(self.val_loader)
+            metrics = self.evaluator.state.metrics
+            logger.info(f"Validation Results - Epoch: {self.trainer.state.epoch} Acc: {metrics['accuracy']} | Loss: {metrics['loss']}")
+            for metric in metrics:
+                self.writer.add_scalar(f"Validation {metric}", metrics[metric], self.trainer.state.epoch)
+
+        @self.trainer.on(Events.COMPLETED)
+        def log_test_results(trainer):
+            self.evaluator.run(self.test_loader)
+            metrics = self.evaluator.state.metrics
+            logger.info(f"Test Results - Epoch: {self.trainer.state.epoch} Acc: {metrics['accuracy']} | Loss: {metrics['loss']}")
+
+    def run_pipeline(self):
+        self.trainer.run(self.train_loader, max_epochs=self.config_args['num_epochs'])
 
     @classmethod
     def load_from_project(cls, experiment_file: str):
@@ -161,7 +219,7 @@ class RunnerABC:
         # Model
         self.model: nn.Module = Model.from_config(config_args=self.config_args)
         # Loss
-        self.loss: Loss = Loss(config_args=self.config_args)
+        self.loss: LossFunction = LossFunction(config_args=self.config_args)
         # Optimizer
         self.config_args['params'] = [p for p in self.model.parameters() if p.requires_grad]   # parameters that will be optimized by the optimizer
         self.optimizer: Optimizer = Optimizer(config_args=self.config_args).optimizer
@@ -326,23 +384,6 @@ class RunnerABC:
             # self.do_test()
             self.log_test_metric(metrics=self.metrics.names)
 
-    # # we want to freeze the fc2 layer this time: only train fc1 and fc3
-    # net.fc2.weight.requires_grad = False
-    # net.fc2.bias.requires_grad = False
-    #
-    # # passing only those parameters that explicitly requires grad
-    # optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=0.1)
-    #
-    # # then do the normal execution of loss calculation and backward propagation
-    #
-    # #  unfreezing the fc2 layer for extra tuning if needed
-    # net.fc2.weight.requires_grad = True
-    # net.fc2.bias.requires_grad = True
-    #
-    # # add the unfrozen fc2 weight to the current optimizer
-    # optimizer.add_param_group({
-    #                               'params': net.fc2.parameters()})
-
     # Methods used for transfer learning
     def freeze_params(self, to_freeze: List[str]):
         """
@@ -428,5 +469,6 @@ def build_experiment(config: str):
 
 
 if __name__ == "__main__":
-    experiment = "mlp.json"
-    runner = build_experiment(config=experiment)
+    experiment = "experiments/mlp.json"
+    runner = RunnerABC.load_from_project(experiment_file=experiment)
+    runner.run_pipeline()
