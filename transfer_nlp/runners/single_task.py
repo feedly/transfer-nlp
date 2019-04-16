@@ -13,12 +13,12 @@ import logging
 from typing import Dict
 
 import torch
-from knockknock import slack_sender
-from ignite.engine import Events
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
     GradsScalarHandler, GradsHistHandler
-from ignite.handlers import ModelCheckpoint
+from ignite.engine import Events
 from ignite.handlers import EarlyStopping
+from ignite.handlers import ModelCheckpoint, TerminateOnNan
+from knockknock import slack_sender
 
 from transfer_nlp.runners.runnersABC import RunnerABC
 
@@ -85,6 +85,9 @@ class Runner(RunnerABC):
         handler = EarlyStopping(patience=10, score_function=score_function, trainer=self.trainer)
         # Note: the handler is attached to an *Evaluator* (runs one epoch on validation dataset).
         self.evaluator.add_event_handler(Events.COMPLETED, handler)
+
+        # Terminate if NaNs are created after an iteration
+        self.trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())
 
     def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool = True):
         """

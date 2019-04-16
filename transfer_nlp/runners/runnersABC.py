@@ -259,7 +259,7 @@ class RunnerABC:
             if hasattr(self.loss.loss, 'mask') and self.mask_index:
                 loss_params['mask_index'] = self.mask_index
 
-            loss = self.loss.loss(**loss_params)
+            loss = self.loss.loss(**loss_params) / accumulation_steps
             loss.backward()
 
             if engine.state.iteration % accumulation_steps == 0:
