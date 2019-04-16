@@ -175,8 +175,11 @@ class RunnerABC:
                                                                              self.config_args['vectorizer_file'])
         else:
             # create dataset and vectorizer
-            self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer(self.config_args['data_csv'])
-            self.dataset.save_vectorizer(self.config_args['vectorizer_file'])
+            if self.config_args.get('load_from_line_file', None):
+                self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer_from_file(data_file=self.config_args['data_file'])
+            else:
+                self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer(self.config_args['data_csv'])
+                self.dataset.save_vectorizer(self.config_args['vectorizer_file'])
         self.vectorizer = self.dataset.get_vectorizer()
 
         # Word Embeddings
