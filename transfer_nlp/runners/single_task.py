@@ -15,6 +15,9 @@ from typing import Dict
 import torch
 from knockknock import slack_sender
 from ignite.engine import Events
+# from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
+#     GradsScalarHandler, GradsHistHandler
+from ignite.contrib.handlers.tensorboard_logger import *
 
 from transfer_nlp.runners.runnersABC import RunnerABC
 
@@ -29,10 +32,38 @@ class Runner(RunnerABC):
 
         super().__init__(config_args=config_args)
 
-        # To add custom events in addition to those available in the RunnerABC class, just do:
+        # We show here how to add some events: tensorboard logs!
+        tb_logger = TensorboardLogger(log_dir=self.config_args['logs'])
+        tb_logger.attach(self.trainer,
+                         log_handler=OutputHandler(tag="training", output_transform=lambda loss: {
+                             'loss': loss}),
+                         event_name=Events.ITERATION_COMPLETED)
+        tb_logger.attach(self.evaluator,
+                         log_handler=OutputHandler(tag="validation",
+                                                   metric_names=["loss", "accuracy"],
+                                                   another_engine=self.trainer),
+                         event_name=Events.EPOCH_COMPLETED)
+        tb_logger.attach(self.trainer,
+                         log_handler=OptimizerParamsHandler(self.optimizer),
+                         event_name=Events.ITERATION_STARTED)
+        tb_logger.attach(self.trainer,
+                         log_handler=WeightsScalarHandler(self.model),
+                         event_name=Events.ITERATION_COMPLETED)
+        tb_logger.attach(self.trainer,
+                         log_handler=WeightsHistHandler(self.model),
+                         event_name=Events.EPOCH_COMPLETED)
+        tb_logger.attach(self.trainer,
+                         log_handler=GradsScalarHandler(self.model),
+                         event_name=Events.ITERATION_COMPLETED)
+        tb_logger.attach(self.trainer,
+                         log_handler=GradsHistHandler(self.model),
+                         event_name=Events.EPOCH_COMPLETED)
+
+        # This is important to close the tensorboard file logger
         @self.trainer.on(Events.COMPLETED)
-        def custom_event(trainer):
+        def end_tensorboard(trainer):
             logger.info("Training completed")
+            tb_logger.close()
 
     def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool = True):
         """
