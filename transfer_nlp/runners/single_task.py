@@ -56,9 +56,9 @@ class Runner(RunnerABC):
         tb_logger.attach(self.trainer,
                          log_handler=GradsScalarHandler(self.model),
                          event_name=Events.ITERATION_COMPLETED)
-        tb_logger.attach(self.trainer,
-                         log_handler=GradsHistHandler(self.model),
-                         event_name=Events.EPOCH_COMPLETED)
+        # tb_logger.attach(self.trainer,
+        #                  log_handler=GradsHistHandler(self.model),
+        #                  event_name=Events.EPOCH_COMPLETED)
 
         # This is important to close the tensorboard file logger
         @self.trainer.on(Events.COMPLETED)

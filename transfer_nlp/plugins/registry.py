@@ -315,33 +315,35 @@ class LossFunction:
 
 class Optimizer:
 
-    def __init__(self, config_args: Dict):
+    def __init__(self, config_args: Dict=None):
         """
         :param config_args: Contains the experiment configuration, with all necessary hyperparameters
         """
-        self.config_args: Dict = config_args
-        try:
-            self.name: str = self.config_args['Optimizer']['optimizerName']
-            self.params: List[str] = self.config_args['Optimizer']['optimizerParams']
-        except KeyError as k:
-            raise KeyError(f"{k} is missing from the config file")
-
-        existing = list(OPTIMIZER_CLASSES.keys())
-
-        optimizer_params = {}
-        for param in self.params:
+        if config_args:
+            self.config_args: Dict = config_args
             try:
-                # Same comment as for model definition
-                optimizer_params[param] = self.config_args[param]
+                self.name: str = self.config_args['Optimizer']['optimizerName']
+                self.params: List[str] = self.config_args['Optimizer']['optimizerParams']
             except KeyError as k:
-                raise KeyError(f"{k} is not a parameter for {self.name}, Please check your implementation and experiment config file match")
+                raise KeyError(f"{k} is missing from the config file")
 
-        try:
-            self.optimizer = OPTIMIZER_CLASSES[self.name](**optimizer_params)
-        except KeyError as k:
-            raise KeyError(
-                f"{k} is not among the registered {self.__class__.__name__}: {existing}. "
-                f"Please check your implementation and experiment config file match")
+            existing = list(OPTIMIZER_CLASSES.keys())
+
+            optimizer_params = {}
+            for param in self.params:
+                try:
+                    # Same comment as for model definition
+                    optimizer_params[param] = self.config_args[param]
+                except KeyError as k:
+                    raise KeyError(f"{k} is not a parameter for {self.name}, Please check your implementation and experiment config file match")
+
+            try:
+                self.optimizer = OPTIMIZER_CLASSES[self.name](**optimizer_params)
+            except KeyError as k:
+                raise KeyError(
+                    f"{k} is not among the registered {self.__class__.__name__}: {existing}. "
+                    f"Please check your implementation and experiment config file match")
+
 
 
 class Scheduler:
