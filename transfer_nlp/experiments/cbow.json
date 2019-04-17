@@ -1,5 +1,5 @@
 {
-  "data_csv": "/Users/petermartigny/work/experiments/nlp/data/books/frankenstein_with_splits.csv",
+  "dataset": "/Users/petermartigny/work/experiments/nlp/data/books/frankenstein_with_splits.csv",
   "vectorizer_file": "vectorizerCBOW.json",
   "model_state_file": "modelCBOW.pth",
   "save_dir": "/Users/petermartigny/work/experiments/nlp/models/cbow",

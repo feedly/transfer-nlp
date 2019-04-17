@@ -1,5 +1,5 @@
 {
-  "data_csv": "/Users/petermartigny/work/experiments/nlp/data/ag_news/news_with_splits.csv",
+  "dataset": "/Users/petermartigny/work/experiments/nlp/data/ag_news/news_with_splits.csv",
   "vectorizer_file": "vectorizer.json",
   "model_state_file": "model.pth",
   "save_dir": "/Users/petermartigny/work/experiments/nlp/models/ag_news",

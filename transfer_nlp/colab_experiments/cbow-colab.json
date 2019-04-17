@@ -1,5 +1,5 @@
 {
-  "data_csv": "/content/transfer-nlp/data/books/frankenstein_with_splits.csv",
+  "dataset": "/content/transfer-nlp/data/books/frankenstein_with_splits.csv",
   "vectorizer_file": "vectorizerCBOW.json",
   "model_state_file": "modelCBOW.pth",
   "save_dir": "/content/transfer-nlp/models/cbow",

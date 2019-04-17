@@ -1,5 +1,5 @@
 {
-  "data_csv": "/content/transfer-nlp/data/ag_news/news_with_splits.csv",
+  "dataset": "/content/transfer-nlp/data/ag_news/news_with_splits.csv",
   "vectorizer_file": "vectorizer.json",
   "model_state_file": "model.pth",
   "save_dir": "/content/transfer-nlp/models/ag_news",

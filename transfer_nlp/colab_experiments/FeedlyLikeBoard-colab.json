@@ -1,5 +1,5 @@
 {
-  "data_csv": "/content/transfer-nlp/data/feedly/feedlyLikeBoard.csv",
+  "dataset": "/content/transfer-nlp/data/feedly/feedlyLikeBoard.csv",
   "vectorizer_file": "vectorizer.json",
   "model_state_file": "model.pth",
   "save_dir": "/content/transfer-nlp/models/feedly",

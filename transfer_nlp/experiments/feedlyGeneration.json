@@ -1,5 +1,5 @@
 {
-  "data_csv": "/Users/petermartigny/work/experiments/nlp/data/feedly_data.csv",
+  "dataset": "/Users/petermartigny/work/experiments/nlp/data/feedly_data.csv",
   "vectorizer_file": "vectorizerFeedlyGeneration.json",
   "model_state_file": "modelFeedlyGeneration.pth",
   "save_dir": "/Users/petermartigny/work/experiments/nlp/models/feedly_generation",

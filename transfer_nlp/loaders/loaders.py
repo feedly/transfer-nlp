@@ -70,7 +70,7 @@ class CustomDataset(Dataset):
         return cls(dataset_df=dataset_df, vectorizer=vectorizer)
 
     @classmethod
-    def load_dataset_and_make_vectorizer(cls, dataset_csv: str) -> 'CustomDataset':
+    def load_dataset_and_make_vectorizer(cls, dataset: str) -> 'CustomDataset':
 
         raise NotImplementedError
 
@@ -91,9 +91,9 @@ class ReviewsDataset(CustomDataset):
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
 
     @classmethod
-    def load_dataset_and_make_vectorizer(cls, dataset_csv: str) -> CustomDataset:
+    def load_dataset_and_make_vectorizer(cls, dataset: str) -> CustomDataset:
 
-        dataset_df = pd.read_csv(filepath_or_buffer=dataset_csv)
+        dataset_df = pd.read_csv(filepath_or_buffer=dataset)
         train_df = dataset_df[dataset_df.split == 'train']
         return cls(dataset_df=dataset_df, vectorizer=ReviewsVectorizer.from_dataframe(review_df=train_df))
 
@@ -127,9 +127,9 @@ class SurnamesDataset(CustomDataset):
         self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
 
     @classmethod
-    def load_dataset_and_make_vectorizer(cls, dataset_csv: Path) -> CustomDataset:
+    def load_dataset_and_make_vectorizer(cls, dataset: Path) -> CustomDataset:
 
-        dataset_df = pd.read_csv(filepath_or_buffer=dataset_csv)
+        dataset_df = pd.read_csv(filepath_or_buffer=dataset)
         train_df = dataset_df[dataset_df.split == 'train']
 
         return cls(dataset_df=dataset_df, vectorizer=SurnamesVectorizer.from_dataframe(train_df))
@@ -167,8 +167,8 @@ class SurnamesDatasetCNN(CustomDataset):
         self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
 
     @classmethod
-    def load_dataset_and_make_vectorizer(cls, dataset_csv: Path) -> CustomDataset:
-        dataset_df = pd.read_csv(filepath_or_buffer=dataset_csv)
+    def load_dataset_and_make_vectorizer(cls, dataset: Path) -> CustomDataset:
+        dataset_df = pd.read_csv(filepath_or_buffer=dataset)
         train_df = dataset_df[dataset_df.split == 'train']
         return cls(dataset_df=dataset_df, vectorizer=SurnamesVectorizerCNN.from_dataframe(train_df))
 
@@ -203,9 +203,9 @@ class CBOWDataset(CustomDataset):
         self._max_seq_length = max(map(measure_len, dataset_df.context))
 
     @classmethod
-    def load_dataset_and_make_vectorizer(cls, dataset_csv: Path) -> CustomDataset:
+    def load_dataset_and_make_vectorizer(cls, dataset: Path) -> CustomDataset:
 
-        dataset_df = pd.read_csv(filepath_or_buffer=dataset_csv)
+        dataset_df = pd.read_csv(filepath_or_buffer=dataset)
         train_cbow_df = dataset_df[dataset_df.split == 'train']
         return cls(dataset_df, CBOWVectorizer.from_dataframe(train_cbow_df))
 
@@ -396,9 +396,9 @@ class NMTDataset(CustomDataset):
         super().__init__(dataset_df=dataset_df, vectorizer=vectorizer)
 
     @classmethod
-    def load_dataset_and_make_vectorizer(cls, dataset_csv: Path):
+    def load_dataset_and_make_vectorizer(cls, dataset: Path):
 
-        dataset_df = pd.read_csv(filepath_or_buffer=dataset_csv)
+        dataset_df = pd.read_csv(filepath_or_buffer=dataset)
         train_subset = dataset_df[dataset_df.split == 'train']
         return cls(dataset_df=dataset_df, vectorizer=NMTVectorizer.from_dataframe(train_subset))
 

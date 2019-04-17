@@ -1,5 +1,5 @@
 {
-  "data_csv": "/content/transfer-nlp/data/surnames/surnames_with_splits.csv",
+  "dataset": "/content/transfer-nlp/data/surnames/surnames_with_splits.csv",
   "vectorizer_file": "vectorizerRNN.json",
   "model_state_file": "modelRNN.pth",
   "save_dir": "/content/transfer-nlp/models/surnames",

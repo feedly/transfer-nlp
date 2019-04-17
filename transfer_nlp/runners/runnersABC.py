@@ -180,15 +180,15 @@ class RunnerABC:
         logger.info("Loading the data and getting the vectorizer ready")
         if self.config_args['reload_from_files']:
             # training from a checkpoint
-            self.dataset = self.dataset_cls.load_dataset_and_load_vectorizer(self.config_args['data_csv'],
+            self.dataset = self.dataset_cls.load_dataset_and_load_vectorizer(self.config_args['dataset'],
                                                                              self.config_args['vectorizer_file'])
         else:
-            # create dataset and vectorizer
-            if self.config_args.get('load_from_line_file', None):
-                self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer_from_file(data_file=self.config_args['data_file'])
-            else:
-                self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer(self.config_args['data_csv'])
-                self.dataset.save_vectorizer(self.config_args['vectorizer_file'])
+            # # create dataset and vectorizer
+            # if self.config_args.get('load_from_line_file', None):
+            #     self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer_from_file(data_file=self.config_args['data_file'])
+            # else:
+            self.dataset = self.dataset_cls.load_dataset_and_make_vectorizer(self.config_args['dataset'])
+            self.dataset.save_vectorizer(self.config_args['vectorizer_file'])
         self.vectorizer = self.dataset.get_vectorizer()
 
         # Word Embeddings

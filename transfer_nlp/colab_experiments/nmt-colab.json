@@ -1,5 +1,5 @@
 {
-  "data_csv": "/content/transfer-nlp/data/nmt/simplest_eng_fra.csv",
+  "dataset": "/content/transfer-nlp/data/nmt/simplest_eng_fra.csv",
   "vectorizer_file": "vectorizerNMT.json",
   "model_state_file": "modelNMT.pth",
   "save_dir": "/content/transfer-nlp/models/nmt/nmt_luong_no_sampling",

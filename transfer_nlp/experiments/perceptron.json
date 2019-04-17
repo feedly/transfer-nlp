@@ -1,5 +1,5 @@
 {
-  "data_csv": "/Users/petermartigny/work/experiments/nlp/data/yelp/reviews_with_splits_lite.csv",
+  "dataset": "/Users/petermartigny/work/experiments/nlp/data/yelp/reviews_with_splits_lite.csv",
   "vectorizer_file": "vectorizer.json",
   "model_state_file": "model.pth",
   "save_dir": "/Users/petermartigny/work/experiments/nlp/models/yelp/",
