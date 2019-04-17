@@ -3,6 +3,7 @@ from typing import Dict, List
 
 import numpy as np
 from annoy import AnnoyIndex
+from smart_open import open
 from tqdm import tqdm
 
 

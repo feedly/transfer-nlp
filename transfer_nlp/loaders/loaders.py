@@ -11,6 +11,7 @@ from typing import Dict, Any
 
 import pandas as pd
 import torch
+from smart_open import open
 from torch.utils.data import Dataset
 
 from transfer_nlp.common.tokenizers import CustomTokenizer, CharacterTokenizer

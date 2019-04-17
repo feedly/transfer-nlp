@@ -25,6 +25,7 @@ from ignite.engine import Events
 from ignite.engine.engine import Engine
 from ignite.metrics import Accuracy, Loss
 from ignite.utils import convert_tensor
+from smart_open import open
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
 

@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
+from smart_open import open
 from tqdm import tqdm
 
 name = 'transfer_nlp.runners.single_task'
