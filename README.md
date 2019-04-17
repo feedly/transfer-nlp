@@ -1,4 +1,5 @@
-# transfer-nlp
+<img src="data/images/logo4.png" width="300">
+
 Welcome to the transfer-nlp library, a framework built on top of PyTorch whose goal is to progressively achieve 2 kinds of Transfer:
 
 - easy transfer of code --> the framework should be modular enough so that you don't have to re-write everything each time you experiment with a new architecture / a new kind of task
