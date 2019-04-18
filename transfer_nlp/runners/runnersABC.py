@@ -257,8 +257,8 @@ class RunnerABC:
             loss.backward()
 
             if engine.state.iteration % accumulation_steps == 0:
-                self.optimizer.zero_grad()
                 self.optimizer.step()
+                self.optimizer.zero_grad()
 
             return loss.item()
 
