@@ -7,10 +7,14 @@ The Registry pattern used here is inspired from this post: https://realpython.co
 from typing import Dict, List
 from typing import Dict, List
 import logging
+import json
+from pathlib import Path
 
 import torch.nn as nn
 import torch.optim as optim
 import inspect
+
+from transfer_nlp.loaders.vectorizers import Vectorizer
 
 name = 'transfer_nlp.plugins.registry'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -198,6 +202,21 @@ class Data:
             raise KeyError(
                 f"{k} is not among the registered {self.__class__.__name__}: {existing}. "
                 f"Please check your implementation and experiment config file match")
+
+    @staticmethod
+    def load_vectorizer_only(config_args: Dict) -> Vectorizer:
+
+        name = config_args['dataset_cls']
+        existing = list(DATASET_CLASSES.keys())
+        try:
+            dataset = DATASET_CLASSES[name]
+        except KeyError as k:
+            raise KeyError(
+                f"{k} is not among the registered {self.__class__.__name__}: {existing}. "
+                f"Please check your implementation and experiment config file match")
+
+        vectorizer_filepath = config_args['vectorizer_file']
+        return dataset.load_vectorizer_only(vectorizer_filepath=vectorizer_filepath)
 
 
 class Model(nn.Module):

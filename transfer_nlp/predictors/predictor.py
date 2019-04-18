@@ -1,19 +1,18 @@
-from typing import Dict
+from typing import Dict, List
 
 import torch
 
-from transfer_nlp.loaders.loaders import CustomDataset
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.registry import Model, Data
 
 
 class Predictor:
-
     PREDICTOR_CLASSES: {}
 
-    def __init__(self, model: Model, data_loader: CustomDataset):
+    def __init__(self, model: Model, vectorizer: Vectorizer):
         self.model: Model = model
         self.model.eval()
-        self.data_loader: CustomDataset = data_loader
+        self.vectorizer: Vectorizer = vectorizer
 
     def json_to_data(self, input_json: Dict):
         """
@@ -56,12 +55,11 @@ class Predictor:
 
         return self.output_to_json(self.predict(self.json_to_data(input_json=input_json)))
 
-
     @classmethod
     def from_params(cls, config_args: Dict):
         model = Model.from_config(config_args=config_args)  # This should load the model object as well as pre-trained model weights
-        data_loader = Data.from_config(config_args=config_args)  # Improve design of Data to be able to do this
-        return cls(model=model, data_loader=data_loader)
+        vectorizer = Data.load_vectorizer_only(config_args=config_args)  # Improve design of Data to be able to do this
+        return cls(model=model, vectorizer=vectorizer)
 
 
 def register_predictor(predictor_class):
@@ -76,13 +74,16 @@ def register_predictor(predictor_class):
 
 @register_predictor
 class MyPredictor(Predictor):
+    """
+    Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
+    """
 
-    def __init__(self, model: Model, data_loader: CustomDataset):
-        super().__init__(model=model, data_loader=data_loader)
+    def __init__(self, model: Model, vectorizer: Vectorizer):
+        super().__init__(model=model, vectorizer=vectorizer)
 
     def json_to_data(self, input_example: Dict):
+        return input_example['inputs']
 
-
-
-
-
+    def output_to_json(self, outputs: List):
+        return {
+            "outputs": outputs}
