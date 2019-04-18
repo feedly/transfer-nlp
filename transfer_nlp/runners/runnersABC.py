@@ -242,10 +242,6 @@ class RunnerABC:
         def _update(engine, batch):
 
             self.model.train()
-
-            if engine.state.iteration % accumulation_steps == 0:
-                self.optimizer.zero_grad()
-
             batch = prepare_batch(batch, device=self.config_args['device'], non_blocking=non_blocking)
             model_inputs = {inp: batch[inp] for inp in self.model.inputs_names}
             y_pred = self.model(**model_inputs)
@@ -261,6 +257,7 @@ class RunnerABC:
             loss.backward()
 
             if engine.state.iteration % accumulation_steps == 0:
+                self.optimizer.zero_grad()
                 self.optimizer.step()
 
             return loss.item()
