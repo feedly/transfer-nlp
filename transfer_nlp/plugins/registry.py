@@ -5,6 +5,7 @@ The Registry pattern used here is inspired from this post: https://realpython.co
 """
 
 from typing import Dict, List
+from typing import Dict, List
 import logging
 
 import torch.nn as nn
@@ -280,6 +281,14 @@ class Model(nn.Module):
 
     def forward(self, *input, **kwargs):
         return self.forward(*input, **kwargs)
+
+    def decode(self, output: Dict) -> Dict:
+        """
+        This method takes the output of the forward function, typically logits, and allows to run whatever decoding you'd like
+        :param output:
+        :return:
+        """
+        return output
 
 
 class LossFunction:
