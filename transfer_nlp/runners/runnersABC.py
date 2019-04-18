@@ -16,7 +16,6 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Any
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -27,17 +26,24 @@ from ignite.metrics import Accuracy, Loss
 from ignite.utils import convert_tensor
 from smart_open import open
 from tensorboardX import SummaryWriter
-from tqdm import tqdm
 
 from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.registry import Scheduler, LossFunction, Model, Optimizer, Data, Generator, Metrics, Regularizer
-from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state, update_train_state
+from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
 
 name = 'transfer_nlp.runners.runnersABC'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
+
+
+def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
+    """Prepare batch for training: pass to a device with options.
+
+    """
+    result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
+    return result
 
 
 class RunnerABC:
@@ -61,23 +67,10 @@ class RunnerABC:
         self.metrics: Metrics = None
         if self.config_args.get('Regularizer'):
             self.regularizer: Regularizer = None
-        else:
-            logger.info("Are you sure you don't want to use a regularizer? y / n")
-            response = input()
-            if response == 'n':
-                exit()
-            print('Resuming...')
+
         if self.config_args.get('gradient_clipping'):
             self.gradient_clipping = self.config_args['gradient_clipping']['value']
             logger.info(f"Clipping gradients at value {self.gradient_clipping}")
-        else:
-            logger.info("Are you sure you don't want to use a gradient clipping? y / n")
-            response = input()
-            if response == 'n':
-                logger.info("which value?")
-                response = input()
-                self.gradient_clipping = float(response)
-            print('Resuming...')
 
         self.instantiate()
 
@@ -237,13 +230,6 @@ class RunnerABC:
             self.regularizer: Regularizer = Regularizer(config_args=self.config_args)
             logger.info(f"Using regularizer {self.regularizer}")
 
-    def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
-        """Prepare batch for training: pass to a device with options.
-
-        """
-        result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
-        return result
-
     def create_supervised_trainer(self, prepare_batch=_prepare_batch, non_blocking=False):
 
         if self.config_args['device']:
@@ -303,156 +289,6 @@ class RunnerABC:
 
     def run_pipeline(self):
         self.trainer.run(self.train_loader, max_epochs=self.config_args['num_epochs'])
-
-    # Methods used if you don't want to use ignite
-    def to_tensorboard(self, epoch: int, metrics: List[str]):
-
-        self.writer.add_scalar('Train/loss', self.training_state['train_loss'][-1], epoch)
-        self.writer.add_scalar('Val/loss', self.training_state['val_loss'][-1], epoch)
-
-        for metric in metrics:
-
-            if f"train_{metric}" in self.training_state and f"val_{metric}" in self.training_state:
-                self.writer.add_scalar(f"Train/{metric}", self.training_state.get(f"train_{metric}")[-1], epoch)
-                self.writer.add_scalar(f"Val/{metric}", self.training_state.get(f"val_{metric}")[-1], epoch)
-
-            else:
-                raise NotImplementedError(f"Error {metric} is not implemented yet")
-
-        if hasattr(self.model, "embedding"):
-            logger.info("Logging embeddings to Tensorboard!")
-            embeddings = self.model.embedding.weight.data
-            metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
-            self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=epoch)
-
-    def log_current_metric(self, epoch: int, metrics: List[str]):
-
-        current_metrics = {
-            'tl': self.training_state['train_loss'][-1],
-            'vl': self.training_state['val_loss'][-1]}
-
-        for metric in metrics:
-
-            if f"train_{metric}" in self.training_state and f"val_{metric}" in self.training_state:
-                current_metrics[f"train_{metric}"] = self.training_state[f"train_{metric}"][-1]
-                current_metrics[f"val_{metric}"] = self.training_state[f"val_{metric}"][-1]
-            else:
-                raise NotImplementedError(f"Error {metric} is not implemented yet")
-        current_metrics = {key: np.round(value, 3) for key, value in current_metrics.items()}
-
-        logger.info(f"Epoch {epoch}: train loss: {current_metrics['tl']} / val loss: {current_metrics['vl']}")
-        for metric in metrics:
-            train = current_metrics[f'train_{metric}']
-            val = current_metrics[f'val_{metric}']
-            logger.info(f"Metric {metric} --> Train: {train} / Val: {val}")
-
-    def log_test_metric(self, metrics: List[str]):
-
-        current_metrics = {
-            'tl': self.training_state['test_loss']}
-
-        for metric in metrics:
-            if f"test_{metric}" in self.training_state:
-                current_metrics[f"test_{metric}"] = self.training_state[f"test_{metric}"][-1]
-            else:
-                raise NotImplementedError(f"Error {metric} is not implemented yet")
-        current_metrics = {key: np.round(value, 3) for key, value in current_metrics.items()}
-
-        logger.info(f"Test loss: {current_metrics['tl']}")
-        for metric in metrics:
-            test = current_metrics[f'test_{metric}']
-            logger.info(f"Test on metric {metric}: {test}")
-
-    def update(self, batch_dict: Dict, running_loss: float, batch_index: int, running_metrics: Dict, compute_gradient: bool = True):
-        raise NotImplementedError
-
-    def train_and_validate_one_epoch(self):
-
-        self.epoch_index += 1
-        # sample_probability = (20 + self.epoch_index) / self.config_args['num_epochs']  # TODO: include this into the NMT training part
-
-        self.training_state['epoch_index'] += 1
-
-        # Set the dataset object to train mode such that the dataset used is the training data
-        self.dataset.set_split(split='train')
-        batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
-        running_loss = 0
-        running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
-        # Set the model object to train mode (torch optimizes the parameters)
-        self.model.train()
-        num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
-        for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Training batches'):
-            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics,
-                                                        batch_index=batch_index, compute_gradient=True)
-
-        self.training_state['train_loss'].append(running_loss)
-        for metric in self.metrics.names:
-            self.training_state[f"train_{metric}"].append(running_metrics[f"running_{metric}"])
-
-        # Iterate over validation dataset
-        self.dataset.set_split(split='val')
-        batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
-        running_loss = 0
-        running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
-        # Set the model object to val mode (torch does not optimize the parameters)
-        self.model.eval()
-        num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
-        for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Validation batches'):
-            running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics,
-                                                        batch_index=batch_index, compute_gradient=False)
-
-        self.training_state['val_loss'].append(running_loss)
-        for metric in self.metrics.names:
-            self.training_state[f"val_{metric}"].append(running_metrics[f"running_{metric}"])
-
-        self.training_state = update_train_state(config_args=self.config_args, model=self.model,
-                                                 train_state=self.training_state)
-        self.scheduler.scheduler.step(self.training_state['val_loss'][-1])
-
-    def run(self, test_at_the_end: bool = False):
-        """
-        Training loop
-        :return:
-        """
-
-        # Train/Val loop
-        logger.info("Entering the training loop...")
-
-        try:
-            for epoch in range(self.config_args['num_epochs']):
-
-                logger.info(f"Epoch {epoch + 1}/{self.config_args['num_epochs']}")
-                # self.train_one_epoch()
-
-                self.train_and_validate_one_epoch()
-
-                self.to_tensorboard(epoch=epoch, metrics=self.metrics.names)
-                self.log_current_metric(epoch=epoch, metrics=self.metrics.names)
-                if self.training_state['stop_early']:
-                    break
-
-        except KeyboardInterrupt:
-            logger.info("Leaving training phase early (Action taken by user)")
-
-        # Optional testing phase [Not a good practice during development time, use this only when you are sure of your modelling decisions!]
-        if test_at_the_end:
-
-            logger.info("Entering the test phase...")
-
-            self.dataset.set_split(split='test')
-            batch_generator = self.generator.generator(dataset=self.dataset, batch_size=self.config_args['batch_size'], device=self.config_args['device'])
-            num_batch = self.dataset.get_num_batches(batch_size=self.config_args['batch_size'])
-            running_loss = 0
-            running_metrics = {f"running_{metric}": 0 for metric in self.metrics.names}
-            self.model.eval()
-            for batch_index, batch_dict in tqdm(enumerate(batch_generator), total=num_batch, desc='Test batches'):
-                running_loss, running_metrics = self.update(batch_dict=batch_dict, running_loss=running_loss, running_metrics=running_metrics,
-                                                            batch_index=batch_index, compute_gradient=False)
-            self.training_state['test_loss'] = running_loss
-            for metric in self.metrics.names:
-                self.training_state[f"test_{metric}"].append(running_metrics[f"running_{metric}"])
-            # self.do_test()
-            self.log_test_metric(metrics=self.metrics.names)
 
     # Methods used for transfer learning
     # The pattern for updating the optimizer is adapted from this discussion:
