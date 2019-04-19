@@ -9,6 +9,7 @@ from typing import Dict, List
 import logging
 import json
 from pathlib import Path
+import torch
 
 import torch.nn as nn
 import torch.optim as optim
@@ -212,7 +213,7 @@ class Data:
             dataset = DATASET_CLASSES[name]
         except KeyError as k:
             raise KeyError(
-                f"{k} is not among the registered {self.__class__.__name__}: {existing}. "
+                f"{k} is not among the registered data loaders: {existing}. "
                 f"Please check your implementation and experiment config file match")
 
         vectorizer_filepath = config_args['vectorizer_file']
@@ -240,7 +241,7 @@ class Model(nn.Module):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, config_args: Dict):
         super(Model, self).__init__()
 
     @classmethod
@@ -296,18 +297,15 @@ class Model(nn.Module):
         logger.info("Using the following classifier:")
         logger.info(f"{model}")
         model = model.to(config_args['device'])
+
+        if config_args.get('load_model'):
+            model.load_state_dict(torch.load(config_args['model_state_file']))
+
         return model
 
     def forward(self, *input, **kwargs):
-        return self.forward(*input, **kwargs)
+        return self.model.forward(*input, **kwargs)
 
-    def decode(self, output: Dict) -> Dict:
-        """
-        This method takes the output of the forward function, typically logits, and allows to run whatever decoding you'd like
-        :param output:
-        :return:
-        """
-        return output
 
 
 class LossFunction:
