@@ -72,21 +72,37 @@ class UnconfiguredItemsException(Exception):
 
 class ExperimentConfig:
 
-    def __init__(self):
-        pass
-
     @staticmethod
-    def from_json(experiment:Union[str, Path, Dict]):
+    def from_json(experiment:Union[str, Path, Dict], **env) -> Dict[str, Any]:
+        """
+        :param experiment: the experiment config
+        :param env: substitution variables, e.g. a HOME directory. generally use all caps.
+        :return: the experiment
+        """
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
             config = json.load(open(experiment))
 
         #extract simple parameters
-        experiment = {k:v for k,v in config.items() if not isinstance(v, dict) and not isinstance(v, list)}
+        experiment = {}
+        for k,v in config.items():
+            if not isinstance(v, dict) and not isinstance(v, list):
+                if isinstance(v, str):
+                    for env_key, env_val in env.items():
+                        v = v.replace(env_key, env_val)
+                experiment[k] = v
 
         #extract simple lists
-        experiment.update({k:v for k,v in config.items() if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v)})
+        for k,v in config.items():
+            if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
+                upd = []
+                for vv in v:
+                    if isinstance(vv, str):
+                        for env_key, env_val in env.items():
+                            vv = vv.replace(env_key, env_val)
+                    upd.append(vv)
+                experiment[k] = upd
 
         for k in experiment:
             del config[k]
@@ -144,7 +160,7 @@ class ExperimentConfig:
                 params = {}
 
                 named_params = {p: pv for p, pv in v.items() if p != '_name'}
-                default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))}
+                default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
 
                 literal_params = {}
                 for p, pv in v.items():

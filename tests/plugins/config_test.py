@@ -95,6 +95,13 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['demo3a'].val,  6)
         self.assertEqual(e['demo'].demo3.val, 6)
 
+    def test_env(self):
+        experiment = {
+            'path': "HOME/foo/bar"
+        }
+        e = ExperimentConfig.from_json(experiment, HOME='/tmp')
+        self.assertEqual(e['path'], '/tmp/foo/bar')
+
     def test_literal_injection(self):
         experiment = {
             'demo2': {
@@ -186,7 +193,7 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig.from_json(experiment)
 
         self.assertTrue(isinstance(e['demo'], DemoComplexDefaults))
-        self.assertTrue(isinstance(e['demob'], DemoDefaults))
+        self.assertTrue(isinstance(e['demod'], DemoDefaults))
 
         self.assertEqual(e['demod'].val, 1)
         self.assertEqual(e['demod'].foo, 6)
