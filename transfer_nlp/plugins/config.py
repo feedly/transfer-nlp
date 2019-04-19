@@ -6,7 +6,7 @@ The Registry pattern used here is inspired from this post: https://realpython.co
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any
 import logging
 
 import torch.nn as nn
@@ -78,7 +78,7 @@ class ExperimentConfig:
     @staticmethod
     def from_json(experiment:Union[str, Path, Dict]):
         if isinstance(experiment, dict):
-            config = experiment
+            config = dict(experiment)
         else:
             config = json.load(open(experiment))
 
@@ -91,11 +91,45 @@ class ExperimentConfig:
         for k in experiment:
             del config[k]
 
-        while config:
-            configured = set()
+        try:
+            ExperimentConfig._build_items(config, experiment, 0)
+        except UnconfiguredItemsException as e:
+            pass
 
-            unconfigured = {}
-            for k,v in config.items():
+        try:
+            ExperimentConfig._build_items(config, experiment, 1)
+        except UnconfiguredItemsException as e:
+            pass
+
+
+        try:
+            ExperimentConfig._build_items(config, experiment, 2)
+        except UnconfiguredItemsException as e:
+            logging.error('There are unconfigured items in the experiment. Please check your configuration:')
+            for k,v in e.items.items():
+                logging.error(f'"{k}" missing properties:')
+                for vv in v:
+                    logging.error(f'\t+ {vv}')
+
+            raise e
+
+        return experiment
+
+    @staticmethod
+    def _build_items(config: Dict[str, Any], experiment: Dict[str, Any], default_params_mode: int):
+        """
+
+        :param config:
+        :param experiment:
+        :param default_params_mode: 0 - ignore default params, 1 - only fill in default params not found in the experiment, 2 - fill in all default params
+        :return: None
+        :raise UnconfiguredItemsException: if items are unable to be configured
+        """
+
+        while config:
+            configured = set()  # items configured in this iteration
+            unconfigured = {}   # items unable to be configured in this iteration
+            for k, v in config.items():
                 if not isinstance(v, dict):
                     raise ValueError(f'complex configuration object config[{k}] must be a dict')
 
@@ -110,7 +144,14 @@ class ExperimentConfig:
                 params = {}
 
                 named_params = {p: pv for p, pv in v.items() if p != '_name'}
-                literal_params = {p[:-1]: pv for p, pv in v.items() if p[-1] == '_'}
+                default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))}
+
+                literal_params = {}
+                for p, pv in v.items():
+                    if p[-1] == '_':
+                        literal_params[p[:-1]] = pv
+                    elif not isinstance(pv, str):
+                            raise ValueError(f'string required for parameter names...use key_ notation "{p}_" if you want to specify a literal parameter value.')
 
                 for arg in spec.args[1:]:
                     if arg in literal_params:
@@ -122,6 +163,10 @@ class ExperimentConfig:
                                 params[arg] = experiment[alias]
                         elif arg in experiment:
                             params[arg] = experiment[arg]
+                        elif default_params_mode == 1 and arg not in config and arg in default_params:
+                            params[arg] = default_params[arg]
+                        elif default_params_mode == 2 and arg in default_params:
+                            params[arg] = default_params[arg]
                         else:
                             break
 
@@ -130,10 +175,11 @@ class ExperimentConfig:
                     configured.add(k)
                 else:
                     unconfigured[k] = {arg for arg in spec.args[1:] if arg not in params}
+
+
             if configured:
                 for k in configured:
                     del config[k]
             else:
                 if config:
-                    raise UnconfiguredItemsException(unconfigured) #TODO: prettify?
-        return experiment
+                    raise UnconfiguredItemsException(unconfigured)

@@ -15,6 +15,20 @@ class Demo3:
     def __init__(self, simple_int:str):
         self.val = simple_int
 
+@register_plugin
+class DemoDefaults:
+
+    def __init__(self, simple_int:str, foo:int=5, bar=10):
+        self.val = simple_int
+        self.foo = foo
+        self.bar = bar
+
+@register_plugin
+class DemoComplexDefaults:
+
+    def __init__(self, simple_int:str, demod:DemoDefaults=None):
+        self.val = simple_int
+        self.dd = demod
 
 @register_plugin
 class Demo:
@@ -121,3 +135,64 @@ class RegistryTest(unittest.TestCase):
             self.assertEqual({'demo2', 'demo3'}, e.items['demo'])
             self.assertEqual({'simple_str'}, e.items['demo2'])
             self.assertEqual({'simple_int'}, e.items['demo3'])
+
+    def test_defaults(self):
+        experiment = {
+            'demoa': {
+                '_name': 'DemoDefaults',
+                'simple_int_': 0
+            },
+            'demob': {
+                '_name': 'DemoDefaults',
+                'simple_int_': 1,
+                'foo_': 6
+            },
+            'democ': {
+                '_name': 'DemoDefaults',
+                'simple_int_': 2,
+                'bar_': 6
+            }
+        }
+        e = ExperimentConfig.from_json(experiment)
+
+        self.assertTrue(isinstance(e['demoa'], DemoDefaults))
+        self.assertTrue(isinstance(e['demob'], DemoDefaults))
+
+        self.assertEqual(e['demoa'].val, 0)
+        self.assertEqual(e['demoa'].foo, 5)
+        self.assertEqual(e['demoa'].bar, 10)
+
+        self.assertEqual(e['demob'].val, 1)
+        self.assertEqual(e['demob'].foo, 6)
+        self.assertEqual(e['demob'].bar, 10)
+
+        self.assertEqual(e['democ'].val, 2)
+        self.assertEqual(e['democ'].foo, 5)
+        self.assertEqual(e['democ'].bar, 6)
+
+    def test_complex_defaults(self):
+        ### test that demod gets created first and then is used to create demo instead of the None default
+        experiment = {
+            'demo': {
+                '_name': 'DemoComplexDefaults',
+                'simple_int_': 0
+            },
+            'demod': {
+                '_name': 'DemoDefaults',
+                'simple_int_': 1,
+                'foo_': 6
+            }
+        }
+        e = ExperimentConfig.from_json(experiment)
+
+        self.assertTrue(isinstance(e['demo'], DemoComplexDefaults))
+        self.assertTrue(isinstance(e['demob'], DemoDefaults))
+
+        self.assertEqual(e['demod'].val, 1)
+        self.assertEqual(e['demod'].foo, 6)
+        self.assertEqual(e['demod'].bar, 10)
+
+        self.assertEqual(e['demo'].val, 0)
+        self.assertEqual(e['demo'].dd.val, 1)
+        self.assertEqual(e['demo'].dd.foo, 6)
+        self.assertEqual(e['demo'].dd.bar, 10)
