@@ -1,11 +1,8 @@
 {
-  "dataset": "/Users/petermartigny/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "vectorizer_file": "vectorizerMLP.json",
+  "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
   "model_state_file": "modelMLP.pth",
-  "save_dir": "/Users/petermartigny/work/experiments/nlp/models/surnames/",
-  "logs": "/Users/petermartigny/work/experiments/nlp/models/surnames/logs/log1",
-  "glove_filepath": "/Users/petermartigny/work/experiments/nlp/data/glove/glove.6B.100d.txt",
-  "use_glove": false,
+  "save_dir": "HOME/work/experiments/nlp/models/surnames/",
+  "logs": "HOME/work/experiments/nlp/models/surnames/logs/log1",
   "hidden_dim": 100,
   "seed": 1337,
   "lr": 0.001,
@@ -13,54 +10,47 @@
   "num_epochs": 5,
   "early_stopping_criteria": 5,
   "cuda": true,
-  "catch_keyboard_interrupt": true,
-  "reload_from_files": false,
-  "expand_filepaths_to_save_dir": true,
-  "dataset_cls": "SurnamesDataset",
-  "model": {
-    "modelName": "MultiLayerPerceptron",
-    "modelParams": [
-      "input_dim",
-      "hidden_dim",
-      "output_dim"
-    ],
-    "modelInputs": [
-      "x_in"
-    ]
-  },
-  "loss": {
-    "lossName": "CrossEntropyLoss",
-    "lossParams": []
-  },
-  "Optimizer": {
-    "optimizerName": "Adam",
-    "optimizerParams": [
-      "params",
-      "lr"
-    ]
-  },
-  "Regularizer": {
-    "regularizerName": "L1",
-    "regularizerParams": [
-      "alpha"
-    ]
-  },
-  "scheduler": {
-    "schedulerName": "ReduceLROnPlateau",
-    "schedulerParams": [
-      "optimizer",
-      "mode",
-      "factor",
-      "patience"
-    ]
-  },
   "alpha": 0.01,
-  "gradient_clipping": {"value": 0.25},
+  "gradient_clipping": 0.25,
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-  "batch_generator": "generate_batches",
-  "metrics": [
-    "compute_accuracy"
-  ]
+
+  "dataset_splits": {
+    "_name": "SurnamesDatasetSplits"
+  },
+  "model": {
+    "_name": "MultiLayerPerceptron"
+  },
+  "model_hyper_params": {
+    "_name": "SurnameHyperParams"
+  },
+  "model_params": {
+    "_name": "ModelParams"
+  },
+  "loss": {
+    "_name": "CrossEntropyLoss"
+  },
+  "optimizer": {
+    "_name": "Adam",
+    "params": "model_params"
+  },
+  "regularizer": {
+    "_name": "L1"
+  },
+  "scheduler": {
+    "_name": "ReduceLROnPlateau"
+  },
+  "accuracy": { "_name": "Accuracy"},
+  "lossMetric": {
+    "_name": "LossMetric",
+    "loss_fn": "loss"
+  },
+  "trainer": {
+    "_name": "BasicTrainer",
+    "metrics": [
+      "accuracy",
+      "lossMetric"
+    ]
+  }
 }

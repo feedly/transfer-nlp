@@ -3,18 +3,18 @@ This file contains all necessary plugins classes that the framework will use to 
 
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
+import inspect
 import json
-from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Dict, List, Union, Any
 import logging
+from pathlib import Path
+from typing import Dict, Union, Any
 
 import torch.nn as nn
 import torch.optim as optim
-import inspect
+import ignite.metrics as metrics
 from smart_open import open
+
 name = 'transfer_nlp.plugins.registry'
-logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 
 CLASSES = {
@@ -55,7 +55,8 @@ CLASSES = {
     "Softmax": nn.functional.softmax,
     "LogSoftmax": nn.functional.log_softmax,
     "GLU": nn.functional.glu,
-    "TanhShrink": nn.functional.tanhshrink
+    "TanhShrink": nn.functional.tanhshrink,
+    "Accuracy": metrics.Accuracy,
 }
 
 def register_plugin(clazz):
@@ -79,6 +80,20 @@ class ExperimentConfig:
         :param env: substitution variables, e.g. a HOME directory. generally use all caps.
         :return: the experiment
         """
+
+        env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
+
+        def do_env_subs(v:Any) -> str:
+            v_upd = v
+            if isinstance(v_upd, str):
+                for env_key in env_keys:
+                    v_upd = v_upd.replace(env_key, env[env_key])
+
+                if v_upd != v:
+                    logger.info('*** updating parameter %s -> %s', v, v_upd)
+
+            return v_upd
+
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
@@ -88,20 +103,14 @@ class ExperimentConfig:
         experiment = {}
         for k,v in config.items():
             if not isinstance(v, dict) and not isinstance(v, list):
-                if isinstance(v, str):
-                    for env_key, env_val in env.items():
-                        v = v.replace(env_key, env_val)
-                experiment[k] = v
+                experiment[k] = do_env_subs(v)
 
         #extract simple lists
         for k,v in config.items():
             if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
                 upd = []
                 for vv in v:
-                    if isinstance(vv, str):
-                        for env_key, env_val in env.items():
-                            vv = vv.replace(env_key, env_val)
-                    upd.append(vv)
+                    upd.append(do_env_subs(vv))
                 experiment[k] = upd
 
         for k in experiment:
@@ -166,8 +175,13 @@ class ExperimentConfig:
                 for p, pv in v.items():
                     if p[-1] == '_':
                         literal_params[p[:-1]] = pv
+                    elif isinstance(pv, list):
+                        for pvv in pv:
+                            if not isinstance(pvv, str):
+                                raise ValueError(f'string required for parameter names in list paramters...use key_ notation "{p}_" if you want to specify a literal parameter values.')
+
                     elif not isinstance(pv, str):
-                            raise ValueError(f'string required for parameter names...use key_ notation "{p}_" if you want to specify a literal parameter value.')
+                        raise ValueError(f'string required for parameter names...use key_ notation "{p}_" if you want to specify a literal parameter value.')
 
                 for arg in spec.args[1:]:
                     if arg in literal_params:
@@ -175,7 +189,16 @@ class ExperimentConfig:
                     else:
                         if arg in named_params:
                             alias = named_params[arg]
-                            if alias in experiment:
+                            if isinstance(alias, list):
+                                param_list = []
+                                for p in alias:
+                                    if p in experiment:
+                                        param_list.append(experiment[p])
+                                    else:
+                                        break
+                                if len(param_list) == len(alias):
+                                    params[arg] = param_list
+                            elif alias in experiment:
                                 params[arg] = experiment[alias]
                         elif arg in experiment:
                             params[arg] = experiment[arg]
@@ -183,8 +206,6 @@ class ExperimentConfig:
                             params[arg] = default_params[arg]
                         elif default_params_mode == 2 and arg in default_params:
                             params[arg] = default_params[arg]
-                        else:
-                            break
 
                 if len(params) == len(spec.args) - 1:
                     experiment[k] = clazz(**params)

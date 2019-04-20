@@ -377,6 +377,6 @@ def build_experiment(config: str):
 
 
 if __name__ == "__main__":
-    experiment = "experiments/mlp.json"
+    experiment = "experiments/mlp3.json"
     runner = RunnerABC.load_from_project(experiment_file=experiment)
     runner.run_pipeline()
