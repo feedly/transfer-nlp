@@ -12,7 +12,6 @@ import torch.nn.functional as F
 from transfer_nlp.plugins.metrics import normalize_sizes
 from transfer_nlp.plugins.registry import register_loss
 
-
 def sequence_loss(input, target, mask_index):
 
     y_pred, y_true = normalize_sizes(y_pred=input, y_true=target)

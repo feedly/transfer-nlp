@@ -12,7 +12,7 @@ from typing import Dict, Any
 import pandas as pd
 import torch
 from smart_open import open
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 
 from transfer_nlp.common.tokenizers import CustomTokenizer, CharacterTokenizer
 from transfer_nlp.loaders.vectorizers import ReviewsVectorizer, SurnamesVectorizer, Vectorizer, SurnamesVectorizerCNN, CBOWVectorizer, NewsVectorizer, \
@@ -20,6 +20,48 @@ from transfer_nlp.loaders.vectorizers import ReviewsVectorizer, SurnamesVectoriz
     SurnameVectorizerGeneration, NMTVectorizer, FeedlyVectorizer
 from transfer_nlp.plugins.registry import register_dataset
 
+class DatasetSplits:
+    def __init__(self,
+                 train_set: Dataset, train_batch_size: int,
+                 val_set: Dataset, val_batch_size: int,
+                 test_set: Dataset=None, test_batch_size: int=None):
+
+        self.train_set: Dataset = train_set
+        self.train_batch_size: int = train_batch_size
+
+        self.val_set: Dataset = val_set
+        self.val_batch_size: int = val_batch_size
+
+        self.test_set: Dataset = test_set
+        self.test_batch_size: int = test_batch_size
+
+    def train_data_loader(self):
+        return DataLoader(self.train_set, self.train_batch_size)
+
+    def val_data_loader(self):
+        return DataLoader(self.val_set, self.val_batch_size, shuffle=False)
+
+    def test_data_loader(self):
+        return DataLoader(self.test_set, self.test_batch_size, shuffle=False)
+
+
+class DataFrameDataset(Dataset):
+
+    def __init__(self, df):
+        self.df = df
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, item):
+        row = self.df.iloc[item, :]
+        return {col: row[col] for col in self.df.columns}
+
+
+class DataProps:
+    def __init__(self):
+        self.input_dims:int = None
+        self.output_dims:int = None
 
 class CustomDataset(Dataset):
 
@@ -114,7 +156,7 @@ class ReviewsDataset(CustomDataset):
                 'y_target': rating_index}
 
 @register_dataset
-class SurnamesDataset(CustomDataset):
+class SurnamesDataset2(CustomDataset):
 
     def __init__(self, dataset_df: pd.DataFrame, vectorizer: Vectorizer):
 

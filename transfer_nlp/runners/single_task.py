@@ -10,6 +10,7 @@ This file aims at launching an experiments based on a config file
 """
 
 import logging
+from pathlib import Path
 from typing import Dict
 
 import torch
@@ -20,7 +21,11 @@ from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, Output
 from ignite.handlers import ModelCheckpoint, TerminateOnNan
 from ignite.handlers import EarlyStopping
 
+from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.runners.runnersABC import RunnerABC
+from transfer_nlp.models import *
+from transfer_nlp.models.perceptrons2 import *
+from transfer_nlp.experiments.surnames import *
 
 name = 'transfer_nlp.runners.single_task'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -106,6 +111,8 @@ def run_with_slack(runner, test_at_the_end: bool = False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     import argparse
 
     parser = argparse.ArgumentParser(description="launch an experiment")
@@ -113,11 +120,15 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
 
-    args.config = args.config or 'experiments/surnamesRNN.json'
-    runner = Runner.load_from_project(experiment_file=args.config)
+    args.config = args.config or 'experiments/newsClassifier.json'
 
-    if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
-        run_with_slack(runner=runner, test_at_the_end=True)
-    else:
-        # runner.run(test_at_the_end=True)
-        runner.run_pipeline()
+    # runner = Runner.load_from_project(experiment_file=args.config, HOME=str(Path.home()))
+    # runner.run_pipeline()
+    experiment = ExperimentConfig.from_json('/Users/kireet/git/transfer-nlp/transfer_nlp/experiments/mlp.json', HOME=str(Path.home()))
+    experiment['trainer'].train()
+    #
+    # if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
+    #     run_with_slack(runner=runner, test_at_the_end=True)
+    # else:
+    #     # runner.run(test_at_the_end=True)
+    #     runner.run_pipeline()

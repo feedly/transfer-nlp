@@ -7,7 +7,6 @@ import torch.nn.functional as F
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.helpers import ModelHyperParams
 from transfer_nlp.plugins.registry import register_model
 
 name = 'transfer_nlp.models.perceptrons'
@@ -17,11 +16,11 @@ logging.info('')
 
 
 @register_plugin
-class Perceptron(nn.Module):
+class Perceptron2(nn.Module):
 
     def __init__(self, num_features):
 
-        super(Perceptron, self).__init__()
+        super().__init__()
         self.fc = nn.Linear(in_features=num_features, out_features=2)
 
     def forward(self, x_in: torch.Tensor, apply_sigmoid: bool = False) -> torch.Tensor:
@@ -39,18 +38,18 @@ class Perceptron(nn.Module):
         return y_out
 
 
-@register_plugin
-class MultiLayerPerceptron(nn.Module):
+@register_model
+class MultiLayerPerceptron2(nn.Module):
 
-    def __init__(self, model_hyper_params: ModelHyperParams, hidden_dim: int):
-        super(MultiLayerPerceptron, self).__init__()
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int):
+        super().__init__()
 
-        self.input_dim = model_hyper_params.input_dim
+        self.input_dim = input_dim
         self.hidden_dim = hidden_dim
-        self.output_dim = model_hyper_params.output_dim
+        self.output_dim = output_dim
 
-        self.fc = nn.Linear(in_features=self.input_dim, out_features=hidden_dim)
-        self.fc2 = nn.Linear(in_features=hidden_dim, out_features=self.output_dim)
+        self.fc = nn.Linear(in_features=input_dim, out_features=hidden_dim)
+        self.fc2 = nn.Linear(in_features=hidden_dim, out_features=output_dim)
         # TODO: experiment with more layers
 
     def forward(self, x_in: torch.Tensor, apply_softmax: bool = False) -> torch.Tensor:
