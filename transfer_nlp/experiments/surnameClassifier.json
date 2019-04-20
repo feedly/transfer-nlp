@@ -6,6 +6,7 @@
   "logs": "/Users/petermartigny/work/experiments/nlp/models/surnamesCNN/logs/log1",
   "glove_filepath": "/Users/petermartigny/work/experiments/nlp/data/glove/glove.6B.100d.txt",
   "use_glove": false,
+  "load_model": true,
   "embedding_size": 100,
   "hidden_dim": 10,
   "num_channels": 10,
@@ -15,7 +16,7 @@
   "batch_size": 128,
   "num_epochs": 10,
   "early_stopping_criteria": 5,
-  "cuda": true,
+  "cuda": false,
   "catch_keyboard_interrupt": true,
   "reload_from_files": false,
   "expand_filepaths_to_save_dir": true,
@@ -60,7 +61,9 @@
     ]
   },
   "alpha": 0.01,
-  "gradient_clipping": {"value": 0.25},
+  "gradient_clipping": {
+    "value": 0.25
+  },
   "mode": "min",
   "factor": 0.5,
   "patience": 1,

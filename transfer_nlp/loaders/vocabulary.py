@@ -98,10 +98,17 @@ class SequenceVocabulary(Vocabulary):
     def to_serializable(self):
 
         contents = super(SequenceVocabulary, self).to_serializable()
+
         contents.update({'mask_token': self._mask_token,
                             'begin_seq_token': self._begin_seq_token,
                             'end_seq_token': self._end_seq_token})
+        del contents['add_unk']
         return contents
+
+    @classmethod
+    def from_serializable(cls, contents):
+
+        return cls(**contents)
 
     def lookup_token(self, token):
 

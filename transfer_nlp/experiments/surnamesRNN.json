@@ -6,6 +6,7 @@
   "logs": "/Users/petermartigny/work/experiments/nlp/models/surnames/logs/log1",
   "glove_filepath": "/Users/petermartigny/work/experiments/nlp/data/glove/glove.6B.100d.txt",
   "use_glove": false,
+  "load_model": true,
   "embedding_size": 100,
   "char_embedding_size": 100,
   "rnn_hidden_size": 64,
@@ -65,7 +66,9 @@
     ]
   },
   "alpha": 0.01,
-  "gradient_clipping": {"value": 0.25},
+  "gradient_clipping": {
+    "value": 0.25
+  },
   "mode": "min",
   "factor": 0.5,
   "patience": 1,

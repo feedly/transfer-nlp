@@ -88,14 +88,15 @@ class NewsClassifier(nn.Module):
                       kernel_size=3, stride=2),
             nn.ELU(),
             nn.Conv1d(in_channels=num_channels, out_channels=num_channels,
-                      kernel_size=3, stride=2),
+                      kernel_size=3, stride=1),
             nn.ELU(),
             nn.Conv1d(in_channels=num_channels, out_channels=num_channels,
-                      kernel_size=3),
+                      kernel_size=3),  # Experimental change from 3 to 2
             nn.ELU()
         )
 
         self._dropout_p: float = dropout_p
+        self.dropout = nn.Dropout(p=dropout_p)
         self.fc1: nn.Linear = nn.Linear(num_channels, hidden_dim)
         self.fc2: nn.Linear = nn.Linear(hidden_dim, num_classes)
 
@@ -116,10 +117,10 @@ class NewsClassifier(nn.Module):
         # average and remove the extra dimension
         remaining_size = features.size(dim=2)
         features = F.avg_pool1d(features, remaining_size).squeeze(dim=2)
-        features = F.dropout(features, p=self._dropout_p)
+        features = self.dropout(features)
 
         # mlp classifier
-        intermediate_vector = F.relu(F.dropout(self.fc1(features), p=self._dropout_p))
+        intermediate_vector = F.relu(self.dropout(self.fc1(features)))
         prediction_vector = self.fc2(intermediate_vector)
 
         if apply_softmax:
