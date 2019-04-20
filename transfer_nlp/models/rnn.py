@@ -97,6 +97,7 @@ class SurnameClassifierRNN(nn.Module):
                          out_features=rnn_hidden_size)
         self.fc2: nn.Linear = nn.Linear(in_features=rnn_hidden_size,
                           out_features=num_classes)
+        self.dropout = nn.Dropout(p=0.5)
 
     def forward(self, x_in: torch.Tensor, x_lengths: torch.Tensor=None, apply_softmax: bool=False) -> torch.Tensor:
         """
@@ -118,8 +119,8 @@ class SurnameClassifierRNN(nn.Module):
         else:
             y_out = y_out[:, -1, :]
 
-        y_out = F.relu(self.fc1(F.dropout(y_out, 0.5)))
-        y_out = self.fc2(F.dropout(y_out, 0.5))
+        y_out = F.relu(self.fc1(self.dropout(y_out)))
+        y_out = self.fc2(self.dropout(y_out))
 
         if apply_softmax:
             y_out = F.softmax(y_out, dim=1)

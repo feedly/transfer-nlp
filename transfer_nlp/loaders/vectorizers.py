@@ -258,6 +258,7 @@ class NewsVectorizer(Vectorizer):
 
     @classmethod
     def from_serializable(cls, contents):
+
         data_vocab = SequenceVocabulary.from_serializable(contents['data_vocab'])
         target_vocab = Vocabulary.from_serializable(contents['target_vocab'])
 
@@ -408,11 +409,12 @@ class FeedlyVectorizer(Vectorizer):
 
         data_vocab = SequenceVocabulary()
         target_vocab = Vocabulary(add_unk=False)
+        tokenizer = CustomTokenizer()
 
         # Add tokens to reviews vocab
         word_counts = Counter()
         for article in feedly_df.content:
-            for token in tokenize(text=article):
+            for token in tokenizer.tokenize(text=article):
                 if token not in string.punctuation:
                     word_counts[token] += 1
 
