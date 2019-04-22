@@ -17,16 +17,16 @@
   "factor": 0.5,
   "patience": 1,
   "vectorizer": {
-    "_name": "SurnameVectorizerRNNNew"
+    "_name": "SurnameVectorizerRNN"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "SurnamesRNNDatasetSplits"
+    "_name": "SurnamesRNNDataset"
   },
   "model": {
-    "_name": "SurnameClassifierRNN2"
+    "_name": "SurnameClassifierRNN"
   },
   "model_hyper_params": {
     "_name": "SurnameRNNHyperParams"

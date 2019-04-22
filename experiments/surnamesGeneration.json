@@ -1,14 +1,14 @@
 {
   "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelCNN.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/surnames/",
-  "logs": "HOME/work/experiments/nlp/models//surnamesCNN/logs/log1",
-  "hidden_dim": 10,
+  "model_state_file": "modelGeneration.pth",
+  "save_dir": "HOME/work/experiments/nlp/models/model1_surname_generation/",
+  "logs": "HOME/work/experiments/nlp/models/model1_surname_generation/logs/log1",
+  "char_embedding_size": 100,
+  "rnn_hidden_size": 100,
   "seed": 1337,
   "lr": 0.001,
-  "batch_size": 128,
+  "batch_size": 64,
   "num_epochs": 10,
-  "num_channels": 10,
   "early_stopping_criteria": 5,
   "cuda": true,
   "alpha": 0.01,
@@ -16,26 +16,29 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-    "vectorizer": {
-    "_name": "SurnamesVectorizerCNNNew"
+  "vectorizer": {
+    "_name": "SurnameVectorizerGeneration"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "SurnamesCNNDatasetSplits"
+    "_name": "SurnameDatasetGeneration"
   },
   "model": {
-    "_name": "SurnameClassifierCNN1"
+    "_name": "SurnameConditionedGenerationModel"
   },
   "model_hyper_params": {
-    "_name": "SurnameCNNHyperParams"
+    "_name": "SurnameGenerationHyperParams"
   },
   "model_params": {
     "_name": "ModelParams"
   },
+  "loss_hyper_params": {
+    "_name": "SequenceLossHyperParams"
+  },
   "loss": {
-    "_name": "CrossEntropyLoss"
+    "_name": "SequenceLoss"
   },
   "optimizer": {
     "_name": "Adam",
@@ -47,12 +50,15 @@
   "scheduler": {
     "_name": "ReduceLROnPlateau"
   },
-  "accuracy": {
-    "_name": "Accuracy"
-  },
   "lossMetric": {
     "_name": "LossMetric",
     "loss_fn": "loss"
+  },
+  "output_transform": {
+    "_name": "OutputTransformSequence"
+  },
+  "accuracy": {
+    "_name": "Accuracy"
   },
   "trainer": {
     "_name": "BasicTrainer",
@@ -60,11 +66,5 @@
       "accuracy",
       "lossMetric"
     ]
-  },
-  "predictor": {
-    "_name": "SurnameCNNPredictor"
-  },
-  "predictor_hyper_params": {
-    "_name": "PredictorHyperParams"
   }
 }

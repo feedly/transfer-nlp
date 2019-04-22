@@ -1,14 +1,15 @@
 {
-  "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelGeneration.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/model1_surname_generation/",
-  "logs": "HOME/work/experiments/nlp/models/model1_surname_generation/logs/log1",
-  "char_embedding_size": 100,
-  "rnn_hidden_size": 100,
+  "data_file": "HOME/work/experiments/nlp/data/books/frankenstein_with_splits.csv",
+  "model_state_file": "modelCBOW.pth",
+  "save_dir": "HOME/work/experiments/nlp/models/cbow",
+  "logs": "HOME/work/experiments/nlp/models/cbow/logs/log1",
+  "glove_filepath": "HOME/work/experiments/nlp/data/glove/glove.6B.100d.txt",
+  "embedding_size": 100,
+  "dropout_p": 0.3,
   "seed": 1337,
   "lr": 0.001,
-  "batch_size": 64,
-  "num_epochs": 10,
+  "batch_size": 128,
+  "num_epochs": 1,
   "early_stopping_criteria": 5,
   "cuda": true,
   "alpha": 0.01,
@@ -17,28 +18,34 @@
   "factor": 0.5,
   "patience": 1,
   "vectorizer": {
-    "_name": "SurnameVectorizerGeneration1"
+    "_name": "CBOWVectorizer"
+  },
+  "embeddings": {
+    "_name": "Embedding"
+  },
+  "embedding_hyper_params": {
+    "_name": "EmbeddingsHyperParams"
+  },
+  "embeddings2model_hyper_params": {
+    "_name": "EmbeddingtoModelHyperParams1"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "SurnameDatasetGeneration"
+    "_name": "CBOWDataset"
   },
   "model": {
-    "_name": "SurnameConditionedGenerationModel"
+    "_name": "CBOWClassifier"
   },
   "model_hyper_params": {
-    "_name": "SurnameGenerationHyperParams"
+    "_name": "CBOWHyperParams"
   },
   "model_params": {
     "_name": "ModelParams"
   },
-  "loss_hyper_params": {
-    "_name": "SequenceLossHyperParams"
-  },
   "loss": {
-    "_name": "SequenceLoss"
+    "_name": "CrossEntropyLoss"
   },
   "optimizer": {
     "_name": "Adam",
@@ -50,15 +57,12 @@
   "scheduler": {
     "_name": "ReduceLROnPlateau"
   },
+  "accuracy": {
+    "_name": "Accuracy"
+  },
   "lossMetric": {
     "_name": "LossMetric",
     "loss_fn": "loss"
-  },
-  "output_transform": {
-    "_name": "OutputTransformSequence"
-  },
-  "accuracy": {
-    "_name": "Accuracy"
   },
   "trainer": {
     "_name": "BasicTrainer",
@@ -68,7 +72,7 @@
     ]
   },
   "predictor": {
-    "_name": "SurnameRNNPredictor"
+    "_name": "CBOWPredictor"
   },
   "predictor_hyper_params": {
     "_name": "PredictorHyperParams"

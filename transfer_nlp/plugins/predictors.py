@@ -4,18 +4,24 @@ from itertools import zip_longest
 from typing import Dict, List, Any
 
 import torch
+from ignite.utils import convert_tensor
 
-# from transfer_nlp.embeddings.embeddings import make_embedding_matrix
-from transfer_nlp.loaders.vectorizers import Vectorizer
+from transfer_nlp.loaders.vectorizers import VectorizerNew
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 from transfer_nlp.plugins.trainers import BasicTrainer
-from transfer_nlp.runners.runnersABC import _prepare_batch
 
-name = 'transfer_nlp.predictors.predictor'
+name = 'transfer_nlp.plugins.predictor'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
-logging.info('')
+
+
+def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
+    """Prepare batch for training: pass to a device with options.
+
+    """
+    result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
+    return result
 
 
 @register_plugin
@@ -38,7 +44,7 @@ class Predictor:
         for fparam, pdefault in zip_longest(reversed(model_spec.args[1:]), reversed(model_spec.defaults if model_spec.defaults else [])):
             self.forward_params[fparam] = pdefault
 
-        self.vectorizer: Vectorizer = predictor_hyper_params.vectorizer
+        self.vectorizer: VectorizerNew = predictor_hyper_params.vectorizer
 
     def _forward(self, batch):
         model_inputs = {}
@@ -105,56 +111,3 @@ class Predictor:
         decode2json = self.output_to_json(infer2decode)
 
         return decode2json
-
-
-
-
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-    experiment_file = "experiments/mlp.json"
-
-    predictor = MLPPredictor.from_params(experiment_file=experiment_file)
-    input_json = {
-        "inputs": ["Zhang", "Mueller"]}
-    output_json = predictor.json_to_json(input_json=input_json)
-
-    logger.info(input_json)
-    logger.info(output_json)
-
-    experiment_file = "experiments/surnameClassifier.json"
-    predictor = SurnameCNNPredictor.from_params(experiment_file=experiment_file)
-    input_json = {
-        "inputs": ["Zhang", "Mueller"]}
-    output_json = predictor.json_to_json(input_json=input_json)
-
-    logger.info(input_json)
-    logger.info(output_json)
-
-    experiment_file = "experiments/newsClassifier.json"
-    predictor = NewsPredictor.from_params(experiment_file=experiment_file)
-
-    input_json = {
-        "inputs": ["Asset Manager Gets OK To Appeal €15M Fee Payout Ruling",
-                   "NASA's New Planet-Hunting Telescope Just Found Its First Earth-Sized World"]}
-    output_json = predictor.json_to_json(input_json=input_json)
-
-    logger.info(input_json)
-    logger.info(output_json)
-
-    experiment_file = "experiments/surnamesRNN.json"
-    predictor = SurnameRNNPredictor.from_params(experiment_file=experiment_file)
-
-    input_json = {
-        "inputs": ["Zhang",
-                   "Mueller", 'Mahmoud', "Rastapopoulos"]}
-    output_json = predictor.json_to_json(input_json=input_json)
-
-    logger.info(input_json)
-    logger.info(output_json)

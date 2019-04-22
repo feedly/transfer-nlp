@@ -16,13 +16,13 @@
   "factor": 0.5,
   "patience": 1,
   "vectorizer": {
-    "_name": "SurnamesVectorizerNew"
+    "_name": "SurnamesVectorizerMLP"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "SurnamesDatasetSplits"
+    "_name": "SurnamesDatasetMLP"
   },
   "model": {
     "_name": "MultiLayerPerceptron"

@@ -11,35 +11,34 @@ This class also provide useful methods to freeze / unfreeze components of a mode
 We will use them in examples of transfer learning
 """
 import inspect
-import json
 import logging
 from itertools import zip_longest
-from pathlib import Path
 from typing import Dict, List, Any
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.engine import Events
 from ignite.engine.engine import Engine
-from ignite.metrics import Accuracy, Loss, Metric, RunningAverage
+from ignite.metrics import Loss, Metric, RunningAverage
 from ignite.utils import convert_tensor
-from smart_open import open
-from tensorboardX import SummaryWriter
-from torch.utils.data import Dataset
 
-# from transfer_nlp.embeddings.embeddings import make_embedding_matrix
-from transfer_nlp.loaders.loaders import CustomDataset, DatasetSplits
-from transfer_nlp.loaders.vectorizers import Vectorizer
+from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.registry import Scheduler, LossFunction, Model, Optimizer, Data, Generator, Metrics, Regularizer
 from transfer_nlp.plugins.regularizers import RegularizerABC
-from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
 
-name = 'transfer_nlp.plugins.trainer'
+name = 'transfer_nlp.plugins.trainers'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
+
+
+def set_seed_everywhere(seed: int, cuda: bool):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if cuda:
+        torch.cuda.manual_seed_all(seed)
 
 
 def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
@@ -115,7 +114,6 @@ class BasicTrainer:
         else:
             self.trainer, training_metrics = self.create_supervised_trainer()
             self.evaluator = self.create_supervised_evaluator()
-
 
         loss_metrics = [m for m in metrics if isinstance(m, Loss)]
 
@@ -195,7 +193,8 @@ class BasicTrainer:
 
         return self.model(**model_inputs)
 
-    def create_supervised_trainer(self, prepare_batch=_prepare_batch, non_blocking=False, output_transform=lambda y_pred, y_target, loss: (y_pred, y_target, loss)):
+    def create_supervised_trainer(self, prepare_batch=_prepare_batch, non_blocking=False,
+                                  output_transform=lambda y_pred, y_target, loss: (y_pred, y_target, loss)):
 
         if self.device:
             self.model.to(self.device)
@@ -233,7 +232,7 @@ class BasicTrainer:
 
         return engine, metrics
 
-    def create_supervised_evaluator(self, prepare_batch=_prepare_batch, non_blocking=False, output_transform=lambda y, y_pred: (y_pred, y,)):
+    def create_supervised_evaluator(self, prepare_batch=_prepare_batch, non_blocking=False, output_transform=lambda y, y_pred: (y, y_pred)):
 
         if self.device:
             self.model.to(self.device)
@@ -255,3 +254,67 @@ class BasicTrainer:
 
     def train(self):
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
+
+# Things available to add for custom trainers
+
+# We show here how to add some events: tensorboard logs!
+#     tb_logger = TensorboardLogger(log_dir=self.config_args['logs'])
+#     tb_logger.attach(self.trainer,
+#                      log_handler=OutputHandler(tag="training", output_transform=lambda loss: {
+#                          'loss': loss}),
+#                      event_name=Events.ITERATION_COMPLETED)
+#     tb_logger.attach(self.evaluator,
+#                      log_handler=OutputHandler(tag="validation",
+#                                                metric_names=["loss", "accuracy"],
+#                                                another_engine=self.trainer),
+#                      event_name=Events.EPOCH_COMPLETED)
+#     tb_logger.attach(self.trainer,
+#                      log_handler=OptimizerParamsHandler(self.optimizer),
+#                      event_name=Events.ITERATION_STARTED)
+#     tb_logger.attach(self.trainer,
+#                      log_handler=WeightsScalarHandler(self.model),
+#                      event_name=Events.ITERATION_COMPLETED)
+#     tb_logger.attach(self.trainer,
+#                      log_handler=WeightsHistHandler(self.model),
+#                      event_name=Events.EPOCH_COMPLETED)
+#     tb_logger.attach(self.trainer,
+#                      log_handler=GradsScalarHandler(self.model),
+#                      event_name=Events.ITERATION_COMPLETED)
+#     # tb_logger.attach(self.trainer,
+#     #                  log_handler=GradsHistHandler(self.model),
+#     #                  event_name=Events.EPOCH_COMPLETED)
+#
+#     # This is important to close the tensorboard file logger
+#     @self.trainer.on(Events.COMPLETED)
+#     def end_tensorboard(trainer):
+#         logger.info("Training completed")
+#         tb_logger.close()
+#
+#     @self.trainer.on(Events.COMPLETED)
+#     def log_embeddings(trainer):
+#
+#         if hasattr(self.model, "embedding"):
+#             logger.info("Logging embeddings to Tensorboard!")
+#             embeddings = self.model.embedding.weight.data
+#             metadata = [str(self.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
+#             self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
+#
+#         if hasattr(self.model, "entity_embedding"):
+#             logger.info("Logging entities embeddings to Tensorboard!")
+#             embeddings = self.model.entity_embedding.weight.data
+#             metadata = [str(self.vectorizer.target_vocab._id2token[token_index]).encode('utf-8') for token_index in range(embeddings.shape[0])]
+#             self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
+#
+#     handler = ModelCheckpoint(dirname=self.config_args['save_dir'], filename_prefix='experiment', save_interval=2, n_saved=2, create_dir=True, require_empty=False)
+#     self.trainer.add_event_handler(Events.EPOCH_COMPLETED, handler, {
+#         'mymodel': self.model})
+#
+#     def score_function(engine):
+#         val_loss = engine.state.metrics['loss']
+#         return -val_loss
+#
+#     handler = EarlyStopping(patience=10, score_function=score_function, trainer=self.trainer)
+#     # Note: the handler is attached to an *Evaluator* (runs one epoch on validation dataset).
+#     self.evaluator.add_event_handler(Events.COMPLETED, handler)
+#     # Terminate if NaNs are created after an iteration
+#     self.trainer.add_event_handler(Events.ITERATION_COMPLETED, TerminateOnNan())

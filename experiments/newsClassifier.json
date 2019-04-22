@@ -21,7 +21,7 @@
   "factor": 0.5,
   "patience": 1,
   "vectorizer": {
-    "_name": "NewsVectorizerNew"
+    "_name": "NewsVectorizer"
   },
   "embeddings": {
     "_name": "Embedding"
@@ -30,16 +30,16 @@
     "_name": "EmbeddingsHyperParams"
   },
   "embeddings2model_hyper_params": {
-    "_name": "EmbeddingtoModelHyperParams1"
+    "_name": "EmbeddingtoModelHyperParams"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "NewsDatasetSplits"
+    "_name": "NewsDataset"
   },
   "model": {
-    "_name": "NewsClassifier1"
+    "_name": "NewsClassifier"
   },
   "model_hyper_params": {
     "_name": "NewsCNNHyperParams"

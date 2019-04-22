@@ -1,7 +1,6 @@
 import torch
 
 from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.registry import register_regularizer
 
 
 class RegularizerABC:
@@ -17,7 +16,6 @@ class RegularizerABC:
 
 
 @register_plugin
-@register_regularizer
 class L1(RegularizerABC):
 
     def __init__(self, alpha: float = 0.01) -> None:
@@ -46,7 +44,6 @@ class L1(RegularizerABC):
 
 
 @register_plugin
-@register_regularizer
 class L2(RegularizerABC):
 
     def __init__(self, alpha: float = 0.01) -> None:

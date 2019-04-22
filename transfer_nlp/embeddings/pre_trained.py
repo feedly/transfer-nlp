@@ -43,12 +43,12 @@ class PreTrainedEmbeddings(object):
 
         return self.word_vectors[self.w2i[word]]
 
-    def get_closest_to_vector(self, vector: np.array, n: int=1):
+    def get_closest_to_vector(self, vector: np.array, n: int = 1):
 
         nn_indices = self.index.get_nns_by_vector(vector, n)
         return [self.i2w[neighbor] for neighbor in nn_indices]
 
-    def get_closest_to_word(self, word: str, n: int=1):
+    def get_closest_to_word(self, word: str, n: int = 1):
 
         vector = self.get_embedding(word=word)
         return self.get_closest_to_vector(vector=vector, n=n)
@@ -76,7 +76,6 @@ class PreTrainedEmbeddings(object):
 
 
 if __name__ == "__main__":
-
     embedding_file = Path.home() / 'work/experiments/nlp/data/glove/glove.6B.100d.txt'
     embeddings = PreTrainedEmbeddings.from_embeddings_file(embedding_file=embedding_file)
 

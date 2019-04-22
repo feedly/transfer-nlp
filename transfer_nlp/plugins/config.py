@@ -9,12 +9,12 @@ import logging
 from pathlib import Path
 from typing import Dict, Union, Any
 
+import ignite.metrics as metrics
 import torch.nn as nn
 import torch.optim as optim
-import ignite.metrics as metrics
 from smart_open import open
 
-name = 'transfer_nlp.plugins.registry'
+name = 'transfer_nlp.plugins.config'
 logger = logging.getLogger(name)
 
 CLASSES = {
@@ -59,6 +59,7 @@ CLASSES = {
     "Accuracy": metrics.Accuracy,
 }
 
+
 def register_plugin(clazz):
     if clazz.__name__ in CLASSES:
         raise ValueError(f"{clazz.__name__} is already registered to class {CLASSES[clazz.__name__]}. Please select another name")
@@ -66,15 +67,17 @@ def register_plugin(clazz):
         CLASSES[clazz.__name__] = clazz
         return clazz
 
+
 class UnconfiguredItemsException(Exception):
     def __init__(self, items):
         super().__init__(f'There are some unconfigured items, which makes these items not configurable: {items}')
         self.items = items
 
+
 class ExperimentConfig:
 
     @staticmethod
-    def from_json(experiment:Union[str, Path, Dict], **env) -> Dict[str, Any]:
+    def from_json(experiment: Union[str, Path, Dict], **env) -> Dict[str, Any]:
         """
         :param experiment: the experiment config
         :param env: substitution variables, e.g. a HOME directory. generally use all caps.
@@ -83,7 +86,7 @@ class ExperimentConfig:
 
         env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
 
-        def do_env_subs(v:Any) -> str:
+        def do_env_subs(v: Any) -> str:
             v_upd = v
             if isinstance(v_upd, str):
                 for env_key in env_keys:
@@ -99,17 +102,17 @@ class ExperimentConfig:
         else:
             config = json.load(open(experiment))
 
-        #extract simple parameters
+        # extract simple parameters
         logger.info(f"Initializing simple parameters:")
         experiment = {}
-        for k,v in config.items():
+        for k, v in config.items():
             if not isinstance(v, dict) and not isinstance(v, list):
                 logger.info(f"Parameter {k}: {v}")
                 experiment[k] = do_env_subs(v)
 
-        #extract simple lists
+        # extract simple lists
         logger.info(f"Initializing simple lists:")
-        for k,v in config.items():
+        for k, v in config.items():
             if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
                 logger.info(f"Parameter {k}: {v}")
                 upd = []
@@ -137,7 +140,7 @@ class ExperimentConfig:
             ExperimentConfig._build_items(config, experiment, 2)
         except UnconfiguredItemsException as e:
             logging.error('There are unconfigured items in the experiment. Please check your configuration:')
-            for k,v in e.items.items():
+            for k, v in e.items.items():
                 logging.error(f'"{k}" missing properties:')
                 for vv in v:
                     logging.error(f'\t+ {vv}')
@@ -161,7 +164,7 @@ class ExperimentConfig:
             logger.info(f"Pass {i}")
             i += 1
             configured = set()  # items configured in this iteration
-            unconfigured = {}   # items unable to be configured in this iteration
+            unconfigured = {}  # items unable to be configured in this iteration
             for k, v in config.items():
                 logger.info(f"Parameter {k}")
                 if not isinstance(v, dict):
@@ -172,7 +175,8 @@ class ExperimentConfig:
 
                 clazz = CLASSES.get(v['_name'])
                 if not clazz:
-                    raise ValueError(f'config[{k}] is named {v["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
+                    raise ValueError(
+                        f'config[{k}] is named {v["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
 
                 spec = inspect.getfullargspec(clazz.__init__)
                 params = {}
@@ -187,7 +191,8 @@ class ExperimentConfig:
                     elif isinstance(pv, list):
                         for pvv in pv:
                             if not isinstance(pvv, str):
-                                raise ValueError(f'string required for parameter names in list paramters...use key_ notation "{p}_" if you want to specify a literal parameter values.')
+                                raise ValueError(
+                                    f'string required for parameter names in list paramters...use key_ notation "{p}_" if you want to specify a literal parameter values.')
 
                     elif not isinstance(pv, str):
                         raise ValueError(f'string required for parameter names...use key_ notation "{p}_" if you want to specify a literal parameter value.')
@@ -221,7 +226,6 @@ class ExperimentConfig:
                     configured.add(k)
                 else:
                     unconfigured[k] = {arg for arg in spec.args[1:] if arg not in params}
-
 
             if configured:
                 for k in configured:

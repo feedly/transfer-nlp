@@ -12,7 +12,7 @@ from transfer_nlp.loaders.vectorizers import VectorizerNew
 from transfer_nlp.loaders.vocabulary import CBOWVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.predictors.predictor import Predictor, PredictorHyperParams
+from transfer_nlp.plugins.predictors import Predictor, PredictorHyperParams
 
 
 name = 'transfer_nlp.experiments.cbow'
@@ -21,7 +21,7 @@ logger = logging.getLogger(name)
 
 # Vectorizer
 @register_plugin
-class CBOWVectorizer1(VectorizerNew):
+class CBOWVectorizer(VectorizerNew):
 
     def __init__(self, data_file: str):
 
@@ -103,10 +103,10 @@ class EmbeddingtoModelHyperParams1(ObjectHyperParams):
         self.embeddings = embeddings.embeddings
 
 @register_plugin
-class CBOWClassifier1(torch.nn.Module):  # Simplified cbow Model
+class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
 
     def __init__(self, model_hyper_params: ObjectHyperParams, embedding_size: int, padding_idx: int=0, embeddings2model_hyper_params: ObjectHyperParams=None):
-        super(CBOWClassifier1, self).__init__()
+        super(CBOWClassifier, self).__init__()
         self.num_embeddings = model_hyper_params.num_embeddings
         self.embedding_size = embedding_size
         self.padding_idx = padding_idx
@@ -130,7 +130,7 @@ class CBOWClassifier1(torch.nn.Module):  # Simplified cbow Model
                              out_features=self.num_embeddings)
         self.dropout = torch.nn.Dropout(p=0.3)
 
-    def forward(self, x_in: torch.Tensor, apply_softmax: bool=False) -> torch.Tensor:
+    def forward(self, x_in: torch.Tensor) -> torch.Tensor:
         """
 
         :param x_in: input data tensor. x_in.shape should be (batch, input_dim)
@@ -141,9 +141,6 @@ class CBOWClassifier1(torch.nn.Module):  # Simplified cbow Model
 
         x_embedded_sum = self.dropout(self.emb(x_in).sum(dim=1))
         y_out = self.fc1(x_embedded_sum)
-
-        # if apply_softmax:
-        #     y_out = F.softmax(y_out, dim=1)
 
         return y_out
 

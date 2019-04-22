@@ -1,15 +1,15 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import torch
 from smart_open import open
 from tqdm import tqdm
 
+from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.experiments.news import NewsDatasetSplits
 
 name = 'transfer_nlp.runners.single_task'
 logging.getLogger(name).setLevel(level=logging.INFO)
@@ -17,12 +17,10 @@ logger = logging.getLogger(name)
 
 
 def load_glove_from_file(glove_filepath: Path) -> Tuple[Dict[str, int], np.array]:
-
     w2i = {}
     embeddings = []
 
     with open(glove_filepath, "r") as fp:
-
         for index, line in tqdm(enumerate(fp), "Embeddings"):
             line = line.split(" ")  # each line: word num1 num2 ...
             w2i[line[0]] = index  # word = line[0]
@@ -31,10 +29,11 @@ def load_glove_from_file(glove_filepath: Path) -> Tuple[Dict[str, int], np.array
 
     return w2i, np.stack(embeddings)
 
+
 @register_plugin
 class EmbeddingsHyperParams(ObjectHyperParams):
 
-    def __init__(self, dataset_splits: NewsDatasetSplits):
+    def __init__(self, dataset_splits: DatasetSplits):
         super().__init__()
         self.words = dataset_splits.vectorizer.data_vocab._token2id.keys()
 
@@ -60,4 +59,3 @@ class Embedding:
                 final_embeddings[i, :] = embedding_i
 
         self.embeddings = final_embeddings
-
