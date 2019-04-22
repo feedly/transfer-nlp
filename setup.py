@@ -30,7 +30,7 @@ setup(
         'bs4==0.0.1',
         'tensorboardX==1.6',
         'knockknock==0.1',
-        'pytorch-ignite==0.2.0'
+        'pytorch-ignite==0.2.0',
         'smart_open==1.8.1'
     ],
     classifiers=[
