@@ -79,7 +79,7 @@ class BasicTrainer:
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
-                 cuda: bool = False,
+                 cuda: bool = None,
                  loss_accumulation_steps: int = 4,
                  scheduler: Any = None,  # no common parent class?
                  regularizer: RegularizerABC = None,
@@ -103,6 +103,8 @@ class BasicTrainer:
         self.scheduler: Any = scheduler
         self.seed: int = seed
         self.cuda: bool = cuda
+        if self.cuda is None:  # If cuda not specified, just check if the cuda is available and use accordingly
+            self.cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.loss_accumulation_steps: int = loss_accumulation_steps
         self.regularizer: RegularizerABC = regularizer
         self.gradient_clipping: float = gradient_clipping

@@ -10,7 +10,6 @@
   "num_epochs": 10,
   "num_channels": 10,
   "early_stopping_criteria": 5,
-  "cuda": true,
   "alpha": 0.01,
   "gradient_clipping": 0.25,
   "mode": "min",
