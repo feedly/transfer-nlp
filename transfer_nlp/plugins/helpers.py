@@ -4,7 +4,7 @@ from transfer_nlp.plugins.config import register_plugin
 
 
 @register_plugin
-class ModelHyperParams:
+class ObjectHyperParams:
     """
     Use or extend this class to configure model hyper parameters that cannot be predetermined. E.g.
     a model input size that depends on the data set composition.

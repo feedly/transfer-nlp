@@ -4,6 +4,7 @@ To implement your own metric method, you should use the decorator @register_metr
 reuse your custom metric method
 """
 
+import logging
 from typing import Tuple
 
 import torch
@@ -12,13 +13,20 @@ from ignite.metrics import Loss
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.registry import register_metric
 
+name = 'transfer_nlp.plugins.metrics'
+logging.getLogger(name).setLevel(level=logging.INFO)
+logger = logging.getLogger(name)
+
+
 @register_plugin
 class LossMetric(Loss):
     """
     avoid name collision on batch size param of super class
     """
+
     def __init__(self, loss_fn):
         super().__init__(loss_fn)
+
 
 def normalize_sizes(y_pred: torch.Tensor, y_true: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """Normalize tensor sizes
@@ -49,6 +57,35 @@ def compute_accuracy_sequence(input, target, mask_index):
     n_valid = valid_indices.sum().item()
 
     return n_correct / n_valid * 100
+
+
+@register_plugin
+class OutputTransformSequence:
+    def __init__(self):
+        pass
+
+    def __call__(self, *args):
+
+        if len(args) == 3:
+            y_pred, y_target, loss = args
+            y_pred, y_target = normalize_sizes(y_pred=y_pred, y_true=y_target)
+
+            return y_pred, y_target, loss
+
+        elif len(args) == 2:
+            y_pred, y_target = args
+            y_pred, y_target = normalize_sizes(y_pred=y_pred, y_true=y_target)
+
+            return y_pred, y_target
+
+        else:
+            try:
+                y_pred, y_target = args[0]  # Not sure what's happening here but the validation mode outputs ((0, 1))
+                y_pred, y_target = normalize_sizes(y_pred=y_pred, y_true=y_target)
+
+                return y_pred, y_target
+            except Exception as e:
+                raise ValueError(e)
 
 
 @register_metric

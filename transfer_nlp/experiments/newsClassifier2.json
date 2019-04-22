@@ -1,11 +1,16 @@
 {
-  "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelMLP.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/surnames/",
-  "logs": "HOME/work/experiments/nlp/models/surnames/logs/log1",
-  "hidden_dim": 100,
+  "data_file": "HOME/work/experiments/nlp/data/ag_news/news_with_splits.csv",
+  "model_state_file": "model.pth",
+  "save_dir": "HOME/work/experiments/nlp/models/ag_news",
+  "logs": "HOME/work/experiments/nlp/models/ag_news/logs/log1",
+  "glove_filepath": "HOME/work/experiments/nlp/data/glove/glove.6B.100d.txt",
+  "embedding_size": 100,
+  "num_channels": 10,
+  "hidden_dim": 10,
+  "dropout_p": 0.3,
   "seed": 1337,
   "lr": 0.001,
+  "cutoff": 5,
   "batch_size": 128,
   "num_epochs": 5,
   "early_stopping_criteria": 5,
@@ -16,19 +21,28 @@
   "factor": 0.5,
   "patience": 1,
   "vectorizer": {
-    "_name": "SurnamesVectorizerNew"
+    "_name": "NewsVectorizerNew"
+  },
+  "embeddings": {
+    "_name": "Embedding"
+  },
+  "embedding_hyper_params": {
+    "_name": "EmbeddingsHyperParams"
+  },
+  "embeddings2model_hyper_params": {
+    "_name": "EmbeddingtoModelHyperParams1"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "SurnamesDatasetSplits"
+    "_name": "NewsDatasetSplits"
   },
   "model": {
-    "_name": "MultiLayerPerceptron"
+    "_name": "NewsClassifier1"
   },
   "model_hyper_params": {
-    "_name": "SurnameHyperParams"
+    "_name": "NewsCNNHyperParams"
   },
   "model_params": {
     "_name": "ModelParams"
@@ -61,7 +75,7 @@
     ]
   },
   "predictor": {
-    "_name": "MLPPredictor"
+    "_name": "NewsPredictor"
   },
   "predictor_hyper_params": {
     "_name": "PredictorHyperParams"

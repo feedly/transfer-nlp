@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.helpers import ModelHyperParams
+from transfer_nlp.plugins.helpers import ObjectHyperParams
 from transfer_nlp.plugins.registry import register_model
 
 name = 'transfer_nlp.models.perceptrons'
@@ -42,7 +42,7 @@ class Perceptron(nn.Module):
 @register_plugin
 class MultiLayerPerceptron(nn.Module):
 
-    def __init__(self, model_hyper_params: ModelHyperParams, hidden_dim: int):
+    def __init__(self, model_hyper_params: ObjectHyperParams, hidden_dim: int):
         super(MultiLayerPerceptron, self).__init__()
 
         self.input_dim = model_hyper_params.input_dim

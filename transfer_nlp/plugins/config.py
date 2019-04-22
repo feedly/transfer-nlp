@@ -68,7 +68,7 @@ def register_plugin(clazz):
 
 class UnconfiguredItemsException(Exception):
     def __init__(self, items):
-        super().__init__('unconfigured items')
+        super().__init__(f'There are some unconfigured items, which makes these items not configurable: {items}')
         self.items = items
 
 class ExperimentConfig:
@@ -100,14 +100,18 @@ class ExperimentConfig:
             config = json.load(open(experiment))
 
         #extract simple parameters
+        logger.info(f"Initializing simple parameters:")
         experiment = {}
         for k,v in config.items():
             if not isinstance(v, dict) and not isinstance(v, list):
+                logger.info(f"Parameter {k}: {v}")
                 experiment[k] = do_env_subs(v)
 
         #extract simple lists
+        logger.info(f"Initializing simple lists:")
         for k,v in config.items():
             if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
+                logger.info(f"Parameter {k}: {v}")
                 upd = []
                 for vv in v:
                     upd.append(do_env_subs(vv))
@@ -117,17 +121,19 @@ class ExperimentConfig:
             del config[k]
 
         try:
+            logger.info(f"Initializing complex configurations ignoring default params:")
             ExperimentConfig._build_items(config, experiment, 0)
         except UnconfiguredItemsException as e:
             pass
 
         try:
+            logger.info(f"Initializing complex configurations only filling in default params not found in the experiment:")
             ExperimentConfig._build_items(config, experiment, 1)
         except UnconfiguredItemsException as e:
             pass
 
-
         try:
+            logger.info(f"Initializing complex configurations filling in all default params:")
             ExperimentConfig._build_items(config, experiment, 2)
         except UnconfiguredItemsException as e:
             logging.error('There are unconfigured items in the experiment. Please check your configuration:')
@@ -150,11 +156,14 @@ class ExperimentConfig:
         :return: None
         :raise UnconfiguredItemsException: if items are unable to be configured
         """
-
+        i = 1
         while config:
+            logger.info(f"Pass {i}")
+            i += 1
             configured = set()  # items configured in this iteration
             unconfigured = {}   # items unable to be configured in this iteration
             for k, v in config.items():
+                logger.info(f"Parameter {k}")
                 if not isinstance(v, dict):
                     raise ValueError(f'complex configuration object config[{k}] must be a dict')
 

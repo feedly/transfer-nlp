@@ -20,6 +20,19 @@ from transfer_nlp.loaders.vectorizers import ReviewsVectorizer, SurnamesVectoriz
     SurnameVectorizerGeneration, NMTVectorizer, FeedlyVectorizer
 from transfer_nlp.plugins.registry import register_dataset
 
+
+from transfer_nlp.plugins.config import register_plugin
+from transfer_nlp.plugins.helpers import ObjectHyperParams
+from transfer_nlp.loaders.vectorizers import VectorizerNew
+
+@register_plugin
+class DatasetHyperParams(ObjectHyperParams):
+
+    def __init__(self, vectorizer: VectorizerNew):
+        super().__init__()
+        self.vectorizer = vectorizer
+
+
 class DatasetSplits:
     def __init__(self,
                  train_set: Dataset, train_batch_size: int,
@@ -36,7 +49,7 @@ class DatasetSplits:
         self.test_batch_size: int = test_batch_size
 
     def train_data_loader(self):
-        return DataLoader(self.train_set, self.train_batch_size)
+        return DataLoader(self.train_set, self.train_batch_size, shuffle=True)
 
     def val_data_loader(self):
         return DataLoader(self.val_set, self.val_batch_size, shuffle=False)

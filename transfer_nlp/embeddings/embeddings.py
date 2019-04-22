@@ -7,6 +7,10 @@ import torch
 from smart_open import open
 from tqdm import tqdm
 
+from transfer_nlp.plugins.config import register_plugin
+from transfer_nlp.plugins.helpers import ObjectHyperParams
+from transfer_nlp.experiments.news import NewsDatasetSplits
+
 name = 'transfer_nlp.runners.single_task'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
@@ -27,27 +31,33 @@ def load_glove_from_file(glove_filepath: Path) -> Tuple[Dict[str, int], np.array
 
     return w2i, np.stack(embeddings)
 
+@register_plugin
+class EmbeddingsHyperParams(ObjectHyperParams):
 
-def make_embedding_matrix(glove_filepath: Path, words: List[str]) -> np.array:
-    """
-    Create embedding matrix for a specific set of words.
+    def __init__(self, dataset_splits: NewsDatasetSplits):
+        super().__init__()
+        self.words = dataset_splits.vectorizer.data_vocab._token2id.keys()
 
-    Args:
-        glove_filepath (str): file path to the glove embeddigns
-        words (list): list of words in the dataset
-    """
 
-    w2i, glove_embeddings = load_glove_from_file(glove_filepath=glove_filepath)
-    embedding_size = glove_embeddings.shape[1]
+@register_plugin
+class Embedding:
 
-    final_embeddings = np.zeros((len(words), embedding_size))
+    def __init__(self, glove_filepath: Path, embedding_hyper_params: ObjectHyperParams):
 
-    for i, word in tqdm(enumerate(words), total=len(words), desc='Loading pre-trained word embeddings'):
-        if word in w2i:
-            final_embeddings[i, :] = glove_embeddings[w2i[word]]
-        else:
-            embedding_i = torch.ones(1, embedding_size)
-            torch.nn.init.xavier_uniform_(embedding_i)
-            final_embeddings[i, :] = embedding_i
+        words = embedding_hyper_params.words
 
-    return final_embeddings
+        w2i, glove_embeddings = load_glove_from_file(glove_filepath=glove_filepath)
+        embedding_size = glove_embeddings.shape[1]
+
+        final_embeddings = np.zeros((len(words), embedding_size))
+
+        for i, word in tqdm(enumerate(words), total=len(words), desc='Loading pre-trained word embeddings'):
+            if word in w2i:
+                final_embeddings[i, :] = glove_embeddings[w2i[word]]
+            else:
+                embedding_i = torch.ones(1, embedding_size)
+                torch.nn.init.xavier_uniform_(embedding_i)
+                final_embeddings[i, :] = embedding_i
+
+        self.embeddings = final_embeddings
+

@@ -27,7 +27,7 @@ from ignite.utils import convert_tensor
 from smart_open import open
 from tensorboardX import SummaryWriter
 
-from transfer_nlp.embeddings.embeddings import make_embedding_matrix
+# from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.registry import Scheduler, LossFunction, Model, Optimizer, Data, Generator, Metrics, Regularizer

@@ -1,13 +1,14 @@
 {
   "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelMLP.pth",
+  "model_state_file": "modelCNN.pth",
   "save_dir": "HOME/work/experiments/nlp/models/surnames/",
-  "logs": "HOME/work/experiments/nlp/models/surnames/logs/log1",
-  "hidden_dim": 100,
+  "logs": "HOME/work/experiments/nlp/models//surnamesCNN/logs/log1",
+  "hidden_dim": 10,
   "seed": 1337,
   "lr": 0.001,
   "batch_size": 128,
-  "num_epochs": 5,
+  "num_epochs": 10,
+  "num_channels": 10,
   "early_stopping_criteria": 5,
   "cuda": true,
   "alpha": 0.01,
@@ -15,20 +16,20 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-  "vectorizer": {
-    "_name": "SurnamesVectorizerNew"
+    "vectorizer": {
+    "_name": "SurnamesVectorizerCNNNew"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "SurnamesDatasetSplits"
+    "_name": "SurnamesCNNDatasetSplits"
   },
   "model": {
-    "_name": "MultiLayerPerceptron"
+    "_name": "SurnameClassifierCNN1"
   },
   "model_hyper_params": {
-    "_name": "SurnameHyperParams"
+    "_name": "SurnameCNNHyperParams"
   },
   "model_params": {
     "_name": "ModelParams"
@@ -61,7 +62,7 @@
     ]
   },
   "predictor": {
-    "_name": "MLPPredictor"
+    "_name": "SurnameCNNPredictor"
   },
   "predictor_hyper_params": {
     "_name": "PredictorHyperParams"

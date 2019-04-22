@@ -8,6 +8,9 @@ import torch.nn.functional as F
 from transfer_nlp.common.utils import describe
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.registry import register_model
+from transfer_nlp.plugins.config import register_plugin
+from transfer_nlp.plugins.helpers import ObjectHyperParams
+# from transfer_nlp.experiments.surnames import SurnamesRNNDatasetSplits
 
 name = 'transfer_nlp.models.rnn'
 logging.getLogger(name).setLevel(level=logging.INFO)

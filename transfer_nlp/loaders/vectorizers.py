@@ -7,33 +7,43 @@ import pandas as pd
 
 from transfer_nlp.common.tokenizers import CustomTokenizer, CharacterTokenizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
+from transfer_nlp.plugins.config import register_plugin
+
+
+class VectorizerNew:
+
+    def __init__(self, data_file:str):
+        self.df = pd.read_csv(data_file)
+
+    def vectorize(self, input_string: str):
+        raise NotImplementedError
+
+
 
 
 class Vectorizer:
 
     def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
-
         self.data_vocab: Vocabulary = data_vocab
         self.target_vocab: Vocabulary = target_vocab
 
     @classmethod
     def from_serializable(cls, contents) -> 'Vectorizer':
-
         data_vocab = Vocabulary.from_serializable(contents=contents['data_vocab'])
         target_vocab = Vocabulary.from_serializable(contents=contents['target_vocab'])
 
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
 
     def to_serializable(self) -> Dict[str, Any]:
-
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
+        return {
+            'data_vocab': self.data_vocab.to_serializable(),
+            'target_vocab': self.target_vocab.to_serializable()}
 
     def vectorize(self, input_string: str) -> np.array:
-
         raise NotImplementedError
 
 
+@register_plugin
 class ReviewsVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
@@ -77,6 +87,7 @@ class ReviewsVectorizer(Vectorizer):
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
 
 
+@register_plugin
 class SurnamesVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
@@ -103,7 +114,6 @@ class SurnamesVectorizer(Vectorizer):
 
         # Add surnames and nationalities to vocabulary
         for index, row in surnames_df.iterrows():
-
             surname = row.surname
             nationality = row.nationality
             data_vocab.add_many(tokens=tokenizer.tokenize(text=surname))
@@ -112,6 +122,7 @@ class SurnamesVectorizer(Vectorizer):
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
 
 
+@register_plugin
 class SurnamesVectorizerCNN(Vectorizer):
 
     def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary, max_surname: int):
@@ -140,7 +151,6 @@ class SurnamesVectorizerCNN(Vectorizer):
 
         # Add surnames and nationalities to vocabulary
         for index, row in surnames_df.iterrows():
-
             surname = row.surname
             nationality = row.nationality
             data_vocab.add_many(tokens=tokenizer.tokenize(text=surname))
@@ -159,11 +169,13 @@ class SurnamesVectorizerCNN(Vectorizer):
 
     def to_serializable(self):
 
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable(),
-                'max_surname_length': self._max_surname}
+        return {
+            'data_vocab': self.data_vocab.to_serializable(),
+            'target_vocab': self.target_vocab.to_serializable(),
+            'max_surname_length': self._max_surname}
 
 
+@register_plugin
 class CBOWVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: CBOWVocabulary, target_vocab: CBOWVocabulary):
@@ -173,7 +185,7 @@ class CBOWVectorizer(Vectorizer):
         self.target_vocab: CBOWVocabulary = target_vocab
         self.tokenizer = CustomTokenizer()
 
-    def vectorize(self, context: str, vector_length: int=-1) -> np.array:
+    def vectorize(self, context: str, vector_length: int = -1) -> np.array:
 
         tokens = self.tokenizer.tokenize(text=context)
         indices = [self.data_vocab.lookup_token(token) for token in tokens]
@@ -207,9 +219,11 @@ class CBOWVectorizer(Vectorizer):
 
     def to_serializable(self) -> Dict:
 
-        return {'data_vocab': self.data_vocab.to_serializable()}
+        return {
+            'data_vocab': self.data_vocab.to_serializable()}
 
 
+@register_plugin
 class NewsVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
@@ -217,7 +231,7 @@ class NewsVectorizer(Vectorizer):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
         self.tokenizer = CustomTokenizer()
 
-    def vectorize(self, title: str, vector_length: int=-1) -> np.array:
+    def vectorize(self, title: str, vector_length: int = -1) -> np.array:
 
         tokens = self.tokenizer.tokenize(text=title)
         indices = [self.data_vocab.begin_seq_index]
@@ -271,13 +285,14 @@ class NewsVectorizer(Vectorizer):
             'target_vocab': self.target_vocab.to_serializable()}
 
 
+@register_plugin
 class SurnameVectorizerRNN(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
         self.tokenizer = CharacterTokenizer()
 
-    def vectorize(self, surname: str, vector_length: int=-1) -> Tuple[np.array, int]:
+    def vectorize(self, surname: str, vector_length: int = -1) -> Tuple[np.array, int]:
 
         tokens = self.tokenizer.tokenize(text=surname)
         indices = [self.data_vocab.begin_seq_index]
@@ -315,17 +330,19 @@ class SurnameVectorizerRNN(Vectorizer):
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
 
     def to_serializable(self):
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
+        return {
+            'data_vocab': self.data_vocab.to_serializable(),
+            'target_vocab': self.target_vocab.to_serializable()}
 
 
+@register_plugin
 class SurnameVectorizerGeneration(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
         self.tokenizer = CharacterTokenizer()
 
-    def vectorize(self, surname: str, vector_length: int=-1) -> Tuple[np.array, np.array]:
+    def vectorize(self, surname: str, vector_length: int = -1) -> Tuple[np.array, np.array]:
 
         tokens = self.tokenizer.tokenize(text=surname)
 
@@ -371,17 +388,19 @@ class SurnameVectorizerGeneration(Vectorizer):
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
 
     def to_serializable(self):
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
+        return {
+            'data_vocab': self.data_vocab.to_serializable(),
+            'target_vocab': self.target_vocab.to_serializable()}
 
 
+@register_plugin
 class FeedlyVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
         self.tokenizer = CustomTokenizer()
 
-    def vectorize(self, content: str, vector_length: int=-1) -> Tuple[np.array, np.array]:
+    def vectorize(self, content: str, vector_length: int = -1) -> Tuple[np.array, np.array]:
 
         content = self.tokenizer.tokenize(text=content)
         indices = [self.data_vocab.begin_seq_index]
@@ -435,10 +454,12 @@ class FeedlyVectorizer(Vectorizer):
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
 
     def to_serializable(self):
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
+        return {
+            'data_vocab': self.data_vocab.to_serializable(),
+            'target_vocab': self.target_vocab.to_serializable()}
 
 
+@register_plugin
 class NMTVectorizer(object):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: SequenceVocabulary, max_source_length: int, max_target_length: int):
@@ -452,7 +473,7 @@ class NMTVectorizer(object):
         self.source_tokenizer = CustomTokenizer()
         self.target_tokenizer = CustomTokenizer()
 
-    def _vectorize(self, indices: List[int], vector_length: int=-1, mask_index: int=0) -> np.array:
+    def _vectorize(self, indices: List[int], vector_length: int = -1, mask_index: int = 0) -> np.array:
 
         if vector_length < 0:
             vector_length = len(indices)
@@ -481,7 +502,7 @@ class NMTVectorizer(object):
         y_indices = indices + [self.target_vocab.end_seq_index]
         return x_indices, y_indices
 
-    def vectorize(self, source_text: str, target_text: str, use_dataset_max_lengths: bool=True) -> Dict[str, Any]:
+    def vectorize(self, source_text: str, target_text: str, use_dataset_max_lengths: bool = True) -> Dict[str, Any]:
 
         source_vector_length = -1
         target_vector_length = -1

@@ -1,12 +1,13 @@
 {
   "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelMLP.pth",
+  "model_state_file": "modelRNN.pth",
   "save_dir": "HOME/work/experiments/nlp/models/surnames/",
   "logs": "HOME/work/experiments/nlp/models/surnames/logs/log1",
-  "hidden_dim": 100,
+  "embedding_size": 100,
+  "rnn_hidden_size": 64,
   "seed": 1337,
   "lr": 0.001,
-  "batch_size": 128,
+  "batch_size": 64,
   "num_epochs": 5,
   "early_stopping_criteria": 5,
   "cuda": true,
@@ -16,19 +17,19 @@
   "factor": 0.5,
   "patience": 1,
   "vectorizer": {
-    "_name": "SurnamesVectorizerNew"
+    "_name": "SurnameVectorizerRNNNew"
   },
   "dataset_hyper_params": {
     "_name": "DatasetHyperParams"
   },
   "dataset_splits": {
-    "_name": "SurnamesDatasetSplits"
+    "_name": "SurnamesRNNDatasetSplits"
   },
   "model": {
-    "_name": "MultiLayerPerceptron"
+    "_name": "SurnameClassifierRNN2"
   },
   "model_hyper_params": {
-    "_name": "SurnameHyperParams"
+    "_name": "SurnameRNNHyperParams"
   },
   "model_params": {
     "_name": "ModelParams"
@@ -61,7 +62,7 @@
     ]
   },
   "predictor": {
-    "_name": "MLPPredictor"
+    "_name": "SurnameRNNPredictor"
   },
   "predictor_hyper_params": {
     "_name": "PredictorHyperParams"

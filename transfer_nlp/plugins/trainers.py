@@ -29,7 +29,7 @@ from smart_open import open
 from tensorboardX import SummaryWriter
 from torch.utils.data import Dataset
 
-from transfer_nlp.embeddings.embeddings import make_embedding_matrix
+# from transfer_nlp.embeddings.embeddings import make_embedding_matrix
 from transfer_nlp.loaders.loaders import CustomDataset, DatasetSplits
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.config import register_plugin
@@ -37,7 +37,7 @@ from transfer_nlp.plugins.registry import Scheduler, LossFunction, Model, Optimi
 from transfer_nlp.plugins.regularizers import RegularizerABC
 from transfer_nlp.runners.utils import set_seed_everywhere, handle_dirs, make_training_state
 
-name = 'transfer_nlp.runners.runnersABC'
+name = 'transfer_nlp.plugins.trainer'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 
@@ -49,9 +49,10 @@ def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
     result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
     return result
 
+
 class TrainingMetric(Metric):
 
-    def __init__(self, metric:Metric):
+    def __init__(self, metric: Metric):
         self.source_metric = metric
         self.reset()
 
@@ -65,6 +66,7 @@ class TrainingMetric(Metric):
 
     def compute(self):
         return self.source_metric.compute()
+
 
 @register_plugin
 class BasicTrainer:
@@ -80,8 +82,11 @@ class BasicTrainer:
                  seed: int = None,
                  cuda: bool = False,
                  loss_accumulation_steps: int = 4,
-                 scheduler: Any = None, # no common parent class?
-                 regularizer: RegularizerABC = None):
+                 scheduler: Any = None,  # no common parent class?
+                 regularizer: RegularizerABC = None,
+                 gradient_clipping: float = 1.0,
+                 output_transform=None):
+
         self.model: nn.Module = model
 
         self.forward_params = {}
@@ -101,9 +106,16 @@ class BasicTrainer:
         self.cuda: bool = cuda
         self.loss_accumulation_steps: int = loss_accumulation_steps
         self.regularizer: RegularizerABC = regularizer
+        self.gradient_clipping: float = gradient_clipping
+        self.output_transform = output_transform
 
-        self.trainer, training_metrics = self.create_supervised_trainer()
-        self.evaluator = self.create_supervised_evaluator()
+        if self.output_transform:
+            self.trainer, training_metrics = self.create_supervised_trainer(output_transform=self.output_transform)
+            self.evaluator = self.create_supervised_evaluator(output_transform=self.output_transform)
+        else:
+            self.trainer, training_metrics = self.create_supervised_trainer()
+            self.evaluator = self.create_supervised_evaluator()
+
 
         loss_metrics = [m for m in metrics if isinstance(m, Loss)]
 
@@ -134,19 +146,17 @@ class BasicTrainer:
                     rv += f'{metric_name(k)}: {metrics[k]:.6}'
             return rv
 
-
         if self.seed:
             set_seed_everywhere(self.seed, self.cuda)
-
 
         pbar = ProgressBar()
 
         names = []
-        for k,v in training_metrics.items():
+        for k, v in training_metrics.items():
             name = f'r{k}'
             names.append(name)
             RunningAverage(v).attach(self.trainer, name)
-        RunningAverage(None, output_transform=lambda x:x[-1] * self.loss_accumulation_steps).attach(self.trainer, 'rloss')
+        RunningAverage(None, output_transform=lambda x: x[-1] * self.loss_accumulation_steps).attach(self.trainer, 'rloss')
         names.append('rloss')
         pbar.attach(self.trainer, names)
 
@@ -185,7 +195,7 @@ class BasicTrainer:
 
         return self.model(**model_inputs)
 
-    def create_supervised_trainer(self, prepare_batch=_prepare_batch, non_blocking=False):
+    def create_supervised_trainer(self, prepare_batch=_prepare_batch, non_blocking=False, output_transform=lambda y_pred, y_target, loss: (y_pred, y_target, loss)):
 
         if self.device:
             self.model.to(self.device)
@@ -199,20 +209,18 @@ class BasicTrainer:
             self.model.train()
             batch = prepare_batch(batch, device=self.device, non_blocking=non_blocking)
             y_pred = self._forward(batch)
-            if hasattr(self.loss, 'mask') and self.mask_index:
-                loss = self.loss(input=y_pred, target=batch['y_target'], mask_index=self.mask_index)
-            else:
-                loss = self.loss(input=y_pred, target=batch['y_target'])
+            loss = self.loss(input=y_pred, target=batch['y_target'])
 
             loss /= accumulation_steps
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)
 
             if engine.state.iteration % accumulation_steps == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
-            return y_pred, batch['y_target'], loss.item()
+            return output_transform(y_pred, batch['y_target'], loss.item())
 
         engine = Engine(_update)
         metrics = {}
@@ -225,7 +233,7 @@ class BasicTrainer:
 
         return engine, metrics
 
-    def create_supervised_evaluator(self, prepare_batch=_prepare_batch, non_blocking=False):
+    def create_supervised_evaluator(self, prepare_batch=_prepare_batch, non_blocking=False, output_transform=lambda y, y_pred: (y_pred, y,)):
 
         if self.device:
             self.model.to(self.device)
@@ -235,7 +243,8 @@ class BasicTrainer:
             with torch.no_grad():
                 batch = prepare_batch(batch, device=self.device, non_blocking=non_blocking)
                 y_pred = self._forward(batch)
-                return y_pred, batch['y_target']
+                # return output_transform(batch['y_target'], y_pred)
+                return output_transform(y_pred, batch['y_target'])
 
         engine = Engine(_inference)
 

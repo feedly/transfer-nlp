@@ -18,6 +18,11 @@ name = 'transfer_nlp.models.cnn'
 logging.getLogger(name).setLevel(level=logging.INFO)
 logger = logging.getLogger(name)
 logging.info('')
+from transfer_nlp.plugins.config import register_plugin
+
+from transfer_nlp.plugins.helpers import ObjectHyperParams
+from transfer_nlp.experiments.surnames import SurnamesDatasetSplits
+from transfer_nlp.embeddings.embeddings import Embedding
 
 
 @register_model
@@ -52,6 +57,102 @@ class SurnameClassifierCNN(nn.Module):
         features = self.convnet(x_in).squeeze(dim=2)
 
         prediction_vector = self.fc(features)
+
+        if apply_softmax:
+            prediction_vector = F.softmax(prediction_vector, dim=1)
+
+        return prediction_vector
+
+
+@register_plugin
+class NewsCNNHyperParams(ObjectHyperParams):
+
+    def __init__(self, dataset_splits: SurnamesDatasetSplits):
+        super().__init__()
+        self.num_embeddings = len(dataset_splits.vectorizer.data_vocab)
+        self.num_classes = len(dataset_splits.vectorizer.target_vocab)
+
+
+@register_plugin
+class EmbeddingtoModelHyperParams(ObjectHyperParams):
+
+    def __init__(self, embeddings: Embedding):
+        super().__init__()
+        self.embeddings = embeddings.embeddings
+
+
+@register_plugin
+class NewsClassifier1(nn.Module):
+
+    def __init__(self, model_hyper_params: ObjectHyperParams, embedding_size: int, num_channels: int,
+                 hidden_dim: int, dropout_p: float, padding_idx: int = 0, embeddings2model_hyper_params: ObjectHyperParams=None):
+        super(NewsClassifier1, self).__init__()
+
+
+        self.num_embeddings: int = model_hyper_params.num_embeddings
+        self.num_classes: int = model_hyper_params.num_classes
+        self.num_channels: int = num_channels
+        self.embedding_size = embedding_size
+        self.hidden_dim = hidden_dim
+        self.padding_idx = padding_idx
+
+        if embeddings2model_hyper_params:
+            logger.info("Using pre-trained word embeddings...")
+            self.embeddings = embeddings2model_hyper_params.embeddings
+            self.embeddings = torch.from_numpy(self.embeddings).float()
+            self.emb: nn.Embedding = nn.Embedding(embedding_dim=self.embedding_size,
+                                                  num_embeddings=self.num_embeddings,
+                                                  padding_idx=self.padding_idx,
+                                                  _weight=self.embeddings)
+
+        else:
+            logger.info("Not using pre-trained word embeddings...")
+            self.emb: nn.Embedding = nn.Embedding(embedding_dim=self.embedding_size,
+                                              num_embeddings=self.num_embeddings,
+                                              padding_idx=self.padding_idx)
+
+        self.convnet = nn.Sequential(
+            nn.Conv1d(in_channels=self.embedding_size,
+                      out_channels=self.num_channels, kernel_size=3),
+            nn.ELU(),
+            nn.Conv1d(in_channels=self.num_channels, out_channels=self.num_channels,
+                      kernel_size=3, stride=2),
+            nn.ELU(),
+            nn.Conv1d(in_channels=self.num_channels, out_channels=self.num_channels,
+                      kernel_size=3, stride=1),
+            nn.ELU(),
+            nn.Conv1d(in_channels=self.num_channels, out_channels=self.num_channels,
+                      kernel_size=3),  # Experimental change from 3 to 2
+            nn.ELU()
+        )
+
+        self._dropout_p: float = dropout_p
+        self.dropout = nn.Dropout(p=dropout_p)
+        self.fc1: nn.Linear = nn.Linear(self.num_channels, self.hidden_dim)
+        self.fc2: nn.Linear = nn.Linear(self.hidden_dim, self.num_classes)
+
+    def forward(self, x_in: torch.Tensor, apply_softmax: bool = False) -> torch.Tensor:
+        """
+
+        :param x_in: input data tensor
+        :param apply_softmax: flag for the softmax activation
+                should be false if used with the Cross Entropy losses
+        :return: the resulting tensor. tensor.shape should be (batch, num_classes)
+        """
+
+        # embed and permute so features are channels
+        x_embedded = self.emb(x_in).permute(0, 2, 1)
+
+        features = self.convnet(x_embedded)
+
+        # average and remove the extra dimension
+        remaining_size = features.size(dim=2)
+        features = F.avg_pool1d(features, remaining_size).squeeze(dim=2)
+        features = self.dropout(features)
+
+        # mlp classifier
+        intermediate_vector = F.relu(self.dropout(self.fc1(features)))
+        prediction_vector = self.fc2(intermediate_vector)
 
         if apply_softmax:
             prediction_vector = F.softmax(prediction_vector, dim=1)
@@ -286,8 +387,8 @@ def predict_topk_nationality(surname: str, model: nn.Module, vectorizer: Vectori
     for prob_value, index in zip(probability_values, indices):
         nationality = vectorizer.target_vocab.lookup_index(index)
         results.append({
-                           'nationality': nationality,
-                           'probability': prob_value})
+            'nationality': nationality,
+            'probability': prob_value})
 
     return results
 

@@ -13,6 +13,8 @@ logger = logging.getLogger(name)
 logging.info('')
 
 
+
+
 @register_model
 class CBOWClassifier(nn.Module):  # Simplified cbow Model
 

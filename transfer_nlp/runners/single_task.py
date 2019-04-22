@@ -124,8 +124,10 @@ if __name__ == "__main__":
 
     # runner = Runner.load_from_project(experiment_file=args.config, HOME=str(Path.home()))
     # runner.run_pipeline()
-    experiment = ExperimentConfig.from_json('/Users/kireet/git/transfer-nlp/transfer_nlp/experiments/mlp.json', HOME=str(Path.home()))
-    experiment['trainer'].train()
+    # experiment = ExperimentConfig.from_json('/Users/kireet/git/transfer-nlp/transfer_nlp/experiments/mlp.json', HOME=str(Path.home()))
+    path = '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/transfer_nlp/experiments/mlp.json'
+    experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
+    # experiment['trainer'].train()
     #
     # if slack_webhook_url and slack_webhook_url != "YourWebhookURL":
     #     run_with_slack(runner=runner, test_at_the_end=True)
