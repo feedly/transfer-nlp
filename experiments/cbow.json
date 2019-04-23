@@ -60,6 +60,8 @@
     "_name": "LossMetric",
     "loss_fn": "loss"
   },
+  "embeddings_name": "embedding",
+  "tensorboard_logs": "HOME/books/tensorboard/cbow",
   "trainer": {
     "_name": "BasicTrainer",
     "metrics": [

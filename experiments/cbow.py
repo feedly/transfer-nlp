@@ -116,14 +116,14 @@ class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
             logger.info("Using pre-trained word embeddings...")
             self.embeddings = embeddings2model_hyper_params.embeddings
             self.embeddings = torch.from_numpy(self.embeddings).float()
-            self.emb: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
+            self.embedding: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
                                                               num_embeddings=self.num_embeddings,
                                                               padding_idx=self.padding_idx,
                                                               _weight=self.embeddings)
 
         else:
             logger.info("Not using pre-trained word embeddings...")
-            self.emb: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
+            self.embedding: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
                                                               num_embeddings=self.num_embeddings,
                                                               padding_idx=self.padding_idx)
 
@@ -140,7 +140,7 @@ class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
         :return: the resulting tensor. tensor.shape should be (batch, output_dim)
         """
 
-        x_embedded_sum = self.dropout(self.emb(x_in).sum(dim=1))
+        x_embedded_sum = self.dropout(self.embedding(x_in).sum(dim=1))
         y_out = self.fc1(x_embedded_sum)
 
         return y_out
