@@ -1,5 +1,6 @@
 {
   "data_file": "HOME/surnames/surnames_with_splits.csv",
+  "tensorboard_logs": "HOME/surnames/tensorboard/cnn",
   "hidden_dim": 10,
   "seed": 1337,
   "lr": 0.001,
@@ -12,7 +13,7 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-    "vectorizer": {
+  "vectorizer": {
     "_name": "SurnamesVectorizerCNN"
   },
   "dataset_hyper_params": {

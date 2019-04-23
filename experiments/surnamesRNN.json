@@ -1,5 +1,6 @@
 {
   "data_file": "HOME/surnames/surnames_with_splits.csv",
+  "tensorboard_logs": "HOME/surnames/tensorboard/rnn",
   "embedding_size": 100,
   "rnn_hidden_size": 64,
   "seed": 1337,

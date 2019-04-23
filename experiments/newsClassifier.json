@@ -1,5 +1,6 @@
 {
   "data_file": "HOME/ag_news/news_with_splits.csv",
+  "tensorboard_logs": "HOME/ag_news/tensorboard/cnn",
   "glove_filepath": "HOME/glove/glove.6B.100d.txt",
   "embedding_size": 100,
   "num_channels": 10,

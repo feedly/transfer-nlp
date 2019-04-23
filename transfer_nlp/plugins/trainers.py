@@ -19,6 +19,10 @@ from ignite.engine import Events
 from ignite.engine.engine import Engine
 from ignite.metrics import Loss, Metric, RunningAverage
 from ignite.utils import convert_tensor
+from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
+    GradsScalarHandler
+from tensorboardX import SummaryWriter
+
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin
@@ -77,7 +81,9 @@ class BasicTrainer:
                  scheduler: Any = None,  # no common parent class?
                  regularizer: RegularizerABC = None,
                  gradient_clipping: float = 1.0,
-                 output_transform=None):
+                 output_transform=None,
+                 tensorboard_logs: str=None,
+                 embeddings_name: str=None):
 
         self.model: nn.Module = model
 
@@ -102,6 +108,10 @@ class BasicTrainer:
         self.regularizer: RegularizerABC = regularizer
         self.gradient_clipping: float = gradient_clipping
         self.output_transform = output_transform
+        self.tensorboard_logs = tensorboard_logs
+        if self.tensorboard_logs:
+            self.writer = SummaryWriter(log_dir=self.tensorboard_logs)
+        self.embeddings_name = embeddings_name
 
         if self.output_transform:
             self.trainer, training_metrics = self.create_supervised_trainer(output_transform=self.output_transform)
@@ -173,6 +183,46 @@ class BasicTrainer:
             self.evaluator.run(self.dataset_splits.test_data_loader())
             metrics = self.evaluator.state.metrics
             logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
+
+        if self.tensorboard_logs:
+            tb_logger = TensorboardLogger(log_dir=self.tensorboard_logs)
+            tb_logger.attach(self.trainer,
+                             log_handler=OutputHandler(tag="training", output_transform=lambda loss: {
+                                 'loss': loss}),
+                             event_name=Events.ITERATION_COMPLETED)
+            tb_logger.attach(self.evaluator,
+                             log_handler=OutputHandler(tag="validation",
+                                                       metric_names=["LossMetric"],
+                                                       another_engine=self.trainer),
+                             event_name=Events.EPOCH_COMPLETED)
+            tb_logger.attach(self.trainer,
+                             log_handler=OptimizerParamsHandler(self.optimizer),
+                             event_name=Events.ITERATION_STARTED)
+            tb_logger.attach(self.trainer,
+                             log_handler=WeightsScalarHandler(self.model),
+                             event_name=Events.ITERATION_COMPLETED)
+            tb_logger.attach(self.trainer,
+                             log_handler=WeightsHistHandler(self.model),
+                             event_name=Events.EPOCH_COMPLETED)
+            tb_logger.attach(self.trainer,
+                             log_handler=GradsScalarHandler(self.model),
+                             event_name=Events.ITERATION_COMPLETED)
+
+            # This is important to close the tensorboard file logger
+            @self.trainer.on(Events.COMPLETED)
+            def end_tensorboard(trainer):
+                logger.info("Training completed")
+                tb_logger.close()
+
+        if self.embeddings_name:
+            @self.trainer.on(Events.COMPLETED)
+            def log_embeddings(trainer):
+                logger.info(f"Logging embeddings ({self.embeddings_name}) to Tensorboard!")
+                if hasattr(self.model, self.embeddings_name):
+                    embeddings = getattr(self.model, self.embeddings_name).weight.data
+                    metadata = [str(self.dataset_splits.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in
+                                range(embeddings.shape[0])]
+                    self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
 
     def _forward(self, batch):
         model_inputs = {}
