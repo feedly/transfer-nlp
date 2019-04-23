@@ -10,16 +10,16 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    surname_paths = ['/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/mlp.json',
-                     '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/surnamesRNN.json',
-                     '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/surnameClassifier.json',
-                     '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/surnamesGeneration.json'
+    surname_paths = ['./mlp.json',
+                     './surnamesRNN.json',
+                     './surnameClassifier.json',
+                     './surnamesGeneration.json'
                      ]
-    cbow_path = '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/cbow.json'
-    news_path = '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/newsClassifier.json'
+    cbow_path = './cbow.json'
+    news_path = './newsClassifier.json'
 
     for path in surname_paths:
-        logger.info(f"Launching test for experiment {path.split('/')[-1]}")
+        logger.info(f"Launching test for experiment {path}")
         experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
         experiment['trainer'].train()
         if 'predictor' in experiment:
@@ -30,7 +30,7 @@ if __name__ == "__main__":
             logger.info(input_json)
             logger.info(output_json)
 
-    logger.info(f"Launching test for experiment {cbow_path.split('/')[-1]}")
+    logger.info(f"Launching test for experiment {cbow_path}")
     path = cbow_path
     experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
     experiment['trainer'].train()
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     logger.info(input_json)
     logger.info(output_json)
 
-    logger.info(f"Launching test for experiment {news_path.split('/')[-1]}")
+    logger.info(f"Launching test for experiment {news_path}")
     path = news_path
     experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
     experiment['trainer'].train()
