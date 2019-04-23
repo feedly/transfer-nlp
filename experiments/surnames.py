@@ -11,7 +11,7 @@ from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.predictors import Predictor, PredictorHyperParams
+from transfer_nlp.plugins.predictors import PredictorABC, PredictorHyperParams
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class MultiLayerPerceptron(torch.nn.Module):
 
 
 @register_plugin
-class MLPPredictor(Predictor):
+class MLPPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
@@ -285,7 +285,7 @@ class SurnameClassifierCNN(torch.nn.Module):
 
 
 @register_plugin
-class SurnameCNNPredictor(Predictor):
+class SurnameCNNPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
@@ -511,7 +511,7 @@ class SurnameClassifierRNN(torch.nn.Module):
 
 
 @register_plugin
-class SurnameRNNPredictor(Predictor):
+class SurnameRNNPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """

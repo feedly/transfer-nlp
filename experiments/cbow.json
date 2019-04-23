@@ -41,7 +41,7 @@
     "_name": "CBOWHyperParams"
   },
   "model_params": {
-    "_name": "ModelParams"
+    "_name": "TrainableParameters"
   },
   "loss": {
     "_name": "CrossEntropyLoss"

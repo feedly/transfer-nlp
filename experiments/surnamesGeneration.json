@@ -31,7 +31,7 @@
     "_name": "SurnameGenerationHyperParams"
   },
   "model_params": {
-    "_name": "ModelParams"
+    "_name": "TrainableParameters"
   },
   "loss_hyper_params": {
     "_name": "SequenceLossHyperParams"

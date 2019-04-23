@@ -31,7 +31,7 @@ class PredictorHyperParams(ObjectHyperParams):
         self.model = trainer.model
 
 
-class Predictor:
+class PredictorABC:
 
     def __init__(self, predictor_hyper_params: PredictorHyperParams):
 

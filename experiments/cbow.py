@@ -12,7 +12,7 @@ from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import CBOWVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.predictors import Predictor, PredictorHyperParams
+from transfer_nlp.plugins.predictors import PredictorABC, PredictorHyperParams
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +148,7 @@ class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
 
 # Predictor
 @register_plugin
-class CBOWPredictor(Predictor):
+class CBOWPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
@@ -157,12 +157,10 @@ class CBOWPredictor(Predictor):
         super().__init__(predictor_hyper_params=predictor_hyper_params)
 
     def json_to_data(self, input_json: Dict) -> Dict:
-        return {
-            'x_in': torch.LongTensor([self.vectorizer.vectorize(context=input_string) for input_string in input_json['inputs']])}
+        return {'x_in': torch.LongTensor([self.vectorizer.vectorize(context=input_string) for input_string in input_json['inputs']])}
 
     def output_to_json(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
-        return {
-            "outputs": outputs}
+        return {"outputs": outputs}
 
     def decode(self, output: torch.tensor) -> List[Dict[str, Any]]:
         probabilities = torch.nn.functional.softmax(output, dim=1)
