@@ -1,6 +1,6 @@
 {
-  "data_file": "HOME/work/experiments/nlp/data/books/frankenstein_with_splits.csv",
-  "glove_filepath": "HOME/work/experiments/nlp/data/glove/glove.6B.100d.txt",
+  "data_file": "HOME/books/frankenstein_with_splits.csv",
+  "glove_filepath": "HOME/glove/glove.6B.100d.txt",
   "embedding_size": 100,
   "dropout_p": 0.3,
   "seed": 1337,

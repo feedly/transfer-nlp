@@ -1,5 +1,5 @@
 {
-  "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
+  "data_file": "HOME/surnames/surnames_with_splits.csv",
   "hidden_dim": 10,
   "seed": 1337,
   "lr": 0.001,
