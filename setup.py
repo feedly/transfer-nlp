@@ -1,7 +1,6 @@
 from distutils.core import setup
 from io import open
 
-
 setup(
     name='transfer_nlp',
     packages=['transfer_nlp'],
@@ -30,7 +29,9 @@ setup(
         'feedly-client==0.19',
         'bs4==0.0.1',
         'tensorboardX==1.6',
-        'knockknock==0.1'
+        'knockknock==0.1',
+        'pytorch-ignite==0.2.0',
+        'smart_open==1.8.1'
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',

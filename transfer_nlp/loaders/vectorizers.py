@@ -5,382 +5,28 @@ from typing import Dict, Tuple, List, Any
 import numpy as np
 import pandas as pd
 
-from transfer_nlp.common.tokenizers import CustomTokenizer, CharacterTokenizer
-from transfer_nlp.loaders.vocabulary import Vocabulary, CBOWVocabulary, SequenceVocabulary
+from transfer_nlp.common.tokenizers import CustomTokenizer
+from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
+from transfer_nlp.plugins.config import register_plugin
 
 
 class Vectorizer:
 
-    def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
+    def __init__(self, data_file: str):
+        self.df = pd.read_csv(data_file)
 
-        self.data_vocab: Vocabulary = data_vocab
-        self.target_vocab: Vocabulary = target_vocab
-
-    @classmethod
-    def from_serializable(cls, contents) -> 'Vectorizer':
-
-        data_vocab = Vocabulary.from_serializable(contents=contents['data_vocab'])
-        target_vocab = Vocabulary.from_serializable(contents=contents['target_vocab'])
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-    def to_serializable(self) -> Dict[str, Any]:
-
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
-
-    def vectorize(self, input_string: str) -> np.array:
-
+    def vectorize(self, input_string: str):
         raise NotImplementedError
 
 
-class ReviewsVectorizer(Vectorizer):
-
-    def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
-
-        super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
-        self.tokenizer = CustomTokenizer()
-
-    def vectorize(self, input_string: str) -> np.array:
-
-        encoding = np.zeros(len(self.data_vocab), dtype=np.float32)
-        tokens = self.tokenizer.tokenize(text=input_string)
-
-        for token in tokens:
-            index = self.data_vocab.lookup_token(token=token)
-            encoding[index] = 1
-
-        return encoding
-
-    @classmethod
-    def from_dataframe(cls, review_df: pd.DataFrame, cutoff: int = 25) -> Vectorizer:
-        tokenizer = CustomTokenizer()
-
-        data_vocab = Vocabulary(add_unk=True)
-        target_vocab = Vocabulary(add_unk=False)
-
-        # Add targets to vocabulary
-        for rating in sorted(set(review_df.rating)):
-            target_vocab.add_token(token=rating)
-
-        # Add tokens from data to vocab
-        word_counts = Counter()
-        for review in review_df.review:
-            for token in tokenizer.tokenize(text=review):
-                if token not in string.punctuation:
-                    word_counts[token] += 1
-
-        for word in word_counts:
-            if word_counts[word] > cutoff:
-                data_vocab.add_token(token=word)
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-
-class SurnamesVectorizer(Vectorizer):
-
-    def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary):
-
-        super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
-        self.tokenizer = CharacterTokenizer()
-
-    def vectorize(self, input_string: str) -> np.array:
-
-        encoding = np.zeros(shape=len(self.data_vocab), dtype=np.float32)
-        tokens = self.tokenizer.tokenize(text=input_string)
-        for character in tokens:
-            encoding[self.data_vocab.lookup_token(token=character)] = 1
-
-        return encoding
-
-    @classmethod
-    def from_dataframe(cls, surnames_df: pd.DataFrame) -> Vectorizer:
-
-        tokenizer = CharacterTokenizer()
-
-        data_vocab = Vocabulary(unk_token='@')
-        target_vocab = Vocabulary(add_unk=False)
-
-        # Add surnames and nationalities to vocabulary
-        for index, row in surnames_df.iterrows():
-
-            surname = row.surname
-            nationality = row.nationality
-            data_vocab.add_many(tokens=tokenizer.tokenize(text=surname))
-            target_vocab.add_token(token=nationality)
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-
-class SurnamesVectorizerCNN(Vectorizer):
-
-    def __init__(self, data_vocab: Vocabulary, target_vocab: Vocabulary, max_surname: int):
-
-        super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
-        self._max_surname = max_surname
-        self.tokenizer = CharacterTokenizer()
-
-    def vectorize(self, input_string: str) -> np.array:
-
-        encoding = np.zeros(shape=(len(self.data_vocab), self._max_surname), dtype=np.float32)
-        tokens = self.tokenizer.tokenize(text=input_string)
-        for char_index, character in enumerate(tokens):
-            encoding[self.data_vocab.lookup_token(token=character)][char_index] = 1
-
-        return encoding
-
-    @classmethod
-    def from_dataframe(cls, surnames_df: pd.DataFrame) -> Vectorizer:
-
-        tokenizer = CharacterTokenizer()
-
-        data_vocab = Vocabulary(unk_token='@')
-        target_vocab = Vocabulary(add_unk=False)
-        max_surname = 0
-
-        # Add surnames and nationalities to vocabulary
-        for index, row in surnames_df.iterrows():
-
-            surname = row.surname
-            nationality = row.nationality
-            data_vocab.add_many(tokens=tokenizer.tokenize(text=surname))
-            target_vocab.add_token(token=nationality)
-            max_surname = max(max_surname, len(surname))
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab, max_surname=max_surname)
-
-    @classmethod
-    def from_serializable(cls, contents):
-
-        data_vocab = Vocabulary.from_serializable(contents['data_vocab'])
-        target_vocab = Vocabulary.from_serializable(contents['target_vocab'])
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab,
-                   max_surname=contents['max_surname_length'])
-
-    def to_serializable(self):
-
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable(),
-                'max_surname_length': self._max_surname}
-
-
-class CBOWVectorizer(Vectorizer):
-
-    def __init__(self, data_vocab: CBOWVocabulary, target_vocab: CBOWVocabulary):
-
-        super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
-        self.data_vocab: CBOWVocabulary = data_vocab
-        self.target_vocab: CBOWVocabulary = target_vocab
-        self.tokenizer = CustomTokenizer()
-
-    def vectorize(self, context: str, vector_length: int=-1) -> np.array:
-
-        tokens = self.tokenizer.tokenize(text=context)
-        indices = [self.data_vocab.lookup_token(token) for token in tokens]
-        if vector_length < 0:
-            vector_length = len(indices)
-
-        out_vector = np.zeros(vector_length, dtype=np.int64)
-        out_vector[:len(indices)] = indices
-        out_vector[len(indices):] = self.data_vocab.mask_index
-
-        return out_vector
-
-    @classmethod
-    def from_dataframe(cls, cbow_df: pd.DataFrame) -> Vectorizer:
-
-        tokenizer = CustomTokenizer()
-
-        data_vocab = CBOWVocabulary()
-        for index, row in cbow_df.iterrows():
-            for token in tokenizer.tokenize(text=row.context):
-                data_vocab.add_token(token)
-                data_vocab.add_token(row.target)
-
-        return cls(data_vocab=data_vocab, target_vocab=CBOWVocabulary())
-
-    @classmethod
-    def from_serializable(cls, contents) -> Vectorizer:
-
-        data_vocab = Vocabulary.from_serializable(contents['data_vocab'])
-        return cls(data_vocab=data_vocab, target_vocab=CBOWVocabulary())
-
-    def to_serializable(self) -> Dict:
-
-        return {'data_vocab': self.data_vocab.to_serializable()}
-
-
-class NewsVectorizer(Vectorizer):
-
-    def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
-
-        super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
-        self.tokenizer = CustomTokenizer()
-
-    def vectorize(self, title: str, vector_length: int=-1) -> np.array:
-
-        tokens = self.tokenizer.tokenize(text=title)
-        indices = [self.data_vocab.begin_seq_index]
-        indices.extend(self.data_vocab.lookup_token(token)
-                       for token in tokens)
-        indices.append(self.data_vocab.end_seq_index)
-
-        if vector_length < 0:
-            vector_length = len(indices)
-
-        out_vector = np.zeros(vector_length, dtype=np.int64)
-        out_vector[:len(indices)] = indices
-        out_vector[len(indices):] = self.data_vocab.mask_index
-
-        return out_vector
-
-    @classmethod
-    def from_dataframe(cls, news_df: pd.DataFrame, cutoff=25) -> Vectorizer:
-
-        tokenizer = CustomTokenizer()
-
-        target_vocab = Vocabulary(add_unk=False)
-        for category in sorted(set(news_df.category)):
-            target_vocab.add_token(category)
-
-        word_counts = Counter()
-        for title in news_df.title:
-            for token in tokenizer.tokenize(text=title):
-                if token not in string.punctuation:
-                    word_counts[token] += 1
-
-        data_vocab = SequenceVocabulary()
-        for word, word_count in word_counts.items():
-            if word_count >= cutoff:
-                data_vocab.add_token(word)
-
-        return cls(data_vocab, target_vocab)
-
-    @classmethod
-    def from_serializable(cls, contents):
-        data_vocab = SequenceVocabulary.from_serializable(contents['data_vocab'])
-        target_vocab = Vocabulary.from_serializable(contents['target_vocab'])
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-    def to_serializable(self):
-
-        return {
-            'data_vocab': self.data_vocab.to_serializable(),
-            'target_vocab': self.target_vocab.to_serializable()}
-
-
-class SurnameVectorizerRNN(Vectorizer):
-
-    def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
-        super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
-        self.tokenizer = CharacterTokenizer()
-
-    def vectorize(self, surname: str, vector_length: int=-1) -> Tuple[np.array, int]:
-
-        tokens = self.tokenizer.tokenize(text=surname)
-        indices = [self.data_vocab.begin_seq_index]
-        indices.extend(self.data_vocab.lookup_token(token)
-                       for token in tokens)
-        indices.append(self.data_vocab.end_seq_index)
-
-        if vector_length < 0:
-            vector_length = len(indices)
-
-        out_vector = np.zeros(vector_length, dtype=np.int64)
-        out_vector[:len(indices)] = indices
-        out_vector[len(indices):] = self.data_vocab.mask_index
-
-        return out_vector, len(indices)
-
-    @classmethod
-    def from_dataframe(cls, surname_df: pd.DataFrame) -> Vectorizer:
-        tokenizer = CharacterTokenizer()
-
-        data_vocab = SequenceVocabulary()
-        target_vocab = Vocabulary(add_unk=False)
-
-        for index, row in surname_df.iterrows():
-            data_vocab.add_many(tokens=tokenizer.tokenize(text=row.surname))
-            target_vocab.add_token(row.nationality)
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-    @classmethod
-    def from_serializable(cls, contents):
-        data_vocab = SequenceVocabulary.from_serializable(contents['data_vocab'])
-        target_vocab = Vocabulary.from_serializable(contents['target_vocab'])
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-    def to_serializable(self):
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
-
-
-class SurnameVectorizerGeneration(Vectorizer):
-
-    def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
-        super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
-        self.tokenizer = CharacterTokenizer()
-
-    def vectorize(self, surname: str, vector_length: int=-1) -> Tuple[np.array, np.array]:
-
-        tokens = self.tokenizer.tokenize(text=surname)
-
-        indices = [self.data_vocab.begin_seq_index]
-        indices.extend(self.data_vocab.lookup_token(token)
-                       for token in tokens)
-        indices.append(self.data_vocab.end_seq_index)
-
-        if vector_length < 0:
-            vector_length = len(indices)
-
-        from_vector = np.empty(shape=vector_length, dtype=np.int64)
-        from_indices = indices[:-1]
-        from_vector[:len(from_indices)] = from_indices
-        from_vector[len(from_indices):] = self.data_vocab.mask_index
-
-        to_vector = np.empty(shape=vector_length, dtype=np.int64)
-        to_indices = indices[1:]
-        to_vector[:len(to_indices)] = to_indices
-        to_vector[len(to_indices):] = self.data_vocab.mask_index
-
-        return from_vector, to_vector
-
-    @classmethod
-    def from_dataframe(cls, surname_df: pd.DataFrame) -> Vectorizer:
-
-        tokenizer = CharacterTokenizer()
-
-        data_vocab = SequenceVocabulary()
-        target_vocab = Vocabulary(add_unk=False)
-
-        for index, row in surname_df.iterrows():
-            data_vocab.add_many(tokens=tokenizer.tokenize(row.surname))
-            target_vocab.add_token(row.nationality)
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-    @classmethod
-    def from_serializable(cls, contents):
-        data_vocab = SequenceVocabulary.from_serializable(contents['data_vocab'])
-        target_vocab = Vocabulary.from_serializable(contents['target_vocab'])
-
-        return cls(data_vocab=data_vocab, target_vocab=target_vocab)
-
-    def to_serializable(self):
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
-
-
+@register_plugin
 class FeedlyVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
         self.tokenizer = CustomTokenizer()
 
-    def vectorize(self, content: str, vector_length: int=-1) -> Tuple[np.array, np.array]:
+    def vectorize(self, content: str, vector_length: int = -1) -> Tuple[np.array, np.array]:
 
         content = self.tokenizer.tokenize(text=content)
         indices = [self.data_vocab.begin_seq_index]
@@ -408,11 +54,12 @@ class FeedlyVectorizer(Vectorizer):
 
         data_vocab = SequenceVocabulary()
         target_vocab = Vocabulary(add_unk=False)
+        tokenizer = CustomTokenizer()
 
         # Add tokens to reviews vocab
         word_counts = Counter()
         for article in feedly_df.content:
-            for token in tokenize(text=article):
+            for token in tokenizer.tokenize(text=article):
                 if token not in string.punctuation:
                     word_counts[token] += 1
 
@@ -433,10 +80,13 @@ class FeedlyVectorizer(Vectorizer):
         return cls(data_vocab=data_vocab, target_vocab=target_vocab)
 
     def to_serializable(self):
-        return {'data_vocab': self.data_vocab.to_serializable(),
-                'target_vocab': self.target_vocab.to_serializable()}
+        return {
+            'data_vocab': self.data_vocab.to_serializable(),
+            'target_vocab': self.target_vocab.to_serializable()}
 
 
+# TODO: move this part to a NMT experiment python file
+@register_plugin
 class NMTVectorizer(object):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: SequenceVocabulary, max_source_length: int, max_target_length: int):
@@ -450,7 +100,7 @@ class NMTVectorizer(object):
         self.source_tokenizer = CustomTokenizer()
         self.target_tokenizer = CustomTokenizer()
 
-    def _vectorize(self, indices: List[int], vector_length: int=-1, mask_index: int=0) -> np.array:
+    def _vectorize(self, indices: List[int], vector_length: int = -1, mask_index: int = 0) -> np.array:
 
         if vector_length < 0:
             vector_length = len(indices)
@@ -479,7 +129,7 @@ class NMTVectorizer(object):
         y_indices = indices + [self.target_vocab.end_seq_index]
         return x_indices, y_indices
 
-    def vectorize(self, source_text: str, target_text: str, use_dataset_max_lengths: bool=True) -> Dict[str, Any]:
+    def vectorize(self, source_text: str, target_text: str, use_dataset_max_lengths: bool = True) -> Dict[str, Any]:
 
         source_vector_length = -1
         target_vector_length = -1

@@ -1,0 +1,79 @@
+{
+  "data_file": "HOME/work/experiments/nlp/data/ag_news/news_with_splits.csv",
+  "glove_filepath": "HOME/work/experiments/nlp/data/glove/glove.6B.100d.txt",
+  "embedding_size": 100,
+  "num_channels": 10,
+  "hidden_dim": 10,
+  "dropout_p": 0.3,
+  "seed": 1337,
+  "lr": 0.001,
+  "cutoff": 5,
+  "batch_size": 128,
+  "num_epochs": 5,
+  "early_stopping_criteria": 5,
+  "alpha": 0.01,
+  "gradient_clipping": 0.25,
+  "mode": "min",
+  "factor": 0.5,
+  "patience": 1,
+  "vectorizer": {
+    "_name": "NewsVectorizer"
+  },
+  "embeddings": {
+    "_name": "Embedding"
+  },
+  "embedding_hyper_params": {
+    "_name": "EmbeddingsHyperParams"
+  },
+  "embeddings2model_hyper_params": {
+    "_name": "EmbeddingtoModelHyperParams"
+  },
+  "dataset_hyper_params": {
+    "_name": "DatasetHyperParams"
+  },
+  "dataset_splits": {
+    "_name": "NewsDataset"
+  },
+  "model": {
+    "_name": "NewsClassifier"
+  },
+  "model_hyper_params": {
+    "_name": "NewsCNNHyperParams"
+  },
+  "model_params": {
+    "_name": "TrainableParameters"
+  },
+  "loss": {
+    "_name": "CrossEntropyLoss"
+  },
+  "optimizer": {
+    "_name": "Adam",
+    "params": "model_params"
+  },
+  "regularizer": {
+    "_name": "L1"
+  },
+  "scheduler": {
+    "_name": "ReduceLROnPlateau"
+  },
+  "accuracy": {
+    "_name": "Accuracy"
+  },
+  "lossMetric": {
+    "_name": "LossMetric",
+    "loss_fn": "loss"
+  },
+  "trainer": {
+    "_name": "BasicTrainer",
+    "metrics": [
+      "accuracy",
+      "lossMetric"
+    ]
+  },
+  "predictor": {
+    "_name": "NewsPredictor"
+  },
+  "predictor_hyper_params": {
+    "_name": "PredictorHyperParams"
+  }
+}

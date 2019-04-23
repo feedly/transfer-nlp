@@ -1,0 +1,66 @@
+{
+  "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
+  "char_embedding_size": 100,
+  "rnn_hidden_size": 100,
+  "seed": 1337,
+  "lr": 0.001,
+  "batch_size": 64,
+  "num_epochs": 10,
+  "early_stopping_criteria": 5,
+  "alpha": 0.01,
+  "gradient_clipping": 0.25,
+  "mode": "min",
+  "factor": 0.5,
+  "patience": 1,
+  "vectorizer": {
+    "_name": "SurnameVectorizerGeneration"
+  },
+  "dataset_hyper_params": {
+    "_name": "DatasetHyperParams"
+  },
+  "dataset_splits": {
+    "_name": "SurnameDatasetGeneration"
+  },
+  "model": {
+    "_name": "SurnameConditionedGenerationModel"
+  },
+  "model_hyper_params": {
+    "_name": "SurnameGenerationHyperParams"
+  },
+  "model_params": {
+    "_name": "TrainableParameters"
+  },
+  "loss_hyper_params": {
+    "_name": "SequenceLossHyperParams"
+  },
+  "loss": {
+    "_name": "SequenceLoss"
+  },
+  "optimizer": {
+    "_name": "Adam",
+    "params": "model_params"
+  },
+  "regularizer": {
+    "_name": "L1"
+  },
+  "scheduler": {
+    "_name": "ReduceLROnPlateau"
+  },
+  "lossMetric": {
+    "_name": "LossMetric",
+    "loss_fn": "loss"
+  },
+  "output_transform": {
+    "_name": "OutputTransformSequence"
+  },
+  "accuracy": {
+    "_name": "Accuracy"
+  },
+  "trainer": {
+    "_name": "BasicTrainer",
+    "metrics": [
+      "accuracy",
+      "lossMetric"
+    ]
+  }
+}

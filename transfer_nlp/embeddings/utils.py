@@ -11,7 +11,7 @@ def pretty_print(results: List[Tuple[str, torch.Tensor]]):
         print("...[%.2f] - %s" % (item[1], item[0]))
 
 
-def get_closest(target_word: str, word_to_idx: Dict, embeddings: torch.Tensor, n: int=5) -> List[Tuple[str, torch.Tensor]]:
+def get_closest(target_word: str, word_to_idx: Dict, embeddings: torch.Tensor, n: int = 5) -> List[Tuple[str, torch.Tensor]]:
     """
     Get the n closest
     words to your word.

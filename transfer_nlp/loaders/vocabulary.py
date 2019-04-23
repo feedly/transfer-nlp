@@ -24,9 +24,10 @@ class Vocabulary:
 
     def to_serializable(self):
 
-        return {'token2id': self._token2id,
-                'add_unk': self._add_unk,
-                'unk_token': self._unk_token}
+        return {
+            'token2id': self._token2id,
+            'add_unk': self._add_unk,
+            'unk_token': self._unk_token}
 
     def add_token(self, token: str):
 
@@ -67,23 +68,22 @@ class Vocabulary:
 class CBOWVocabulary(Vocabulary):
 
     def __init__(self, token2id: Dict = None, add_unk: bool = True, unk_token: str = "<UNK>", mask_token: str = "<MASK>"):
-
         super().__init__(token2id=token2id, add_unk=add_unk, unk_token=unk_token)
         self._mask_token = mask_token
         self.mask_index = self.add_token(self._mask_token)
 
     def to_serializable(self):
-
         contents = super(CBOWVocabulary, self).to_serializable()
-        contents.update({'mask_token': self._mask_token})
+        contents.update({
+            'mask_token': self._mask_token})
         return contents
 
 
 class SequenceVocabulary(Vocabulary):
 
-    def __init__(self, token2id: Dict=None, unk_token: str="<UNK>",
-                 mask_token: str="<MASK>", begin_seq_token: str="<BEGIN>",
-                 end_seq_token: str="<END>"):
+    def __init__(self, token2id: Dict = None, unk_token: str = "<UNK>",
+                 mask_token: str = "<MASK>", begin_seq_token: str = "<BEGIN>",
+                 end_seq_token: str = "<END>"):
 
         super(SequenceVocabulary, self).__init__(token2id=token2id, add_unk=True, unk_token=unk_token)
 
@@ -98,10 +98,18 @@ class SequenceVocabulary(Vocabulary):
     def to_serializable(self):
 
         contents = super(SequenceVocabulary, self).to_serializable()
-        contents.update({'mask_token': self._mask_token,
-                            'begin_seq_token': self._begin_seq_token,
-                            'end_seq_token': self._end_seq_token})
+
+        contents.update({
+            'mask_token': self._mask_token,
+            'begin_seq_token': self._begin_seq_token,
+            'end_seq_token': self._end_seq_token})
+        del contents['add_unk']
         return contents
+
+    @classmethod
+    def from_serializable(cls, contents):
+
+        return cls(**contents)
 
     def lookup_token(self, token):
 

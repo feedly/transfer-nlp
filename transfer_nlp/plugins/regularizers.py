@@ -1,6 +1,6 @@
 import torch
 
-from transfer_nlp.plugins.registry import register_regularizer
+from transfer_nlp.plugins.config import register_plugin
 
 
 class RegularizerABC:
@@ -11,14 +11,11 @@ class RegularizerABC:
     def __str__(self):
         raise NotImplemented
 
-    def __repr__(self):
-        return self.__repr__()
-
     def compute_penalty(self, model: torch.nn.Module):
         raise NotImplementedError
 
 
-@register_regularizer
+@register_plugin
 class L1(RegularizerABC):
 
     def __init__(self, alpha: float = 0.01) -> None:
@@ -46,7 +43,7 @@ class L1(RegularizerABC):
         return penalty
 
 
-@register_regularizer
+@register_plugin
 class L2(RegularizerABC):
 
     def __init__(self, alpha: float = 0.01) -> None:

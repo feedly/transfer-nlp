@@ -4,7 +4,7 @@ import unittest
 from transfer_nlp.loaders.vocabulary import Vocabulary
 
 
-class MLPTest(unittest.TestCase):
+class VocabularyTest(unittest.TestCase):
 
     def test_vocabulary(self):
         voc = Vocabulary()
