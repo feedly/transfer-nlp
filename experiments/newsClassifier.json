@@ -1,8 +1,5 @@
 {
   "data_file": "HOME/work/experiments/nlp/data/ag_news/news_with_splits.csv",
-  "model_state_file": "model.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/ag_news",
-  "logs": "HOME/work/experiments/nlp/models/ag_news/logs/log1",
   "glove_filepath": "HOME/work/experiments/nlp/data/glove/glove.6B.100d.txt",
   "embedding_size": 100,
   "num_channels": 10,

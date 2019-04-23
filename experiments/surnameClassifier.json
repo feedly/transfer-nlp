@@ -1,8 +1,5 @@
 {
   "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelCNN.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/surnames/",
-  "logs": "HOME/work/experiments/nlp/models//surnamesCNN/logs/log1",
   "hidden_dim": 10,
   "seed": 1337,
   "lr": 0.001,
