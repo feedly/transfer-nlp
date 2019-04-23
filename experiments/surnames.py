@@ -13,9 +13,7 @@ from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 from transfer_nlp.plugins.predictors import Predictor, PredictorHyperParams
 
-name = 'transfer_nlp.experiments.surnames'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 #### Surnames MLP ####

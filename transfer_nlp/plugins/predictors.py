@@ -11,9 +11,7 @@ from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 from transfer_nlp.plugins.trainers import BasicTrainer
 
-name = 'transfer_nlp.plugins.predictor'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):

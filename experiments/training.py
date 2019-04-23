@@ -1,13 +1,11 @@
-import logging
 from pathlib import Path
-from transfer_nlp.plugins.config import ExperimentConfig
+
+from experiments.cbow import *
 from experiments.surnames import *
 from experiments.news import *
-from experiments.cbow import *
+from transfer_nlp.plugins.config import ExperimentConfig
 
-name = 'transfer_nlp.experiments.training'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -19,7 +17,6 @@ if __name__ == "__main__":
                      ]
     cbow_path = '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/cbow.json'
     news_path = '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/newsClassifier.json'
-
 
     for path in surname_paths:
         logger.info(f"Launching test for experiment {path.split('/')[-1]}")
@@ -33,7 +30,6 @@ if __name__ == "__main__":
             logger.info(input_json)
             logger.info(output_json)
 
-
     logger.info(f"Launching test for experiment {cbow_path.split('/')[-1]}")
     path = cbow_path
     experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
@@ -43,7 +39,6 @@ if __name__ == "__main__":
     output_json = experiment['predictor'].json_to_json(input_json=input_json)
     logger.info(input_json)
     logger.info(output_json)
-
 
     logger.info(f"Launching test for experiment {news_path.split('/')[-1]}")
     path = news_path

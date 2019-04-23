@@ -29,9 +29,7 @@ from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.regularizers import RegularizerABC
 
-name = 'transfer_nlp.plugins.trainers'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 def set_seed_everywhere(seed: int, cuda: bool):

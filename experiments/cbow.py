@@ -1,5 +1,5 @@
-from typing import Dict, List, Any
 import logging
+from typing import Dict, List, Any
 
 import numpy as np
 import pandas as pd
@@ -14,10 +14,8 @@ from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 from transfer_nlp.plugins.predictors import Predictor, PredictorHyperParams
 
+logger = logging.getLogger(__name__)
 
-name = 'transfer_nlp.experiments.cbow'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
 
 # Vectorizer
 @register_plugin
@@ -54,12 +52,12 @@ class CBOWVectorizer(VectorizerNew):
 
         return out_vector
 
+
 # Dataset
 @register_plugin
 class CBOWDataset(DatasetSplits):
 
-    def __init__(self, data_file:str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
-
+    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
@@ -68,16 +66,15 @@ class CBOWDataset(DatasetSplits):
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.context), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.target), axis=1)
 
-        train_df = self.df[self.df.split == 'train'][['x_in','y_target']]
-        val_df = self.df[self.df.split == 'val'][['x_in','y_target']]
-        test_df = self.df[self.df.split == 'test'][['x_in','y_target']]
+        train_df = self.df[self.df.split == 'train'][['x_in', 'y_target']]
+        val_df = self.df[self.df.split == 'val'][['x_in', 'y_target']]
+        test_df = self.df[self.df.split == 'test'][['x_in', 'y_target']]
 
         super().__init__(train_set=DataFrameDataset(train_df), train_batch_size=batch_size,
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
 
     def __getitem__(self, index: int) -> Dict:
-
         row = self._target_df.iloc[index]
 
         context_vector = self._vectorizer.vectorize(row.context, self._max_seq_length)
@@ -87,6 +84,7 @@ class CBOWDataset(DatasetSplits):
             'x_in': context_vector,
             'y_target': target_index}
 
+
 # Model
 @register_plugin
 class CBOWHyperParams(ObjectHyperParams):
@@ -95,6 +93,7 @@ class CBOWHyperParams(ObjectHyperParams):
         super().__init__()
         self.num_embeddings = len(dataset_splits.vectorizer.data_vocab)
 
+
 @register_plugin
 class EmbeddingtoModelHyperParams1(ObjectHyperParams):
 
@@ -102,10 +101,12 @@ class EmbeddingtoModelHyperParams1(ObjectHyperParams):
         super().__init__()
         self.embeddings = embeddings.embeddings
 
+
 @register_plugin
 class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, embedding_size: int, padding_idx: int=0, embeddings2model_hyper_params: ObjectHyperParams=None):
+    def __init__(self, model_hyper_params: ObjectHyperParams, embedding_size: int, padding_idx: int = 0,
+                 embeddings2model_hyper_params: ObjectHyperParams = None):
         super(CBOWClassifier, self).__init__()
         self.num_embeddings = model_hyper_params.num_embeddings
         self.embedding_size = embedding_size
@@ -116,18 +117,18 @@ class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
             self.embeddings = embeddings2model_hyper_params.embeddings
             self.embeddings = torch.from_numpy(self.embeddings).float()
             self.emb: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
-                                                  num_embeddings=self.num_embeddings,
-                                                  padding_idx=self.padding_idx,
-                                                  _weight=self.embeddings)
+                                                              num_embeddings=self.num_embeddings,
+                                                              padding_idx=self.padding_idx,
+                                                              _weight=self.embeddings)
 
         else:
             logger.info("Not using pre-trained word embeddings...")
             self.emb: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
-                                              num_embeddings=self.num_embeddings,
-                                              padding_idx=self.padding_idx)
+                                                              num_embeddings=self.num_embeddings,
+                                                              padding_idx=self.padding_idx)
 
         self.fc1 = torch.nn.Linear(in_features=embedding_size,
-                             out_features=self.num_embeddings)
+                                   out_features=self.num_embeddings)
         self.dropout = torch.nn.Dropout(p=0.3)
 
     def forward(self, x_in: torch.Tensor) -> torch.Tensor:
@@ -143,6 +144,7 @@ class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
         y_out = self.fc1(x_embedded_sum)
 
         return y_out
+
 
 # Predictor
 @register_plugin

@@ -14,8 +14,7 @@ import torch.nn as nn
 import torch.optim as optim
 from smart_open import open
 
-name = 'transfer_nlp.plugins.config'
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 CLASSES = {
     'CrossEntropyLoss': nn.CrossEntropyLoss,
