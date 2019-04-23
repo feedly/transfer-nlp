@@ -7,7 +7,7 @@ need to use the decorator @register_dataset, just as in the examples in this fil
 
 from torch.utils.data import Dataset, DataLoader
 
-from transfer_nlp.loaders.vectorizers import VectorizerNew
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 
@@ -15,7 +15,7 @@ from transfer_nlp.plugins.helpers import ObjectHyperParams
 @register_plugin
 class DatasetHyperParams(ObjectHyperParams):
 
-    def __init__(self, vectorizer: VectorizerNew):
+    def __init__(self, vectorizer: Vectorizer):
         super().__init__()
         self.vectorizer = vectorizer
 

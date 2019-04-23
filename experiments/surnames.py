@@ -7,7 +7,7 @@ import torch
 
 from transfer_nlp.common.tokenizers import CharacterTokenizer
 from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset, DatasetHyperParams
-from transfer_nlp.loaders.vectorizers import VectorizerNew
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 #### Surnames MLP ####
 @register_plugin
-class SurnamesVectorizerMLP(VectorizerNew):
+class SurnamesVectorizerMLP(Vectorizer):
 
     def __init__(self, data_file: str):
 
@@ -56,7 +56,7 @@ class SurnamesDatasetMLP(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.nationality), axis=1)
@@ -158,7 +158,7 @@ class MLPPredictor(Predictor):
 
 #### Surnames CNN ####
 @register_plugin
-class SurnamesVectorizerCNN(VectorizerNew):
+class SurnamesVectorizerCNN(Vectorizer):
 
     def __init__(self, data_file: str):
 
@@ -198,7 +198,7 @@ class SurnamesCNN(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.nationality), axis=1)
@@ -311,7 +311,7 @@ class SurnameCNNPredictor(Predictor):
 
 #### Surnames RNN ####
 @register_plugin
-class SurnameVectorizerRNN(VectorizerNew):
+class SurnameVectorizerRNN(Vectorizer):
 
     def __init__(self, data_file: str):
         super().__init__(data_file=data_file)
@@ -353,7 +353,7 @@ class SurnamesRNNDataset(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['x_lengths'] = self.df.apply(lambda row: row.x_in[1], axis=1)
@@ -541,7 +541,7 @@ class SurnameRNNPredictor(Predictor):
 
 #### Surnames Generation ####
 @register_plugin
-class SurnameVectorizerGeneration(VectorizerNew):
+class SurnameVectorizerGeneration(Vectorizer):
 
     def __init__(self, data_file: str):
         super().__init__(data_file=data_file)
@@ -592,7 +592,7 @@ class SurnameDatasetGeneration(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: row.x_in[1], axis=1)

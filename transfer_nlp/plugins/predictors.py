@@ -6,7 +6,7 @@ from typing import Dict, List, Any
 import torch
 from ignite.utils import convert_tensor
 
-from transfer_nlp.loaders.vectorizers import VectorizerNew
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 from transfer_nlp.plugins.trainers import BasicTrainer
@@ -42,7 +42,7 @@ class Predictor:
         for fparam, pdefault in zip_longest(reversed(model_spec.args[1:]), reversed(model_spec.defaults if model_spec.defaults else [])):
             self.forward_params[fparam] = pdefault
 
-        self.vectorizer: VectorizerNew = predictor_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = predictor_hyper_params.vectorizer
 
     def _forward(self, batch):
         model_inputs = {}

@@ -8,7 +8,7 @@ import torch
 from transfer_nlp.common.tokenizers import CustomTokenizer
 from transfer_nlp.embeddings.embeddings import Embedding
 from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset, DatasetHyperParams
-from transfer_nlp.loaders.vectorizers import VectorizerNew
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import CBOWVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Vectorizer
 @register_plugin
-class CBOWVectorizer(VectorizerNew):
+class CBOWVectorizer(Vectorizer):
 
     def __init__(self, data_file: str):
 
@@ -61,7 +61,7 @@ class CBOWDataset(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.context), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.target), axis=1)
