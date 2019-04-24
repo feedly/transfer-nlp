@@ -31,68 +31,61 @@ You can have a look at the [Colab Notebook](https://colab.research.google.com/dr
 
 A basic usage is:
 
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet.png)
+```
+# Setup the experiment
+config_file  = [Dict config file, or str/Path to a json config file]
+experiment = ExperimentConfig.from_json(experiment=config_file)
 
-You can use this code with all existing experiments built in the repo.
+# Launch the training session
+experiment['trainer'].train()
 
-# How to define custom models?
+# Use the predictor for inference
+input_json = {"inputs": [Some Examples]}
+output_json = experiment['predictor'].json_to_json(input_json=input_json)
+```
 
-Using your own models in the framework is made easy through the @register_model decorator. Here is an example:
+You can use this code with all existing experiments in `experiments/`.
 
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet2.png)
+# How to use the library?
+For reproducible research and easy ablation studies, the library enforces the use of configuration files for experiments.
 
-# Customization
+In Transfer-NLP, an experiment config file contains all the necessary information to define entirely the experiment.
+This is where you will insert names of the different components your experiment will use.
+Transfer-NLP makes use of the Inversion of Control pattern, which allows you to define any kind of classes you could need, and the `ExperimentConfig.from_json` method will create a dictionnary and instatiate your objects accordingly.
 
-Using decorators @register_{thing to register}, it is possible to customize these components:
+To use your own classes inside Tranfer-NLP, you need to register them using the `@register_plugin` decorator. Instead of using a different registry for each kind of component (Models, Data loaders, Vectorizers, Optimizers, ...), only a single registry is used here, in order to enforce total customization.
 
-- Optimizers
-- Schedulers
-- Metrics
-- Datasets loaders
-- Models
-- Loss functions
-- Batch generators
+Currently, the config file logic has 3 kinds of components:
 
-Example of a batch generator:
+- simple parameters: those are parameters which you know the value in advance: 
+```
+{"initial_learning_rate": 0.01,
+"embedding_dim": 100,...}
+```
+- simple lists: similar to simple parameters, but as a list:
+```
+{"layers_dropout": [0.1, 0.2, 0.3], ...}
+```
+- Complex config: this is whre the library instantiates your objects: this needs to have the `_name` of the object class (you need to `@register_plugin` it), and some parameters. If your class has default parameters and your config file doesn't contain them, objects will be instantiated as default. Otherwise the parameters have to be present in the config file. Sometimes, initialization parameters are not available before launching the experiment. E.g., suppose your Model object needs a Vocabulary size as init input. The config file logic here makes it easy to deal with this while keeping the library code very general. You can have a look at the experiments for examples: [`surnames.py`](https://github.com/feedly/transfer-nlp/blob/master/experiments/surnames.py), [`news.py`](https://github.com/feedly/transfer-nlp/blob/master/experiments/news.py)
+ or [`cbow.py`](https://github.com/feedly/transfer-nlp/blob/master/experiments/cbow.py). The corresponding json files in [`experiments`](https://github.com/feedly/transfer-nlp/tree/master/experiments) will show you examples of how to get started.
+ 
 
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet3.png)
-
-Example of a metric:
-
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet4.png)
-
-Example of a loss function:
-
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet5.png)
-
-...and similarily for optimizers, schedulers, dataset loaders
-
-This is very useful if you want to set up a very custom training strategy, but for usual cases the plugins that are already implemented will be sufficient.
-
-
-# Tensorboard training monitoring
-PyTorch comes with a handy TensorboardX integration that enable the use of Tensorboard.
-Once the training process in launched you can run:
-
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet7.png)
+# Usage Pipeline
+The goal of the config file is to load a Trainer and run the experiment from it. We provide a `BasicTrainer` in [`transfer_nlp.plugins.trainers.py`](https://github.com/feedly/transfer-nlp/blob/master/transfer_nlp/plugins/trainers.py).
+This basic trainer will take a model and some data as input, and run a whole training pipeline. We make use of the [PyTorch-Ignite](https://github.com/pytorch/ignite) library to monitor events during training (logging some metrics, manipulating learning rates, checkpointing models, etc...). Tensorboard logs are also included as an option, you will have to specify a `tensorboard_logs` simple parameters path in the config file. Then just run `tensorboard --logdir=path/to/logs` in a terminal and you can monitor your experiment while it's training.
+Tensorboard comes with very nice utilities to keep track of the norms of your model weights, histograms, distributions, visualizing embeddings, ...
 
 
 # Slack integration
 While experimenting with your own models / data, the training might take some time. To get notified when your training finishes or crashes, we recommend the simple library [knockknock](https://github.com/huggingface/knockknock) by folks at HuggingFace, which add a simple decorator to your running function to notify you via Slack, E-mail, etc.
 
-![alt text](https://github.com/feedly/transfer-nlp/blob/master/data/snippets/snippet6.png)
 
 # Some objectves to reach:
  - Unit-test everything
- - Smooth the runner pipeline to enable multi-task training (without constraining the way we do multi-task, whether linear, hierarchical or else...)
  - Include examples using state of the art pre-trained models
- - Enable embeddings visualisation (see this project https://projector.tensorflow.org/)
- - Enable pre-trained models finetuning
  - Include linguistic properties to models
  - Experiment with RL for sequential tasks
  - Include probing tasks to try to understand the properties that are learned by the models
-
-
 
 # Acknowledgment
 This library builds on the book <cite>["Natural Language Processing with PyTorch"](https://www.amazon.com/dp/1491978236/)<cite> by Delip Rao and Brian McMahan for the initial experiments.
