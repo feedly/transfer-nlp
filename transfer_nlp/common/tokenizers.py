@@ -2,9 +2,7 @@ import logging
 import re
 from typing import List
 
-name = 'transfer_nlp.common.tokenizers'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 class TokenizerABC:
@@ -36,6 +34,7 @@ class CustomTokenizer(TokenizerABC):
             tokens = tokens[:-1]
 
         return tokens
+
 
 class CharacterTokenizer(TokenizerABC):
 

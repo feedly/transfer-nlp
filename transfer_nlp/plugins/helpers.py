@@ -16,7 +16,7 @@ class ObjectHyperParams:
 
 
 @register_plugin
-class ModelParams:
+class TrainableParameters:
     """
     Use this class to configure optimizer parameters.
     """

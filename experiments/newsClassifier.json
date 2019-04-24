@@ -1,9 +1,7 @@
 {
-  "data_file": "HOME/work/experiments/nlp/data/ag_news/news_with_splits.csv",
-  "model_state_file": "model.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/ag_news",
-  "logs": "HOME/work/experiments/nlp/models/ag_news/logs/log1",
-  "glove_filepath": "HOME/work/experiments/nlp/data/glove/glove.6B.100d.txt",
+  "data_file": "HOME/ag_news/news_with_splits.csv",
+  "tensorboard_logs": "HOME/ag_news/tensorboard/cnn",
+  "glove_filepath": "HOME/glove/glove.6B.100d.txt",
   "embedding_size": 100,
   "num_channels": 10,
   "hidden_dim": 10,
@@ -44,7 +42,7 @@
     "_name": "NewsCNNHyperParams"
   },
   "model_params": {
-    "_name": "ModelParams"
+    "_name": "TrainableParameters"
   },
   "loss": {
     "_name": "CrossEntropyLoss"

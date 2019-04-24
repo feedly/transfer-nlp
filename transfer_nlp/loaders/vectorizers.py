@@ -10,7 +10,7 @@ from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
 from transfer_nlp.plugins.config import register_plugin
 
 
-class VectorizerNew:
+class Vectorizer:
 
     def __init__(self, data_file: str):
         self.df = pd.read_csv(data_file)
@@ -20,7 +20,7 @@ class VectorizerNew:
 
 
 @register_plugin
-class FeedlyVectorizer(VectorizerNew):
+class FeedlyVectorizer(Vectorizer):
 
     def __init__(self, data_vocab: SequenceVocabulary, target_vocab: Vocabulary):
         super().__init__(data_vocab=data_vocab, target_vocab=target_vocab)
@@ -50,7 +50,7 @@ class FeedlyVectorizer(VectorizerNew):
         return from_vector, to_vector
 
     @classmethod
-    def from_dataframe(cls, feedly_df: pd.DataFrame, cutoff: int = 10) -> VectorizerNew:
+    def from_dataframe(cls, feedly_df: pd.DataFrame, cutoff: int = 10) -> Vectorizer:
 
         data_vocab = SequenceVocabulary()
         target_vocab = Vocabulary(add_unk=False)

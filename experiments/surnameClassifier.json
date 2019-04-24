@@ -1,8 +1,6 @@
 {
-  "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelCNN.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/surnames/",
-  "logs": "HOME/work/experiments/nlp/models//surnamesCNN/logs/log1",
+  "data_file": "HOME/surnames/surnames_with_splits.csv",
+  "tensorboard_logs": "HOME/surnames/tensorboard/cnn",
   "hidden_dim": 10,
   "seed": 1337,
   "lr": 0.001,
@@ -15,7 +13,7 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
-    "vectorizer": {
+  "vectorizer": {
     "_name": "SurnamesVectorizerCNN"
   },
   "dataset_hyper_params": {
@@ -31,7 +29,7 @@
     "_name": "SurnameCNNHyperParams"
   },
   "model_params": {
-    "_name": "ModelParams"
+    "_name": "TrainableParameters"
   },
   "loss": {
     "_name": "CrossEntropyLoss"

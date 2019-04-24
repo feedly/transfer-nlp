@@ -11,9 +11,7 @@ from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 
-name = 'transfer_nlp.runners.single_task'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 def load_glove_from_file(glove_filepath: Path) -> Tuple[Dict[str, int], np.array]:

@@ -10,20 +10,18 @@ import torch
 from transfer_nlp.common.tokenizers import CustomTokenizer
 from transfer_nlp.embeddings.embeddings import Embedding
 from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset, DatasetHyperParams
-from transfer_nlp.loaders.vectorizers import VectorizerNew
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.predictors import Predictor, PredictorHyperParams
+from transfer_nlp.plugins.predictors import PredictorABC, PredictorHyperParams
 
-name = 'transfer_nlp.experiments.news'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 # Vectorizer class
 @register_plugin
-class NewsVectorizer(VectorizerNew):
+class NewsVectorizer(Vectorizer):
     def __init__(self, data_file: str, cutoff: int):
 
         super().__init__(data_file=data_file)
@@ -80,7 +78,7 @@ class NewsDataset(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.title), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.category), axis=1)
@@ -212,7 +210,7 @@ class NewsClassifier(torch.nn.Module):
 
 # Predictors
 @register_plugin
-class NewsPredictor(Predictor):
+class NewsPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """

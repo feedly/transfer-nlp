@@ -7,20 +7,18 @@ import torch
 
 from transfer_nlp.common.tokenizers import CharacterTokenizer
 from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset, DatasetHyperParams
-from transfer_nlp.loaders.vectorizers import VectorizerNew
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.predictors import Predictor, PredictorHyperParams
+from transfer_nlp.plugins.predictors import PredictorABC, PredictorHyperParams
 
-name = 'transfer_nlp.experiments.surnames'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 #### Surnames MLP ####
 @register_plugin
-class SurnamesVectorizerMLP(VectorizerNew):
+class SurnamesVectorizerMLP(Vectorizer):
 
     def __init__(self, data_file: str):
 
@@ -58,7 +56,7 @@ class SurnamesDatasetMLP(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.nationality), axis=1)
@@ -134,7 +132,7 @@ class MultiLayerPerceptron(torch.nn.Module):
 
 
 @register_plugin
-class MLPPredictor(Predictor):
+class MLPPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
@@ -160,7 +158,7 @@ class MLPPredictor(Predictor):
 
 #### Surnames CNN ####
 @register_plugin
-class SurnamesVectorizerCNN(VectorizerNew):
+class SurnamesVectorizerCNN(Vectorizer):
 
     def __init__(self, data_file: str):
 
@@ -200,7 +198,7 @@ class SurnamesCNN(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.nationality), axis=1)
@@ -287,7 +285,7 @@ class SurnameClassifierCNN(torch.nn.Module):
 
 
 @register_plugin
-class SurnameCNNPredictor(Predictor):
+class SurnameCNNPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
@@ -313,7 +311,7 @@ class SurnameCNNPredictor(Predictor):
 
 #### Surnames RNN ####
 @register_plugin
-class SurnameVectorizerRNN(VectorizerNew):
+class SurnameVectorizerRNN(Vectorizer):
 
     def __init__(self, data_file: str):
         super().__init__(data_file=data_file)
@@ -355,7 +353,7 @@ class SurnamesRNNDataset(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['x_lengths'] = self.df.apply(lambda row: row.x_in[1], axis=1)
@@ -513,7 +511,7 @@ class SurnameClassifierRNN(torch.nn.Module):
 
 
 @register_plugin
-class SurnameRNNPredictor(Predictor):
+class SurnameRNNPredictor(PredictorABC):
     """
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
@@ -543,7 +541,7 @@ class SurnameRNNPredictor(Predictor):
 
 #### Surnames Generation ####
 @register_plugin
-class SurnameVectorizerGeneration(VectorizerNew):
+class SurnameVectorizerGeneration(Vectorizer):
 
     def __init__(self, data_file: str):
         super().__init__(data_file=data_file)
@@ -594,7 +592,7 @@ class SurnameDatasetGeneration(DatasetSplits):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: VectorizerNew = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: row.x_in[1], axis=1)

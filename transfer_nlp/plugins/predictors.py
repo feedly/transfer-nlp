@@ -6,14 +6,12 @@ from typing import Dict, List, Any
 import torch
 from ignite.utils import convert_tensor
 
-from transfer_nlp.loaders.vectorizers import VectorizerNew
+from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
 from transfer_nlp.plugins.trainers import BasicTrainer
 
-name = 'transfer_nlp.plugins.predictor'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 
 def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
@@ -33,7 +31,7 @@ class PredictorHyperParams(ObjectHyperParams):
         self.model = trainer.model
 
 
-class Predictor:
+class PredictorABC:
 
     def __init__(self, predictor_hyper_params: PredictorHyperParams):
 
@@ -44,21 +42,29 @@ class Predictor:
         for fparam, pdefault in zip_longest(reversed(model_spec.args[1:]), reversed(model_spec.defaults if model_spec.defaults else [])):
             self.forward_params[fparam] = pdefault
 
-        self.vectorizer: VectorizerNew = predictor_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = predictor_hyper_params.vectorizer
 
-    def _forward(self, batch):
-        model_inputs = {}
-        for p, pdefault in self.forward_params.items():
-            val = batch.get(p)
-            if val is None:
-                if pdefault is None:
-                    raise ValueError(f'missing model parameter "{p}"')
-                else:
-                    val = pdefault
+    def forward(self, batch: Dict[str, Any]) -> torch.tensor:
+        """
+        Do the forward pass
+        :param batch:
+        :return:
+        """
+        with torch.no_grad():
+            batch = _prepare_batch(batch, device="cpu", non_blocking=False)
+            model_inputs = {}
+            for p, pdefault in self.forward_params.items():
+                val = batch.get(p)
+                if val is None:
+                    if pdefault is None:
+                        raise ValueError(f'missing model parameter "{p}"')
+                    else:
+                        val = pdefault
 
-            model_inputs[p] = val
+                model_inputs[p] = val
+            y_pred = self.model(**model_inputs)
 
-        return self.model(**model_inputs)
+        return y_pred
 
     def json_to_data(self, input_json: Dict) -> Dict:
         """
@@ -87,27 +93,23 @@ class Predictor:
         """
         raise NotImplementedError
 
-    def infer(self, batch: Dict[str, Any]) -> torch.tensor:
+    def predict(self, batch: Dict[str, Any]) -> List[Dict]:
         """
-        Use the model to infer on some data example
+        Decode the output of the forward pass
         :param batch:
         :return:
         """
-        with torch.no_grad():
-            batch = _prepare_batch(batch, device="cpu", non_blocking=False)
-            y_pred = self._forward(batch)
-        return y_pred
+        forward = self.forward(batch=batch)
+        return self.decode(forward)
 
     def json_to_json(self, input_json: Dict) -> Dict[str, Any]:
         """
-        Full prediction: input_json --> data example --> inference result --> decoded result --> json ouput
+        Full prediction: input_json --> data example --> predictions --> json output
         :param input_json:
         :return:
         """
-
         json2data = self.json_to_data(input_json=input_json)
-        data2infer = self.infer(json2data)
-        infer2decode = self.decode(output=data2infer)
-        decode2json = self.output_to_json(infer2decode)
+        predictions = self.predict(batch=json2data)
+        predictions2json = self.output_to_json(predictions)
 
-        return decode2json
+        return predictions2json

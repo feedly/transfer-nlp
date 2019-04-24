@@ -1,8 +1,6 @@
 {
-  "data_file": "HOME/work/experiments/nlp/data/surnames/surnames_with_splits.csv",
-  "model_state_file": "modelMLP.pth",
-  "save_dir": "HOME/work/experiments/nlp/models/surnames/",
-  "logs": "HOME/work/experiments/nlp/models/surnames/logs/log1",
+  "data_file": "HOME/surnames/surnames_with_splits.csv",
+  "tensorboard_logs": "HOME/surnames/tensorboard/mlp",
   "hidden_dim": 100,
   "seed": 1337,
   "lr": 0.001,
@@ -30,7 +28,7 @@
     "_name": "SurnameHyperParams"
   },
   "model_params": {
-    "_name": "ModelParams"
+    "_name": "TrainableParameters"
   },
   "loss": {
     "_name": "CrossEntropyLoss"

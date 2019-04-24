@@ -1,29 +1,26 @@
-import logging
 from pathlib import Path
-from transfer_nlp.plugins.config import ExperimentConfig
+
+from experiments.cbow import *
 from experiments.surnames import *
 from experiments.news import *
-from experiments.cbow import *
+from transfer_nlp.plugins.config import ExperimentConfig
 
-name = 'transfer_nlp.experiments.training'
-logging.getLogger(name).setLevel(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-
-    surname_paths = ['/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/mlp.json',
-                     '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/surnamesRNN.json',
-                     '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/surnameClassifier.json',
-                     '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/surnamesGeneration.json'
+    home_env = str(Path.home() / 'work/transfer-nlp-data')
+    surname_paths = ['./mlp.json',
+                     './surnamesRNN.json',
+                     './surnameClassifier.json',
+                     './surnamesGeneration.json'
                      ]
-    cbow_path = '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/cbow.json'
-    news_path = '/Users/petermartigny/Documents/PycharmProjects/transfer-nlp/experiments/newsClassifier.json'
-
+    cbow_path = './cbow.json'
+    news_path = './newsClassifier.json'
 
     for path in surname_paths:
-        logger.info(f"Launching test for experiment {path.split('/')[-1]}")
-        experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
+        logger.info(f"Launching test for experiment {path}")
+        experiment = ExperimentConfig.from_json(path, HOME=home_env)
         experiment['trainer'].train()
         if 'predictor' in experiment:
             input_json = {
@@ -33,10 +30,9 @@ if __name__ == "__main__":
             logger.info(input_json)
             logger.info(output_json)
 
-
-    logger.info(f"Launching test for experiment {cbow_path.split('/')[-1]}")
+    logger.info(f"Launching test for experiment {cbow_path}")
     path = cbow_path
-    experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
+    experiment = ExperimentConfig.from_json(path, HOME=home_env)
     experiment['trainer'].train()
     input_json = {
         "inputs": ["I go to and take notes"]}
@@ -44,10 +40,9 @@ if __name__ == "__main__":
     logger.info(input_json)
     logger.info(output_json)
 
-
-    logger.info(f"Launching test for experiment {news_path.split('/')[-1]}")
+    logger.info(f"Launching test for experiment {news_path}")
     path = news_path
-    experiment = ExperimentConfig.from_json(path, HOME=str(Path.home()))
+    experiment = ExperimentConfig.from_json(path, HOME=home_env)
     experiment['trainer'].train()
     input_json = {
         "inputs": ["Banking financing Asset Manager Gets OK To Appeal €15M Fee Payout Ruling",
