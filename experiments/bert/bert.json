@@ -1,0 +1,56 @@
+{
+  "data_file": "HOME/ag_news/news_with_splits.csv",
+  "tensorboard_logs": "HOME/ag_news/tensorboard/vert",
+  "seed": 1337,
+  "lr": 0.001,
+  "batch_size": 32,
+  "num_epochs": 5,
+  "early_stopping_criteria": 5,
+  "alpha": 0.01,
+  "gradient_clipping": 0.25,
+  "mode": "min",
+  "factor": 0.5,
+  "patience": 1,
+  "vectorizer": {
+    "_name": "BertVectorizer"
+  },
+  "dataset_hyper_params": {
+    "_name": "DatasetHyperParams"
+  },
+  "dataset_splits": {
+    "_name": "BertDataset"
+  },
+  "model": {
+    "_name": "MyBert"
+  },
+  "model_params": {
+    "_name": "TrainableParameters"
+  },
+  "loss": {
+    "_name": "CrossEntropyLoss"
+  },
+  "optimizer": {
+    "_name": "BertAdam",
+    "params": "model_params"
+  },
+  "regularizer": {
+    "_name": "L1"
+  },
+  "scheduler": {
+    "_name": "ReduceLROnPlateau"
+  },
+  "accuracy": {
+    "_name": "Accuracy"
+  },
+  "lossMetric": {
+    "_name": "LossMetric",
+    "loss_fn": "loss"
+  },
+  "trainer": {
+    "_name": "BasicTrainer",
+    "metrics": [
+      "accuracy",
+      "lossMetric"
+    ]
+  }
+}
