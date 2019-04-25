@@ -23,6 +23,5 @@ if __name__ == "__main__":
             'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],
             'weight_decay': 0.0}
     ]
-    experiment['trainer'].optimizer = BertAdam(optimizer_grouped_parameters,
-                                               lr=experiment['lr'])
+    experiment['trainer'].optimizer = BertAdam(optimizer_grouped_parameters, lr=experiment['lr'])
     experiment['trainer'].train()

@@ -49,7 +49,7 @@ class BertDataset(DatasetSplits):
 
     def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
         self.df = pd.read_csv(data_file)
-        # np.random.shuffle(self.df.values)
+        # np.random.shuffle(self.df.values)  # Use this code in dev mode
         # N = 100
         # self.df = self.df.head(n=N)
 
@@ -80,7 +80,7 @@ class BertDataset(DatasetSplits):
 
 @register_plugin
 def bert_model():
-    return BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=5)
+    return BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=4)
 
 
 # Optimizer Code from HuggingFace repo
