@@ -1,13 +1,14 @@
 {
   "data_file": "HOME/ag_news/news_with_splits.csv",
-  "tensorboard_logs": "HOME/ag_news/tensorboard/vert",
+  "tensorboard_logs": "HOME/ag_news/tensorboard/bert",
   "seed": 1337,
   "lr": 0.001,
-  "batch_size": 32,
+  "batch_size": 128,
   "num_epochs": 5,
   "early_stopping_criteria": 5,
   "alpha": 0.01,
   "gradient_clipping": 0.25,
+  "loss_accumulation_steps": 10,
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
@@ -21,7 +22,7 @@
     "_name": "BertDataset"
   },
   "model": {
-    "_name": "MyBert"
+    "_name": "bert_model"
   },
   "model_params": {
     "_name": "TrainableParameters"

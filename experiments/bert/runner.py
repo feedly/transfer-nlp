@@ -25,9 +25,4 @@ if __name__ == "__main__":
     ]
     experiment['trainer'].optimizer = BertAdam(optimizer_grouped_parameters,
                                                lr=experiment['lr'])
-
-    import inspect
-
-    lines = inspect.getsource(experiment['trainer'].model.forward)
-    print(lines)
     experiment['trainer'].train()

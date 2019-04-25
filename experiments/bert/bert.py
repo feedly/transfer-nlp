@@ -1,12 +1,10 @@
 import math
-from typing import Dict
 
 import numpy as np
 import pandas as pd
 import torch
 from pytorch_pretrained_bert import BertTokenizer, BertForSequenceClassification
 from pytorch_pretrained_bert.optimization import BertAdam
-from torch.nn import CrossEntropyLoss
 from torch.nn.utils import clip_grad_norm_
 from torch.optim import Optimizer
 from torch.optim.optimizer import required
@@ -16,6 +14,8 @@ from transfer_nlp.loaders.loaders import DatasetSplits, DatasetHyperParams, Data
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary
 from transfer_nlp.plugins.config import register_plugin
+
+tqdm.pandas()
 
 
 @register_plugin
@@ -41,7 +41,7 @@ class BertVectorizer(Vectorizer):
         attention_mask += padding
         token_type_ids += padding
 
-        return input_ids, attention_mask, token_type_ids
+        return np.array(input_ids), np.array(attention_mask), np.array(token_type_ids)
 
 
 @register_plugin
@@ -49,79 +49,38 @@ class BertDataset(DatasetSplits):
 
     def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
         self.df = pd.read_csv(data_file)
+        # np.random.shuffle(self.df.values)
+        # N = 100
+        # self.df = self.df.head(n=N)
 
         # preprocessing
         self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
 
-        train_df = self.df[self.df.split == 'train']
-        val_df = self.df[self.df.split == 'val']
-        test_df = self.df[self.df.split == 'test']
-
         self.max_sequence = 0
-        for title in tqdm(train_df.title, desc="Getting max sequence"):
+        for title in tqdm(self.df.title, desc="Getting max sequence"):
             tokens = self.vectorizer.tokenizer.tokenize(text=title)
             self.max_sequence = max(self.max_sequence, len(tokens))
         self.max_sequence += 2
 
-        for data in tqdm([train_df, val_df, test_df], desc="Vectorizing datasets"):
-            data['input_ids'], data['attention_mask'], data['token_type_ids'] = zip(
-                *data['title'].apply(lambda x: self.vectorizer.vectorize(title=x, max_seq_length=self.max_sequence)))
+        self.df['x_in'] = self.df['title'].progress_apply(lambda x: self.vectorizer.vectorize(title=x, max_seq_length=self.max_sequence))
+        self.df['input_ids'] = self.df['x_in'].progress_apply(lambda x: x[0])
+        self.df['attention_mask'] = self.df['x_in'].progress_apply(lambda x: x[1])
+        self.df['token_type_ids'] = self.df['x_in'].progress_apply(lambda x: x[2])
+        self.df['y_target'] = self.df['category'].progress_apply(lambda x: self.vectorizer.target_vocab.lookup_token(x))
+        # self.df['labels'] = [None]*len(self.df)
 
-            # data['x_in'] = data['title'].apply(lambda x: self.vectorizer.vectorize(title=x, max_seq_length=self.max_sequence))
-            # data['input_ids'] = data['x_in'].apply(lambda x: x[0])
-            # data['attention_mask'] = data['x_in'].apply(lambda x: x[1])
-            # data['token_type_ids'] = data['x_in'].apply(lambda x: x[2])
-            data['y_target'] = data['category'].apply(lambda x: self.vectorizer.target_vocab.lookup_token(x))
-            data = data[['input_ids', 'attention_mask', 'token_type_ids', 'y_target']]
+        train_df = self.df[self.df.split == 'train'][['input_ids', 'attention_mask', 'token_type_ids', 'y_target']]
+        val_df = self.df[self.df.split == 'val'][['input_ids', 'attention_mask', 'token_type_ids', 'y_target']]
+        test_df = self.df[self.df.split == 'test'][['input_ids', 'attention_mask', 'token_type_ids', 'y_target']]
 
         super().__init__(train_set=DataFrameDataset(train_df), train_batch_size=batch_size,
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
 
-    def __getitem__(self, index: int) -> Dict:
-        row = self._target_df.iloc[index]
-
-        input_ids, attention_mask, token_type_ids = self.vectorizer.vectorize(title=row.title, max_seq_length=self.max_sequence)
-
-        class_index = self.vectorizer.target_vocab.lookup_token(row.category)
-
-        return {
-            'input_ids': input_ids,
-            'attention_mask': attention_mask,
-            'token_type_ids': token_type_ids,
-            'y_target': class_index}
-
 
 @register_plugin
-class MyBert(torch.nn.Module):
-
-    def __init__(self, dataset_hyper_params: DatasetSplits):
-        super(MyBert, self).__init__()
-        num_classes = len(dataset_hyper_params.vectorizer.target_vocab)
-        model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=num_classes)
-        self.__dict__ = model.__dict__.copy()
-
-    def forward(self, input_ids, token_type_ids=None, attention_mask=None):  # , labels=None):
-        _, pooled_output = self.bert(input_ids, token_type_ids, attention_mask, output_all_encoded_layers=False)
-        pooled_output = self.dropout(pooled_output)
-        logits = self.classifier(pooled_output)
-        return logits
-
-        # if labels is not None:
-        #     loss_fct = CrossEntropyLoss()
-        #     loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-        #     return loss
-        # else:
-        #     return logits
-
-
-# @register_plugin
-# class MyBert(torch.nn.Module):
-#
-#     def __init__(self):
-#         super(MyBert, self).__init__()
-#         model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=4)
-#         self.__dict__ = copy.deepcopy(model.__dict__)
+def bert_model():
+    return BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=5)
 
 
 # Optimizer Code from HuggingFace repo
@@ -270,7 +229,3 @@ class BertAdam(Optimizer):
                 # bias_correction2 = 1 - beta2 ** state['step']
 
         return loss
-
-
-if __name__ == "__main__":
-    bert = MyBert()
