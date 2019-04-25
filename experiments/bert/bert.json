@@ -1,10 +1,9 @@
 {
   "data_file": "HOME/ag_news/news_with_splits.csv",
-  "tensorboard_logs": "HOME/ag_news/tensorboard/bert",
   "seed": 1337,
   "lr": 0.001,
   "batch_size": 128,
-  "num_epochs": 5,
+  "num_epochs": 1,
   "early_stopping_criteria": 5,
   "alpha": 0.01,
   "gradient_clipping": 0.25,
