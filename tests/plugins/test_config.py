@@ -16,6 +16,14 @@ class Demo3:
         self.val = simple_int
 
 @register_plugin
+class Demo4:
+
+    def __init__(self, simple_int:str, optional:int=None, optional2:int=1):
+        self.val = simple_int
+        self.optional = optional
+        self.optional2 = optional2
+
+@register_plugin
 class DemoDefaults:
 
     def __init__(self, simple_int:str, foo:int=5, bar=10):
@@ -203,3 +211,34 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['demo'].dd.val, 1)
         self.assertEqual(e['demo'].dd.foo, 6)
         self.assertEqual(e['demo'].dd.bar, 10)
+
+    def test_none_default(self):
+        experiment = {
+            'demo4': {
+                '_name': 'Demo4',
+                'simple_int_': 0
+            },
+            'demo4a': {
+                '_name': 'Demo4',
+                'simple_int_': 0,
+                'optional_': 1
+            },
+            'demo4b': {
+                '_name': 'Demo4',
+                'simple_int_': 0,
+                'optional2_': None
+            }
+
+        }
+
+        e = ExperimentConfig.from_json(experiment)
+
+        self.assertTrue(isinstance(e['demo4'], Demo4))
+        self.assertTrue(isinstance(e['demo4a'], Demo4))
+
+        self.assertEqual(e['demo4'].val, 0)
+        self.assertEqual(e['demo4'].optional, None)
+        self.assertEqual(e['demo4'].optional2, 1)
+        self.assertEqual(e['demo4a'].val, 0)
+        self.assertEqual(e['demo4b'].optional, None)
+        self.assertEqual(e['demo4b'].optional2, None)
