@@ -60,8 +60,6 @@ class NewsVectorizer(Vectorizer):
                        for token in tokens)
         indices.append(self.data_vocab.end_seq_index)
         vector_length = self.max_title
-        # if vector_length < 0:
-        #     vector_length = len(indices)
 
         out_vector = np.zeros(vector_length, dtype=np.int64)
         out_vector[:len(indices)] = indices
@@ -96,20 +94,6 @@ class NewsDataset(DatasetSplits):
         sorted_counts = sorted(class_counts.items(), key=lambda x: self.vectorizer.target_vocab.lookup_token(x[0]))
         frequencies = [count for _, count in sorted_counts]
         self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
-
-    def __getitem__(self, index: int) -> Dict:
-        row = self._target_df.iloc[index]
-
-        title_vector = self.vectorizer.vectorize(input_string=row.title)
-
-        class_index = self.vectorizer.target_vocab.lookup_token(row.category)
-        print(f"row: {row}")
-        print(f"title vector: {title_vector}")
-        print(f"class index: {class_index}")
-
-        return {
-            'x_in': title_vector,
-            'y_target': class_index}
 
 
 # Model
