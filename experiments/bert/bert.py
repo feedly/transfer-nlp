@@ -1,4 +1,5 @@
 import math
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -30,7 +31,7 @@ class BertVectorizer(Vectorizer):
             target_vocab.add_token(category)
         self.target_vocab = target_vocab
 
-    def vectorize(self, title: str, max_seq_length: int) -> np.array:
+    def vectorize(self, title: str, max_seq_length: int) -> Tuple[np.array, np.array, np.array]:
         tokens = self.tokenizer.tokenize(title)
         tokens = ["[CLS]"] + tokens + ["[SEP]"]
         token_type_ids = [0] * len(tokens)
@@ -62,12 +63,11 @@ class BertDataset(DatasetSplits):
             self.max_sequence = max(self.max_sequence, len(tokens))
         self.max_sequence += 2
 
-        self.df['x_in'] = self.df['title'].progress_apply(lambda x: self.vectorizer.vectorize(title=x, max_seq_length=self.max_sequence))
-        self.df['input_ids'] = self.df['x_in'].progress_apply(lambda x: x[0])
-        self.df['attention_mask'] = self.df['x_in'].progress_apply(lambda x: x[1])
-        self.df['token_type_ids'] = self.df['x_in'].progress_apply(lambda x: x[2])
+        vectors = self.df['title'].progress_apply(lambda x: self.vectorizer.vectorize(title=x, max_seq_length=self.max_sequence))
+        self.df['input_ids'] = vectors.progress_apply(lambda x: x[0])
+        self.df['attention_mask'] = vectors.progress_apply(lambda x: x[1])
+        self.df['token_type_ids'] = vectors.progress_apply(lambda x: x[2])
         self.df['y_target'] = self.df['category'].progress_apply(lambda x: self.vectorizer.target_vocab.lookup_token(x))
-        # self.df['labels'] = [None]*len(self.df)
 
         train_df = self.df[self.df.split == 'train'][['input_ids', 'attention_mask', 'token_type_ids', 'y_target']]
         val_df = self.df[self.df.split == 'val'][['input_ids', 'attention_mask', 'token_type_ids', 'y_target']]
