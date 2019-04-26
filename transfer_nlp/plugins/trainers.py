@@ -230,8 +230,7 @@ class BasicTrainer:
             val = batch.get(p)
             if val is None:
                 if pdefault is None:
-                    pass  # TODO: there's a hedge case where val is None but the actual default value is None and we want it to be None
-                    # raise ValueError(f'missing model parameter "{p}"')
+                    raise ValueError(f'missing model parameter "{p}"')
                 else:
                     val = pdefault
 
