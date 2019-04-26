@@ -87,11 +87,12 @@ class BasicTrainer:
 
         self.model: nn.Module = model
 
-        self.forward_params = {}
+        self.forward_param_defaults = {}
 
         model_spec = inspect.getfullargspec(model.forward)
-        for fparam, pdefault in zip_longest(reversed(model_spec.args[1:]), reversed(model_spec.defaults if model_spec.defaults else [])):
-            self.forward_params[fparam] = pdefault
+        self.forward_params: List[str] = model_spec.args[1:]
+        for fparam, pdefault in zip(reversed(model_spec.args[1:]), reversed(model_spec.defaults if model_spec.defaults else [])):
+            self.forward_param_defaults[fparam] = pdefault
 
         self.dataset_splits: DatasetSplits = dataset_splits
         self.loss: nn.Module = loss
@@ -226,13 +227,13 @@ class BasicTrainer:
 
     def _forward(self, batch):
         model_inputs = {}
-        for p, pdefault in self.forward_params.items():
+        for p in self.forward_params:
             val = batch.get(p)
             if val is None:
-                if pdefault is None:
-                    raise ValueError(f'missing model parameter "{p}"')
+                if p in self.forward_param_defaults:
+                    val = self.forward_param_defaults[p]
                 else:
-                    val = pdefault
+                    raise ValueError(f'missing model parameter "{p}"')
 
             model_inputs[p] = val
 
