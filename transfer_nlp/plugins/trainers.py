@@ -83,7 +83,8 @@ class BasicTrainer:
                  gradient_clipping: float = 1.0,
                  output_transform=None,
                  tensorboard_logs: str=None,
-                 embeddings_name: str=None):
+                 embeddings_name: str=None,
+                 finetune: bool=False):
 
         self.model: nn.Module = model
 
@@ -120,6 +121,7 @@ class BasicTrainer:
         else:
             self.trainer, training_metrics = self.create_supervised_trainer()
             self.evaluator = self.create_supervised_evaluator()
+        self.finetune = finetune
 
         loss_metrics = [m for m in metrics if isinstance(m, Loss)]
 
@@ -297,5 +299,35 @@ class BasicTrainer:
 
         return engine
 
+    def finetune_last_layer(self):
+        """
+        Freeze al layers and replace the last layer with a custom Linear projection on the predicted classes
+        Note: this method assumes that the pre-trained model ends with a `classifier` layer, that we want to learn
+        :return:
+        """
+        # freeze all layers
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        # Modify the last layer
+        number_features = self.model.classifier.in_features
+        features = list(self.model.classifier.children())[:-1]  # Remove last layer
+        features.extend([torch.nn.Linear(number_features, self.model.num_labels)])
+        self.model.classifier = torch.nn.Sequential(*features)
+        self.model = self.model.to(self.device)
+
+    def reset_optimizer(self):
+        """
+        When we change the
+        :return:
+        """
+        optim_class = self.optimizer.__class__
+        lr = self.optimizer.defaults.get('lr', 0.01)
+        self.optimizer = optim_class(self.model.parameters(), lr=lr)
+
     def train(self):
+        if self.finetune:
+            logger.info(f"Fine-tuning the last classification layer to the data")
+            self.finetune_last_layer()
+            self.reset_optimizer()
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
