@@ -50,9 +50,9 @@ class BertDataset(DatasetSplits):
 
     def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
         self.df = pd.read_csv(data_file)
-        np.random.shuffle(self.df.values)  # Use this code in dev mode
-        N = 100
-        self.df = self.df.head(n=N)
+        # np.random.shuffle(self.df.values)  # Use this code in dev mode
+        # N = 100
+        # self.df = self.df.head(n=N)
 
         # preprocessing
         self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
