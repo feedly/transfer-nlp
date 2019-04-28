@@ -25,7 +25,7 @@ from tensorboardX import SummaryWriter
 
 
 from transfer_nlp.loaders.loaders import DatasetSplits
-from transfer_nlp.plugins.config import register_plugin
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
 from transfer_nlp.plugins.regularizers import RegularizerABC
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,7 @@ class BasicTrainer:
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: List[Metric],
+                 experiment_config: ExperimentConfig,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -82,9 +83,9 @@ class BasicTrainer:
                  regularizer: RegularizerABC = None,
                  gradient_clipping: float = 1.0,
                  output_transform=None,
-                 tensorboard_logs: str=None,
-                 embeddings_name: str=None,
-                 finetune: bool=False):
+                 tensorboard_logs: str = None,
+                 embeddings_name: str = None,
+                 finetune: bool = False):
 
         self.model: nn.Module = model
 
@@ -99,6 +100,7 @@ class BasicTrainer:
         self.loss: nn.Module = loss
         self.optimizer: optim.Optimizer = optimizer
         self.metrics: List[Metric] = metrics
+        self.experiment_config: ExperimentConfig = experiment_config
         self.device: str = device
         self.num_epochs: int = num_epochs
         self.scheduler: Any = scheduler
@@ -122,6 +124,8 @@ class BasicTrainer:
             self.trainer, training_metrics = self.create_supervised_trainer()
             self.evaluator = self.create_supervised_evaluator()
         self.finetune = finetune
+
+        self.optimizer_factory: PluginFactory = None
 
         loss_metrics = [m for m in metrics if isinstance(m, Loss)]
 
@@ -316,18 +320,17 @@ class BasicTrainer:
         self.model.classifier = torch.nn.Sequential(*features)
         self.model = self.model.to(self.device)
 
-    def reset_optimizer(self):
-        """
-        When we change the
-        :return:
-        """
-        optim_class = self.optimizer.__class__
-        lr = self.optimizer.defaults.get('lr', 0.01)
-        self.optimizer = optim_class(self.model.parameters(), lr=lr)
-
     def train(self):
         if self.finetune:
             logger.info(f"Fine-tuning the last classification layer to the data")
+            trainer_key = [k for k, v in self.experiment_config.items() if v is self]
+            if trainer_key:
+                trainer_factory: PluginFactory = self.experiment_config.factories[trainer_key[0]]
+                optimizer_key = trainer_factory.param2config_key['optimizer']
+                self.optimizer_factory = self.experiment_config.factories[optimizer_key]
+            else:
+                raise ValueError('this trainer object not found in config')
+
             self.finetune_last_layer()
-            self.reset_optimizer()
+            self.optimizer = self.optimizer_factory.create()
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)

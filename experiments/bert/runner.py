@@ -11,5 +11,5 @@ if __name__ == "__main__":
     home_env = str(Path.home() / 'work/transfer-nlp-data')
 
     path = './bert.json'
-    experiment = ExperimentConfig.from_json(path, HOME=home_env)
+    experiment = ExperimentConfig(path, HOME=home_env)
     experiment['trainer'].train()
