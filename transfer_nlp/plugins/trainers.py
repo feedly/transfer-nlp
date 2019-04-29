@@ -328,7 +328,7 @@ class BasicTrainer:
 
     def train(self):
         """
-        Launch the ignite training piepiline
+        Launch the ignite training pipeline
         If fine-tuning mode is granted in the config file, freeze all layers, replace classification layer by a Linear layer
         and reset the optimizer
         :return:
