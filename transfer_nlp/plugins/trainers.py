@@ -118,10 +118,10 @@ class BasicTrainer:
         self.embeddings_name = embeddings_name
 
         if self.output_transform:
-            self.trainer, training_metrics = self.create_supervised_trainer(output_transform=self.output_transform)
+            self.trainer, self.training_metrics = self.create_supervised_trainer(output_transform=self.output_transform)
             self.evaluator = self.create_supervised_evaluator(output_transform=self.output_transform)
         else:
-            self.trainer, training_metrics = self.create_supervised_trainer()
+            self.trainer, self.training_metrics = self.create_supervised_trainer()
             self.evaluator = self.create_supervised_evaluator()
         self.finetune = finetune
 
@@ -136,7 +136,7 @@ class BasicTrainer:
                 logging.warning('multiple loss metrics detected, using %s for LR scheduling', loss_metrics[0])
             self.loss_metric = loss_metrics[0]
 
-        self.setup(training_metrics)
+        self.setup(self.training_metrics)
 
     def setup(self, training_metrics):
         def metric_name(n) -> str:
@@ -261,6 +261,10 @@ class BasicTrainer:
             batch = prepare_batch(batch, device=self.device, non_blocking=non_blocking)
             y_pred = self._forward(batch)
             loss = self.loss(input=y_pred, target=batch['y_target'])
+
+            # Add a regularisation term at train time only
+            if self.regularizer:
+                loss += self.regularizer.compute_penalty(model=self.model)
 
             loss /= accumulation_steps
 
