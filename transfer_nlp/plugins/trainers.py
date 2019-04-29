@@ -224,8 +224,8 @@ class BasicTrainer:
         if self.embeddings_name:
             @self.trainer.on(Events.COMPLETED)
             def log_embeddings(trainer):
-                logger.info(f"Logging embeddings ({self.embeddings_name}) to Tensorboard!")
-                if hasattr(self.model, self.embeddings_name):
+                if hasattr(self.model, self.embeddings_name) and hasattr(self.dataset_splits, "vectorizer"):
+                    logger.info(f"Logging embeddings ({self.embeddings_name}) to Tensorboard!")
                     embeddings = getattr(self.model, self.embeddings_name).weight.data
                     metadata = [str(self.dataset_splits.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in
                                 range(embeddings.shape[0])]
@@ -303,7 +303,7 @@ class BasicTrainer:
 
         return engine
 
-    def finetune_last_layer(self):
+    def freeze_and_replace_final_layer(self):
         """
         Freeze al layers and replace the last layer with a custom Linear projection on the predicted classes
         Note: this method assumes that the pre-trained model ends with a `classifier` layer, that we want to learn
@@ -313,14 +313,26 @@ class BasicTrainer:
         for param in self.model.parameters():
             param.requires_grad = False
 
-        # Modify the last layer
+        # Number of input features to the final classification layer
         number_features = self.model.classifier.in_features
-        features = list(self.model.classifier.children())[:-1]  # Remove last layer
-        features.extend([torch.nn.Linear(number_features, self.model.num_labels)])
+
+        # If `classifier` has several layers itself, this will only remove the last on, otherwise this does not contain anything
+        features = list(self.model.classifier.children())[:-1]
+        logger.info(f"Keeping layers {list(self.model.classifier.children())[:-1]} from the classifier layer")
+        logger.info(f"Append layer {torch.nn.Linear(number_features, self.model.num_labels)} to the classifier")
+
+        # Create the final linear layer for classification
+        features.append(torch.nn.Linear(number_features, self.model.num_labels))
         self.model.classifier = torch.nn.Sequential(*features)
         self.model = self.model.to(self.device)
 
     def train(self):
+        """
+        Launch the ignite training piepiline
+        If fine-tuning mode is granted in the config file, freeze all layers, replace classification layer by a Linear layer
+        and reset the optimizer
+        :return:
+        """
         if self.finetune:
             logger.info(f"Fine-tuning the last classification layer to the data")
             trainer_key = [k for k, v in self.experiment_config.items() if v is self]
@@ -331,6 +343,6 @@ class BasicTrainer:
             else:
                 raise ValueError('this trainer object not found in config')
 
-            self.finetune_last_layer()
+            self.freeze_and_replace_final_layer()
             self.optimizer = self.optimizer_factory.create()
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
