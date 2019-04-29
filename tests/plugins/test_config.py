@@ -45,6 +45,14 @@ class Demo:
         self.demo2 = demo2
         self.demo3 = demo3
 
+@register_plugin
+class DemoWithConfig:
+
+    def __init__(self, demo2, simple_int:str, experiment_config):
+        self.demo2 = demo2
+        self.simple_int = simple_int
+        self.experiment_config = experiment_config
+
 class RegistryTest(unittest.TestCase):
 
     def test_child_injection(self):
@@ -61,7 +69,7 @@ class RegistryTest(unittest.TestCase):
             'simple_str': 'dummy',
             'simple_int': 5
         }
-        e = ExperimentConfig.from_json(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
         self.assertTrue(isinstance(e['demo2'], Demo2))
@@ -91,7 +99,7 @@ class RegistryTest(unittest.TestCase):
             'simple_int': 5,
             'simple_inta': 6,
         }
-        e = ExperimentConfig.from_json(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
         self.assertTrue(isinstance(e['demo2'], Demo2))
@@ -107,7 +115,7 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             'path': "HOME/foo/bar"
         }
-        e = ExperimentConfig.from_json(experiment, HOME='/tmp')
+        e = ExperimentConfig(experiment, HOME='/tmp')
         self.assertEqual(e['path'], '/tmp/foo/bar')
 
     def test_literal_injection(self):
@@ -121,7 +129,7 @@ class RegistryTest(unittest.TestCase):
                 'simple_int_': 5
             }
         }
-        e = ExperimentConfig.from_json(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo2'], Demo2))
         self.assertTrue(isinstance(e['demo3'], Demo3))
@@ -143,7 +151,7 @@ class RegistryTest(unittest.TestCase):
         }
 
         try:
-            ExperimentConfig.from_json(experiment)
+            ExperimentConfig(experiment)
             self.fail()
         except UnconfiguredItemsException as e:
             self.assertEqual(3, len(e.items))
@@ -168,7 +176,7 @@ class RegistryTest(unittest.TestCase):
                 'bar_': 6
             }
         }
-        e = ExperimentConfig.from_json(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demoa'], DemoDefaults))
         self.assertTrue(isinstance(e['demob'], DemoDefaults))
@@ -198,7 +206,7 @@ class RegistryTest(unittest.TestCase):
                 'foo_': 6
             }
         }
-        e = ExperimentConfig.from_json(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], DemoComplexDefaults))
         self.assertTrue(isinstance(e['demod'], DemoDefaults))
@@ -231,7 +239,7 @@ class RegistryTest(unittest.TestCase):
 
         }
 
-        e = ExperimentConfig.from_json(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo4'], Demo4))
         self.assertTrue(isinstance(e['demo4a'], Demo4))
@@ -242,3 +250,30 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['demo4a'].val, 0)
         self.assertEqual(e['demo4b'].optional, None)
         self.assertEqual(e['demo4b'].optional2, None)
+
+    def test_with_config(self):
+        experiment = {
+            'demo2': {
+                '_name': 'Demo2'
+            },
+            'with_config': {
+                '_name': 'DemoWithConfig'
+            },
+            'simple_str': 'dummy',
+            'simple_int': 5
+        }
+
+        e = ExperimentConfig(experiment)
+
+        d = e['with_config']
+        self.assertEqual(5, d.simple_int)
+        self.assertEqual('dummy', d.demo2.val)
+        self.assertTrue(d.experiment_config is e)
+        self.assertEqual({'demo2', 'with_config', 'simple_str', 'simple_int'}, e.factories.keys())
+        self.assertEqual(5, e.factories['simple_int'].create())
+        self.assertEqual('dummy', e.factories['simple_str'].create())
+
+        d2 = e.factories['with_config'].create()
+        self.assertEqual(5, d2.simple_int)
+        self.assertEqual('dummy', d2.demo2.val)
+        self.assertTrue(d2.experiment_config is e)

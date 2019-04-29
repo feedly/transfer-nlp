@@ -11,6 +11,7 @@
   "mode": "min",
   "factor": 0.5,
   "patience": 1,
+  "finetune": true,
   "vectorizer": {
     "_name": "BertVectorizer"
   },
