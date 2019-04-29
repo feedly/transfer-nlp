@@ -3,11 +3,13 @@ This file contains all necessary plugins classes that the framework will use to 
 
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
+import abc
 import inspect
 import json
 import logging
+from abc import abstractmethod, ABC
 from pathlib import Path
-from typing import Dict, Union, Any
+from typing import Dict, Union, Any, Optional
 
 import ignite.metrics as metrics
 import torch.nn as nn
@@ -72,16 +74,42 @@ class UnconfiguredItemsException(Exception):
         super().__init__(f'There are some unconfigured items, which makes these items not configurable: {items}')
         self.items = items
 
+class ConfigFactoryABC(ABC):
+
+    @abstractmethod
+    def create(self):
+        pass
+
+class ParamFactory(ConfigFactoryABC):
+
+    def __init__(self, param):
+        self.param = param
+
+    def create(self):
+        return self.param
+
+
+class PluginFactory(ConfigFactoryABC):
+
+    def __init__(self, cls, param2config_key: Optional[Dict[str, str]], *args, **kwargs):
+        self.cls = cls
+        self.param2config_key = param2config_key
+        self.args = args
+        self.kwargs = kwargs
+
+    def create(self):
+        return self.cls(*self.args, **self.kwargs)
 
 class ExperimentConfig:
 
-    @staticmethod
-    def from_json(experiment: Union[str, Path, Dict], **env) -> Dict[str, Any]:
+    def __init__(self, experiment: Union[str, Path, Dict], **env):
         """
         :param experiment: the experiment config
         :param env: substitution variables, e.g. a HOME directory. generally use all caps.
         :return: the experiment
         """
+        self.factories: Dict[str, ConfigFactoryABC] = {}
+        self.experiment: Dict[str, Any] = None
 
         env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
 
@@ -107,7 +135,9 @@ class ExperimentConfig:
         for k, v in config.items():
             if not isinstance(v, dict) and not isinstance(v, list):
                 logger.info(f"Parameter {k}: {v}")
-                experiment[k] = do_env_subs(v)
+                v = do_env_subs(v)
+                experiment[k] = v
+                self.factories[k] = ParamFactory(v)
 
         # extract simple lists
         logger.info(f"Initializing simple lists:")
@@ -118,25 +148,26 @@ class ExperimentConfig:
                 for vv in v:
                     upd.append(do_env_subs(vv))
                 experiment[k] = upd
+                self.factories[k] = PluginFactory(list, None, upd)
 
         for k in experiment:
             del config[k]
 
         try:
             logger.info(f"Initializing complex configurations ignoring default params:")
-            ExperimentConfig._build_items(config, experiment, 0)
+            self._build_items(config, experiment, 0)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations only filling in default params not found in the experiment:")
-            ExperimentConfig._build_items(config, experiment, 1)
+            self._build_items(config, experiment, 1)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations filling in all default params:")
-            ExperimentConfig._build_items(config, experiment, 2)
+            self._build_items(config, experiment, 2)
         except UnconfiguredItemsException as e:
             logging.error('There are unconfigured items in the experiment. Please check your configuration:')
             for k, v in e.items.items():
@@ -146,10 +177,10 @@ class ExperimentConfig:
 
             raise e
 
-        return experiment
+        self.experiment = experiment
 
-    @staticmethod
-    def _build_items(config: Dict[str, Any], experiment: Dict[str, Any], default_params_mode: int):
+
+    def _build_items(self, config: Dict[str, Any], experiment: Dict[str, Any], default_params_mode: int):
         """
 
         :param config:
@@ -179,7 +210,7 @@ class ExperimentConfig:
 
                 spec = inspect.getfullargspec(clazz.__init__)
                 params = {}
-
+                param2config_key = {}
                 named_params = {p: pv for p, pv in v.items() if p != '_name'}
                 default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
 
@@ -199,7 +230,11 @@ class ExperimentConfig:
                 for arg in spec.args[1:]:
                     if arg in literal_params:
                         params[arg] = literal_params[arg]
+                        param2config_key[arg] = None
                     else:
+                        if arg == 'experiment_config':
+                            params[arg] = self
+                            param2config_key[arg] = arg
                         if arg in named_params:
                             alias = named_params[arg]
                             if isinstance(alias, list):
@@ -213,15 +248,20 @@ class ExperimentConfig:
                                     params[arg] = param_list
                             elif alias in experiment:
                                 params[arg] = experiment[alias]
+                            param2config_key[arg] = alias
                         elif arg in experiment:
                             params[arg] = experiment[arg]
+                            param2config_key[arg] = arg
                         elif default_params_mode == 1 and arg not in config and arg in default_params:
                             params[arg] = default_params[arg]
+                            param2config_key[arg] = None
                         elif default_params_mode == 2 and arg in default_params:
                             params[arg] = default_params[arg]
+                            param2config_key[arg] = None
 
                 if len(params) == len(spec.args) - 1:
                     experiment[k] = clazz(**params)
+                    self.factories[k] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
                     configured.add(k)
                 else:
                     unconfigured[k] = {arg for arg in spec.args[1:] if arg not in params}
@@ -232,3 +272,36 @@ class ExperimentConfig:
             else:
                 if config:
                     raise UnconfiguredItemsException(unconfigured)
+
+    def _check_init(self):
+        if self.experiment is None:
+            raise ValueError('experiment config is not setup yet!')
+
+    # map-like methods
+    def __getitem__(self, item):
+        self._check_init()
+        return self.experiment[item]
+
+    def get(self, item, default=None):
+        self._check_init()
+        return self.experiment.get(item, default)
+
+    def __iter__(self):
+        self._check_init()
+        return iter(self.experiment)
+
+    def items(self):
+        self._check_init()
+        return self.experiment.items()
+
+    def values(self):
+        self._check_init()
+        return self.experiment.values()
+
+    def keys(self):
+        self._check_init()
+        return self.experiment.keys()
+
+    def __setitem__(self, key, value):
+        raise ValueError("cannot update experiment!")
+

@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     for path in surname_paths:
         logger.info(f"Launching test for experiment {path}")
-        experiment = ExperimentConfig.from_json(path, HOME=home_env)
+        experiment = ExperimentConfig(path, HOME=home_env)
         experiment['trainer'].train()
         if 'predictor' in experiment:
             input_json = {
@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     logger.info(f"Launching test for experiment {cbow_path}")
     path = cbow_path
-    experiment = ExperimentConfig.from_json(path, HOME=home_env)
+    experiment = ExperimentConfig(path, HOME=home_env)
     experiment['trainer'].train()
     input_json = {
         "inputs": ["I go to and take notes"]}
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     logger.info(f"Launching test for experiment {news_path}")
     path = news_path
-    experiment = ExperimentConfig.from_json(path, HOME=home_env)
+    experiment = ExperimentConfig(path, HOME=home_env)
     experiment['trainer'].train()
     input_json = {
         "inputs": ["Banking financing Asset Manager Gets OK To Appeal €15M Fee Payout Ruling",
