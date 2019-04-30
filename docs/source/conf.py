@@ -34,16 +34,16 @@ release = '0.0.3'
 # ones.
 extensions = ['sphinxcontrib.napoleon']
 
-# extensions = [
-#     'sphinx.ext.autosummary',
-#     'sphinx.ext.doctest',
-#     'sphinx.ext.intersphinx',
-#     'sphinx.ext.todo',
-#     'sphinx.ext.coverage',
-#     'sphinx.ext.mathjax',
-#     'sphinx.ext.napoleon',
-#     'sphinx.ext.viewcode'
-# ]
+extensions = [
+    'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode'
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
