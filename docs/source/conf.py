@@ -26,7 +26,8 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = ['ignite', 'ignite.metrics', 'ignite.utils', 'ignite.contrib.handlers.tqdm_logger', 'ignite.engine',
-                'ignite.engine.engine', 'ignite.contrib.handlers.tensorboard_logger', 'torch', 'torch.nn', 'torch.optim']
+                'ignite.engine.engine', 'ignite.contrib.handlers.tensorboard_logger', 'torch', 'torch.nn', 'torch.optim',
+                'smart_open', 'tensorboardX', 'pandas', 'numpy', 'torch.utils.data']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # -- Project information -----------------------------------------------------
