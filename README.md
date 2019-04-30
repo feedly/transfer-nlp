@@ -25,7 +25,10 @@ pip install -r requirements.txt
 
 The library is available on [Pypi](https://pypi.org/project/transfer-nlp/) but ```pip install transfer-nlp``` is not recommended yet.
 
-# How to use the library?
+# Documentation
+API documentation and an overview of the library can be found [here](https://transfer-nlp.readthedocs.io/en/latest/)
+
+# High-Level usage of the library
 
 You can have a look at the [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=IuBcpSdZtcmo) to get a simple sense of the library usage.
 
@@ -46,7 +49,7 @@ output_json = experiment['predictor'].json_to_json(input_json=input_json)
 
 You can use this code with all existing experiments in `experiments/`.
 
-# How to use the library?
+# How to experiment with the library?
 For reproducible research and easy ablation studies, the library enforces the use of configuration files for experiments.
 
 In Transfer-NLP, an experiment config file contains all the necessary information to define entirely the experiment.
