@@ -1,3 +1,4 @@
 sphinx==2.0.1
 -e git://github.com/snide/sphinx_rtd_theme.git#egg=sphinx_rtd_theme
 sphinxcontrib-napoleon==0.7
+pytorch-ignite==0.2.0
