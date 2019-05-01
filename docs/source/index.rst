@@ -27,6 +27,7 @@ You can clone the source from `github <https://github.com/feedly/transfer-nlp>`_
    concepts
    data-components
    modeling-components
+   trainer-components
    faq
 
 
