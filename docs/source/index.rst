@@ -57,6 +57,13 @@ You can clone the source from `github <https://github.com/feedly/transfer-nlp>`_
 
 .. toctree::
    :maxdepth: 2
+   :caption: Tutorials
+
+   surnames
+
+
+.. toctree::
+   :maxdepth: 2
    :caption: Miscellaneous
 
    license
