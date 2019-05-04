@@ -100,6 +100,41 @@ class PluginFactory(ConfigFactoryABC):
     def create(self):
         return self.cls(*self.args, **self.kwargs)
 
+
+def replace(dico: Dict, env):
+
+    env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
+
+    def do_env_subs(v: Any) -> str:
+        v_upd = v
+        if isinstance(v_upd, str):
+            for env_key in env_keys:
+                v_upd = v_upd.replace(env_key, env[env_key])
+
+            if v_upd != v:
+                logger.info('*** updating parameter %s -> %s', v, v_upd)
+
+        return v_upd
+
+    def recursive_replace(dico: Dict):
+
+        for k, v in dico.items():
+            if not isinstance(v, dict) and not isinstance(v, list):
+                v = do_env_subs(v)
+                dico[k] = v
+            elif isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
+                upd = []
+                for vv in v:
+                    upd.append(do_env_subs(vv))
+                    dico[k] = upd
+            elif isinstance(v, dict):
+                recursive_replace(dico[k])
+            else:
+                pass
+
+    recursive_replace(dico=dico)
+
+
 class ExperimentConfig:
 
     def __init__(self, experiment: Union[str, Path, Dict], **env):
@@ -111,23 +146,12 @@ class ExperimentConfig:
         self.factories: Dict[str, ConfigFactoryABC] = {}
         self.experiment: Dict[str, Any] = None
 
-        env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
-
-        def do_env_subs(v: Any) -> str:
-            v_upd = v
-            if isinstance(v_upd, str):
-                for env_key in env_keys:
-                    v_upd = v_upd.replace(env_key, env[env_key])
-
-                if v_upd != v:
-                    logger.info('*** updating parameter %s -> %s', v, v_upd)
-
-            return v_upd
-
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
             config = json.load(open(experiment))
+
+        replace(dico=config, env=env)
 
         # extract simple parameters
         logger.info(f"Initializing simple parameters:")
@@ -135,7 +159,6 @@ class ExperimentConfig:
         for k, v in config.items():
             if not isinstance(v, dict) and not isinstance(v, list):
                 logger.info(f"Parameter {k}: {v}")
-                v = do_env_subs(v)
                 experiment[k] = v
                 self.factories[k] = ParamFactory(v)
 
@@ -144,11 +167,8 @@ class ExperimentConfig:
         for k, v in config.items():
             if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
                 logger.info(f"Parameter {k}: {v}")
-                upd = []
-                for vv in v:
-                    upd.append(do_env_subs(vv))
-                experiment[k] = upd
-                self.factories[k] = PluginFactory(list, None, upd)
+                experiment[k] = v
+                self.factories[k] = PluginFactory(list, None, v)
 
         for k in experiment:
             del config[k]

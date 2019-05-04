@@ -1,41 +1,19 @@
 {
-  "data_file": "HOME/books/frankenstein_with_splits.csv",
-  "glove_filepath": "HOME/glove/glove.6B.100d.txt",
-  "embedding_size": 100,
-  "dropout_p": 0.3,
-  "seed": 1337,
-  "lr": 0.001,
-  "batch_size": 128,
-  "num_epochs": 1,
-  "early_stopping_criteria": 5,
-  "alpha": 0.01,
-  "gradient_clipping": 0.25,
-  "mode": "min",
-  "factor": 0.5,
-  "patience": 1,
-  "vectorizer": {
-    "_name": "CBOWVectorizer"
+  "my_vectorizer": {
+    "_name": "CBOWVectorizer",
+    "data_file_": "HOME/books/frankenstein_with_splits.csv"
   },
-  "embeddings": {
-    "_name": "Embedding"
-  },
-  "embedding_hyper_params": {
-    "_name": "EmbeddingsHyperParams"
-  },
-  "embeddings2model_hyper_params": {
-    "_name": "EmbeddingtoModelHyperParams1"
-  },
-  "dataset_hyper_params": {
-    "_name": "DatasetHyperParams"
-  },
-  "dataset_splits": {
-    "_name": "CBOWDataset"
+  "my_dataset_splits": {
+    "_name": "CBOWDataset",
+    "data_file_": "HOME/books/frankenstein_with_splits.csv",
+    "batch_size_": 128,
+    "vectorizer": "my_vectorizer"
   },
   "model": {
-    "_name": "CBOWClassifier"
-  },
-  "model_hyper_params": {
-    "_name": "CBOWHyperParams"
+    "_name": "CBOWClassifier",
+    "glove_path_": "HOME/glove/glove.6B.100d.txt",
+    "data": "my_dataset_splits",
+    "embedding_size_": 100
   },
   "model_params": {
     "_name": "TrainableParameters"
@@ -45,34 +23,44 @@
   },
   "optimizer": {
     "_name": "Adam",
+    "lr_": 0.01,
+    "alpha_": 0.99,
     "params": "model_params"
   },
   "regularizer": {
     "_name": "L1"
   },
   "scheduler": {
-    "_name": "ReduceLROnPlateau"
+    "_name": "ReduceLROnPlateau",
+    "patience_": 1,
+    "mode_": "min",
+    "factor_": 0.5
   },
-  "accuracy": {
+  "my_accuracy": {
     "_name": "Accuracy"
   },
-  "lossMetric": {
+  "my_loss_metric": {
     "_name": "LossMetric",
     "loss_fn": "loss"
   },
-  "embeddings_name": "embedding",
-  "tensorboard_logs": "HOME/books/tensorboard/cbow",
   "trainer": {
     "_name": "BasicTrainer",
+    "model": "model",
+    "dataset_splits": "my_dataset_splits",
+    "loss": "loss",
+    "optimizer": "optimizer",
+    "gradient_clipping_": 0.25,
+    "num_epochs_": 2,
+    "seed_": 1337,
+    "tensorboard_logs_": "HOME/surnames/tensorboard/cbow",
     "metrics": [
-      "accuracy",
-      "lossMetric"
+      "my_accuracy",
+      "my_loss_metric"
     ]
   },
   "predictor": {
-    "_name": "CBOWPredictor"
-  },
-  "predictor_hyper_params": {
-    "_name": "PredictorHyperParams"
+    "_name": "CBOWPredictor",
+    "vectorizer": "my_vectorizer",
+    "model": "model"
   }
 }

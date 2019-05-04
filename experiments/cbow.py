@@ -7,12 +7,11 @@ import torch
 
 from transfer_nlp.common.tokenizers import CustomTokenizer
 from transfer_nlp.embeddings.embeddings import Embedding
-from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset, DatasetHyperParams
+from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import CBOWVocabulary
 from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.predictors import PredictorABC, PredictorHyperParams
+from transfer_nlp.plugins.predictors import PredictorABC
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +56,11 @@ class CBOWVectorizer(Vectorizer):
 @register_plugin
 class CBOWDataset(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.context), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.target), axis=1)
@@ -74,58 +73,31 @@ class CBOWDataset(DatasetSplits):
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
 
-    def __getitem__(self, index: int) -> Dict:
-        row = self._target_df.iloc[index]
-
-        context_vector = self._vectorizer.vectorize(row.context, self._max_seq_length)
-        target_index = self._vectorizer.data_vocab.lookup_token(row.target)
-
-        return {
-            'x_in': context_vector,
-            'y_target': target_index}
-
-
-# Model
-@register_plugin
-class CBOWHyperParams(ObjectHyperParams):
-
-    def __init__(self, dataset_splits: CBOWDataset):
-        super().__init__()
-        self.num_embeddings = len(dataset_splits.vectorizer.data_vocab)
-
-
-@register_plugin
-class EmbeddingtoModelHyperParams1(ObjectHyperParams):
-
-    def __init__(self, embeddings: Embedding):
-        super().__init__()
-        self.embeddings = embeddings.embeddings
-
 
 @register_plugin
 class CBOWClassifier(torch.nn.Module):  # Simplified cbow Model
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, embedding_size: int, padding_idx: int = 0,
-                 embeddings2model_hyper_params: ObjectHyperParams = None):
+    def __init__(self, data: DatasetSplits, embedding_size: int, glove_path: str = None, padding_idx: int = 0):
         super(CBOWClassifier, self).__init__()
-        self.num_embeddings = model_hyper_params.num_embeddings
+        self.num_embeddings = len(data.vectorizer.data_vocab)
         self.embedding_size = embedding_size
         self.padding_idx = padding_idx
 
-        if embeddings2model_hyper_params:
+        if glove_path:
             logger.info("Using pre-trained word embeddings...")
-            self.embeddings = embeddings2model_hyper_params.embeddings
+            self.embeddings = Embedding(glove_filepath=glove_path, data=data).embeddings
             self.embeddings = torch.from_numpy(self.embeddings).float()
-            self.embedding: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
-                                                              num_embeddings=self.num_embeddings,
-                                                              padding_idx=self.padding_idx,
-                                                              _weight=self.embeddings)
+            glove_size = len(self.embeddings[0])
+            self.embedding: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=glove_size,
+                                                                    num_embeddings=self.num_embeddings,
+                                                                    padding_idx=self.padding_idx,
+                                                                    _weight=self.embeddings)
 
         else:
             logger.info("Not using pre-trained word embeddings...")
             self.embedding: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
-                                                              num_embeddings=self.num_embeddings,
-                                                              padding_idx=self.padding_idx)
+                                                                    num_embeddings=self.num_embeddings,
+                                                                    padding_idx=self.padding_idx)
 
         self.fc1 = torch.nn.Linear(in_features=embedding_size,
                                    out_features=self.num_embeddings)
@@ -153,14 +125,16 @@ class CBOWPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, predictor_hyper_params: PredictorHyperParams):
-        super().__init__(predictor_hyper_params=predictor_hyper_params)
+    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
+        super().__init__(vectorizer=vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict) -> Dict:
-        return {'x_in': torch.LongTensor([self.vectorizer.vectorize(context=input_string) for input_string in input_json['inputs']])}
+        return {
+            'x_in': torch.LongTensor([self.vectorizer.vectorize(context=input_string) for input_string in input_json['inputs']])}
 
     def output_to_json(self, outputs: List[Dict[str, Any]]) -> Dict[str, Any]:
-        return {"outputs": outputs}
+        return {
+            "outputs": outputs}
 
     def decode(self, output: torch.tensor) -> List[Dict[str, Any]]:
         probabilities = torch.nn.functional.softmax(output, dim=1)

@@ -9,12 +9,11 @@ import torch
 
 from transfer_nlp.common.tokenizers import CustomTokenizer
 from transfer_nlp.embeddings.embeddings import Embedding
-from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset, DatasetHyperParams
+from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
 from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.predictors import PredictorABC, PredictorHyperParams
+from transfer_nlp.plugins.predictors import PredictorABC
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +71,11 @@ class NewsVectorizer(Vectorizer):
 @register_plugin
 class NewsDataset(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.title), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.category), axis=1)
@@ -89,50 +88,28 @@ class NewsDataset(DatasetSplits):
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
 
-        # Class weights
-        class_counts = self.df.category.value_counts().to_dict()
-        sorted_counts = sorted(class_counts.items(), key=lambda x: self.vectorizer.target_vocab.lookup_token(x[0]))
-        frequencies = [count for _, count in sorted_counts]
-        self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
-
-
-# Model
-@register_plugin
-class NewsCNNHyperParams(ObjectHyperParams):
-
-    def __init__(self, dataset_splits: DatasetSplits):
-        super().__init__()
-        self.num_embeddings = len(dataset_splits.vectorizer.data_vocab)
-        self.num_classes = len(dataset_splits.vectorizer.target_vocab)
-
-
-@register_plugin
-class EmbeddingtoModelHyperParams(ObjectHyperParams):
-
-    def __init__(self, embeddings: Embedding):
-        super().__init__()
-        self.embeddings = embeddings.embeddings
-
 
 @register_plugin
 class NewsClassifier(torch.nn.Module):
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, embedding_size: int, num_channels: int,
-                 hidden_dim: int, dropout_p: float, padding_idx: int = 0, embeddings2model_hyper_params: ObjectHyperParams = None):
+    def __init__(self, data: DatasetSplits, embedding_size: int, num_channels: int,
+                 hidden_dim: int, dropout_p: float, padding_idx: int = 0, glove_path: str = None):
         super(NewsClassifier, self).__init__()
 
-        self.num_embeddings: int = model_hyper_params.num_embeddings
-        self.num_classes: int = model_hyper_params.num_classes
-        self.num_channels: int = num_channels
-        self.embedding_size = embedding_size
-        self.hidden_dim = hidden_dim
-        self.padding_idx = padding_idx
+        self.num_embeddings = len(data.vectorizer.data_vocab)
+        self.num_classes = len(data.vectorizer.target_vocab)
 
-        if embeddings2model_hyper_params:
+        self.num_channels: int = num_channels
+        self.embedding_size: int = embedding_size
+        self.hidden_dim: int = hidden_dim
+        self.padding_idx: int = padding_idx
+
+        if glove_path:
             logger.info("Using pre-trained word embeddings...")
-            self.embeddings = embeddings2model_hyper_params.embeddings
+            self.embeddings = Embedding(glove_filepath=glove_path, data=data).embeddings
             self.embeddings = torch.from_numpy(self.embeddings).float()
-            self.emb: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=self.embedding_size,
+            glove_size = len(self.embeddings[0])
+            self.emb: torch.nn.Embedding = torch.nn.Embedding(embedding_dim=glove_size,
                                                               num_embeddings=self.num_embeddings,
                                                               padding_idx=self.padding_idx,
                                                               _weight=self.embeddings)
@@ -199,8 +176,8 @@ class NewsPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, predictor_hyper_params: PredictorHyperParams):
-        super().__init__(predictor_hyper_params=predictor_hyper_params)
+    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
+        super().__init__(vectorizer=vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict) -> Dict:
         return {

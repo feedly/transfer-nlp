@@ -6,12 +6,12 @@ import pandas as pd
 import torch
 
 from transfer_nlp.common.tokenizers import CharacterTokenizer
-from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset, DatasetHyperParams
+from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary, SequenceVocabulary
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.predictors import PredictorABC, PredictorHyperParams
+from transfer_nlp.plugins.predictors import PredictorABC
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +52,11 @@ class SurnamesVectorizerMLP(Vectorizer):
 @register_plugin
 class SurnamesDatasetMLP(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.nationality), axis=1)
@@ -69,42 +69,15 @@ class SurnamesDatasetMLP(DatasetSplits):
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
 
-        # Class weights
-        class_counts = self.df.nationality.value_counts().to_dict()
-        sorted_counts = sorted(class_counts.items(), key=lambda x: self.vectorizer.target_vocab.lookup_token(x[0]))
-        frequencies = [count for _, count in sorted_counts]
-        self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
-
-    def __getitem__(self, index: int) -> Dict:
-        row = self._target_df.iloc[index]
-
-        surname_vector = self.vectorizer.vectorize(input_string=row.surname)
-
-        nationality_index = self.vectorizer.target_vocab.lookup_token(row.nationality)
-
-        return {
-            'x_in': surname_vector,
-            'y_target': nationality_index}
-
-
-@register_plugin
-class SurnameHyperParams(ObjectHyperParams):
-
-    def __init__(self, dataset_splits: DatasetSplits):
-        super().__init__()
-        self.input_dim = len(dataset_splits.vectorizer.data_vocab)
-        self.output_dim = len(dataset_splits.vectorizer.target_vocab)
-
-
 @register_plugin
 class MultiLayerPerceptron(torch.nn.Module):
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, hidden_dim: int):
+    def __init__(self, data: DatasetSplits, hidden_dim: int):
         super(MultiLayerPerceptron, self).__init__()
 
-        self.input_dim = model_hyper_params.input_dim
+        self.input_dim = len(data.vectorizer.data_vocab)
         self.hidden_dim = hidden_dim
-        self.output_dim = model_hyper_params.output_dim
+        self.output_dim = len(data.vectorizer.target_vocab)
 
         self.fc = torch.nn.Linear(in_features=self.input_dim, out_features=hidden_dim)
         self.fc2 = torch.nn.Linear(in_features=hidden_dim, out_features=self.output_dim)
@@ -137,8 +110,8 @@ class MLPPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, predictor_hyper_params: PredictorHyperParams):
-        super().__init__(predictor_hyper_params=predictor_hyper_params)
+    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
+        super().__init__(vectorizer=vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict):
         return {
@@ -194,11 +167,11 @@ class SurnamesVectorizerCNN(Vectorizer):
 @register_plugin
 class SurnamesCNN(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.nationality), axis=1)
@@ -211,44 +184,15 @@ class SurnamesCNN(DatasetSplits):
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
 
-        # Class weights
-        class_counts = self.df.nationality.value_counts().to_dict()
-        sorted_counts = sorted(class_counts.items(), key=lambda x: self.vectorizer.target_vocab.lookup_token(x[0]))
-        frequencies = [count for _, count in sorted_counts]
-        self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
-
-    def __getitem__(self, index: int) -> Dict:
-        row = self._target_df.iloc[index]
-
-        surname_vector = self.vectorizer.vectorize(input_string=row.surname)
-
-        nationality_index = self.vectorizer.target_vocab.lookup_token(row.nationality)
-        print(f"row: {row}")
-        print(f"surname vector: {surname_vector}")
-        print(f"nationality index: {nationality_index}")
-
-        return {
-            'x_in': surname_vector,
-            'y_target': nationality_index}
-
-
-@register_plugin
-class SurnameCNNHyperParams(ObjectHyperParams):
-
-    def __init__(self, dataset_splits: DatasetSplits):
-        super().__init__()
-        self.initial_num_channels = len(dataset_splits.vectorizer.data_vocab)
-        self.num_classes = len(dataset_splits.vectorizer.target_vocab)
-
 
 @register_plugin
 class SurnameClassifierCNN(torch.nn.Module):
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, num_channels: int):
+    def __init__(self, data: DatasetSplits, num_channels: int):
         super(SurnameClassifierCNN, self).__init__()
 
-        self.initial_num_channels: int = model_hyper_params.initial_num_channels
-        self.num_classes: int = model_hyper_params.num_classes
+        self.initial_num_channels = len(data.vectorizer.data_vocab)
+        self.num_classes = len(data.vectorizer.target_vocab)
         self.num_channels: int = num_channels
 
         self.convnet = torch.nn.Sequential(
@@ -290,8 +234,8 @@ class SurnameCNNPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, predictor_hyper_params: PredictorHyperParams):
-        super().__init__(predictor_hyper_params=predictor_hyper_params)
+    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
+        super().__init__(vectorizer=vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict) -> Dict:
         return {
@@ -307,7 +251,6 @@ class SurnameCNNPredictor(PredictorABC):
         return [{
             "class": self.vectorizer.target_vocab.lookup_index(index=int(res[1])),
             "probability": float(res[0])} for res in zip(probability_values, indices)]
-
 
 #### Surnames RNN ####
 @register_plugin
@@ -349,11 +292,11 @@ class SurnameVectorizerRNN(Vectorizer):
 @register_plugin
 class SurnamesRNNDataset(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['x_lengths'] = self.df.apply(lambda row: row.x_in[1], axis=1)
@@ -370,22 +313,6 @@ class SurnamesRNNDataset(DatasetSplits):
         super().__init__(train_set=DataFrameDataset(train_df), train_batch_size=batch_size,
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
-
-        # Class weights
-        class_counts = self.df.nationality.value_counts().to_dict()
-        sorted_counts = sorted(class_counts.items(), key=lambda x: self.vectorizer.target_vocab.lookup_token(x[0]))
-        frequencies = [count for _, count in sorted_counts]
-        self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
-
-    def __getitem__(self, index):
-        row = self._target_df.iloc[index]
-        surname_vector, vec_length = self.vectorizer.vectorize(surname=row.surname)
-        nationality_index = self.vectorizer.target_vocab.lookup_token(row.nationality)
-
-        return {
-            'x_in': surname_vector,
-            'y_target': nationality_index,
-            'x_lengths': vec_length}
 
 
 def column_gather(y_out: torch.FloatTensor, x_lengths: torch.LongTensor) -> torch.FloatTensor:
@@ -451,23 +378,15 @@ class ElmanRNN(torch.nn.Module):
 
 
 @register_plugin
-class SurnameRNNHyperParams(ObjectHyperParams):
-
-    def __init__(self, dataset_splits: DatasetSplits):
-        super().__init__()
-        self.num_embeddings = len(dataset_splits.vectorizer.data_vocab)
-        self.num_classes = len(dataset_splits.vectorizer.target_vocab)
-
-
-@register_plugin
 class SurnameClassifierRNN(torch.nn.Module):
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, embedding_size: int,
+    def __init__(self, data: DatasetSplits, embedding_size: int,
                  rnn_hidden_size: int, batch_first: bool = True, padding_idx: int = 0):
 
         super(SurnameClassifierRNN, self).__init__()
-        self.num_embeddings = model_hyper_params.num_embeddings
-        self.num_classes = model_hyper_params.num_classes
+        self.num_embeddings = len(data.vectorizer.data_vocab)
+        self.num_classes = len(data.vectorizer.target_vocab)
+
 
         self.emb: torch.nn.Embedding = torch.nn.Embedding(num_embeddings=self.num_embeddings,
                                                           embedding_dim=embedding_size,
@@ -516,8 +435,8 @@ class SurnameRNNPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, predictor_hyper_params: PredictorHyperParams):
-        super().__init__(predictor_hyper_params=predictor_hyper_params)
+    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
+        super().__init__(vectorizer=vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict) -> Dict:
         # vector_length = 30
@@ -588,11 +507,11 @@ class SurnameVectorizerGeneration(Vectorizer):
 @register_plugin
 class SurnameDatasetGeneration(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: row.x_in[1], axis=1)
@@ -610,36 +529,17 @@ class SurnameDatasetGeneration(DatasetSplits):
                          val_set=DataFrameDataset(val_df), val_batch_size=batch_size,
                          test_set=DataFrameDataset(test_df), test_batch_size=batch_size)
 
-    def __getitem__(self, index):
-        row = self._target_df.iloc[index]
-        x_in, y_target = self.vectorizer.vectorize(surname=row.surname)
-        nationality_index = self.vectorizer.target_vocab.lookup_token(row.nationality)
-
-        return {
-            'x_in': x_in,
-            'y_target': y_target,
-            'nationality_index': nationality_index}
-
-
-@register_plugin
-class SurnameGenerationHyperParams(ObjectHyperParams):
-
-    def __init__(self, dataset_splits: DatasetSplits):
-        super().__init__()
-        self.char_vocab_size = len(dataset_splits.vectorizer.data_vocab)
-        self.num_nationalities = len(dataset_splits.vectorizer.target_vocab)
-
 
 @register_plugin
 class SurnameConditionedGenerationModel(torch.nn.Module):
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, char_embedding_size: int, rnn_hidden_size: int, batch_first: bool = True, padding_idx: int = 0,
+    def __init__(self, data: DatasetSplits, char_embedding_size: int, rnn_hidden_size: int, batch_first: bool = True, padding_idx: int = 0,
                  dropout_p: float = 0.5,
                  conditioned: bool = False):
 
         super(SurnameConditionedGenerationModel, self).__init__()
-        self.char_vocab_size = model_hyper_params.char_vocab_size
-        self.num_nationalities = model_hyper_params.num_nationalities
+        self.char_vocab_size = len(data.vectorizer.data_vocab)
+        self.num_nationalities = len(data.vectorizer.target_vocab)
 
         self.char_emb: torch.nn.Embedding = torch.nn.Embedding(num_embeddings=self.char_vocab_size,
                                                                embedding_dim=char_embedding_size,
