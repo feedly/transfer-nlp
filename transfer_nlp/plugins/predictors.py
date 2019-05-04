@@ -7,9 +7,6 @@ import torch
 from ignite.utils import convert_tensor
 
 from transfer_nlp.loaders.vectorizers import Vectorizer
-from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.helpers import ObjectHyperParams
-from transfer_nlp.plugins.trainers import BasicTrainer
 
 logger = logging.getLogger(__name__)
 
@@ -22,27 +19,18 @@ def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
     return result
 
 
-@register_plugin
-class PredictorHyperParams(ObjectHyperParams):
-
-    def __init__(self, trainer: BasicTrainer):
-        super().__init__()
-        self.vectorizer = trainer.dataset_splits.vectorizer
-        self.model = trainer.model
-
-
 class PredictorABC:
 
-    def __init__(self, predictor_hyper_params: PredictorHyperParams):
+    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
 
-        self.model: torch.nn.Module = predictor_hyper_params.model
+        self.model: torch.nn.Module = model
         self.model.eval()
         self.forward_params = {}
         model_spec = inspect.getfullargspec(self.model.forward)
         for fparam, pdefault in zip_longest(reversed(model_spec.args[1:]), reversed(model_spec.defaults if model_spec.defaults else [])):
             self.forward_params[fparam] = pdefault
 
-        self.vectorizer: Vectorizer = predictor_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
     def forward(self, batch: Dict[str, Any]) -> torch.tensor:
         """

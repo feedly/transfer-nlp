@@ -5,13 +5,12 @@ import numpy as np
 import pandas as pd
 import torch
 from pytorch_pretrained_bert import BertTokenizer, BertForSequenceClassification
-from pytorch_pretrained_bert.optimization import BertAdam
 from torch.nn.utils import clip_grad_norm_
 from torch.optim import Optimizer
 from torch.optim.optimizer import required
 from tqdm import tqdm
 
-from transfer_nlp.loaders.loaders import DatasetSplits, DatasetHyperParams, DataFrameDataset
+from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary
 from transfer_nlp.plugins.config import register_plugin
@@ -48,14 +47,14 @@ class BertVectorizer(Vectorizer):
 @register_plugin
 class BertDataset(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: DatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
-        # np.random.shuffle(self.df.values)  # Use this code in dev mode
-        # N = 100
-        # self.df = self.df.head(n=N)
+        np.random.shuffle(self.df.values)  # Use this code in dev mode
+        N = 100
+        self.df = self.df.head(n=N)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.max_sequence = 0
         for title in tqdm(self.df.title, desc="Getting max sequence"):

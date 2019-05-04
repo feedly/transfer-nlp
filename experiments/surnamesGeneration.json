@@ -1,67 +1,68 @@
 {
-  "data_file": "HOME/surnames/surnames_with_splits.csv",
-  "tensorboard_logs": "HOME/surnames/tensorboard/generation",
-  "char_embedding_size": 100,
-  "rnn_hidden_size": 100,
-  "seed": 1337,
-  "lr": 0.001,
-  "batch_size": 64,
-  "num_epochs": 10,
-  "early_stopping_criteria": 5,
-  "alpha": 0.01,
-  "gradient_clipping": 0.25,
-  "mode": "min",
-  "factor": 0.5,
-  "patience": 1,
-  "vectorizer": {
-    "_name": "SurnameVectorizerGeneration"
+  "my_vectorizer": {
+    "_name": "SurnameVectorizerGeneration",
+    "data_file_": "HOME/surnames/surnames_with_splits.csv"
   },
-  "dataset_hyper_params": {
-    "_name": "DatasetHyperParams"
-  },
-  "dataset_splits": {
-    "_name": "SurnameDatasetGeneration"
+  "my_dataset_splits": {
+    "_name": "SurnameDatasetGeneration",
+    "data_file_": "HOME/surnames/surnames_with_splits.csv",
+    "batch_size_": 128,
+    "vectorizer": "my_vectorizer"
   },
   "model": {
-    "_name": "SurnameConditionedGenerationModel"
-  },
-  "model_hyper_params": {
-    "_name": "SurnameGenerationHyperParams"
+    "_name": "SurnameConditionedGenerationModel",
+    "char_embedding_size_": 100,
+    "rnn_hidden_size_": 100,
+    "data": "my_dataset_splits"
   },
   "model_params": {
     "_name": "TrainableParameters"
   },
   "loss_hyper_params": {
-    "_name": "SequenceLossHyperParams"
+    "_name": "SequenceLossHyperParams",
+    "dataset_splits": "my_dataset_splits"
   },
   "loss": {
     "_name": "SequenceLoss"
   },
   "optimizer": {
     "_name": "Adam",
+    "lr_": 0.01,
+    "alpha_": 0.99,
     "params": "model_params"
   },
   "regularizer": {
     "_name": "L1"
   },
   "scheduler": {
-    "_name": "ReduceLROnPlateau"
+    "_name": "ReduceLROnPlateau",
+    "patience_": 1,
+    "mode_": "min",
+    "factor_": 0.5
   },
-  "lossMetric": {
+  "my_loss_metric": {
     "_name": "LossMetric",
     "loss_fn": "loss"
   },
   "output_transform": {
     "_name": "OutputTransformSequence"
   },
-  "accuracy": {
+  "my_accuracy": {
     "_name": "Accuracy"
   },
   "trainer": {
     "_name": "BasicTrainer",
+    "model": "model",
+    "dataset_splits": "my_dataset_splits",
+    "loss": "loss",
+    "optimizer": "optimizer",
+    "gradient_clipping_": 0.25,
+    "num_epochs_": 5,
+    "seed_": 1337,
+    "tensorboard_logs_": "HOME/surnames/tensorboard/generation",
     "metrics": [
-      "accuracy",
-      "lossMetric"
+      "my_accuracy",
+      "my_loss_metric"
     ]
   }
 }

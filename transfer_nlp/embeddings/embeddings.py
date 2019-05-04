@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 import numpy as np
 import torch
@@ -39,9 +39,9 @@ class EmbeddingsHyperParams(ObjectHyperParams):
 @register_plugin
 class Embedding:
 
-    def __init__(self, glove_filepath: Path, embedding_hyper_params: ObjectHyperParams):
+    def __init__(self, glove_filepath: Union[Path, str], data: DatasetSplits):
 
-        words = embedding_hyper_params.words
+        words = data.vectorizer.data_vocab._token2id.keys()
 
         w2i, glove_embeddings = load_glove_from_file(glove_filepath=glove_filepath)
         embedding_size = glove_embeddings.shape[1]
