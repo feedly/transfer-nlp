@@ -13,7 +13,8 @@ from transfer_nlp.plugins.config import register_plugin
 class Vectorizer:
 
     def __init__(self, data_file: str):
-        self.df = pd.read_csv(data_file)
+        self.data_file = data_file
+        # self.df = pd.read_csv(data_file)
 
     def vectorize(self, input_string: str):
         raise NotImplementedError
