@@ -41,23 +41,14 @@ class TestVectorizer(Vectorizer):
 
         return encoding
 
-
-@register_plugin
-class TestDatasetHyperParams(ObjectHyperParams):
-
-    def __init__(self, vectorizer: Vectorizer):
-        super().__init__()
-        self.vectorizer = vectorizer
-
-
 @register_plugin
 class TestDataset(DatasetSplits):
 
-    def __init__(self, data_file: str, batch_size: int, dataset_hyper_params: TestDatasetHyperParams):
+    def __init__(self, data_file: str, batch_size: int, vectorizer: Vectorizer):
         self.df = pd.read_csv(data_file)
 
         # preprocessing
-        self.vectorizer: Vectorizer = dataset_hyper_params.vectorizer
+        self.vectorizer: Vectorizer = vectorizer
 
         self.df['x_in'] = self.df.apply(lambda row: self.vectorizer.vectorize(row.surname), axis=1)
         self.df['y_target'] = self.df.apply(lambda row: self.vectorizer.target_vocab.lookup_token(row.nationality), axis=1)
@@ -83,12 +74,12 @@ class TestHyperParams(ObjectHyperParams):
 @register_plugin
 class TestModel(torch.nn.Module):
 
-    def __init__(self, model_hyper_params: ObjectHyperParams, hidden_dim: int):
+    def __init__(self, data: DatasetSplits, hidden_dim: int):
         super(TestModel, self).__init__()
 
-        self.input_dim = model_hyper_params.input_dim
+        self.input_dim = len(data.vectorizer.data_vocab)
+        self.output_dim = len(data.vectorizer.target_vocab)
         self.hidden_dim = hidden_dim
-        self.output_dim = model_hyper_params.output_dim
 
         self.fc = torch.nn.Linear(in_features=self.input_dim, out_features=hidden_dim)
         self.fc2 = torch.nn.Linear(in_features=hidden_dim, out_features=self.output_dim)
