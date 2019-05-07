@@ -1,17 +1,17 @@
 {
   "my_vectorizer": {
     "_name": "CBOWVectorizer",
-    "data_file": "HOME/books/frankenstein_with_splits.csv"
+    "data_file": "$HOME/books/frankenstein_with_splits.csv"
   },
   "my_dataset_splits": {
     "_name": "CBOWDataset",
-    "data_file": "HOME/books/frankenstein_with_splits.csv",
+    "data_file": "$HOME/books/frankenstein_with_splits.csv",
     "batch_size": 128,
     "vectorizer": "$my_vectorizer"
   },
   "model": {
     "_name": "CBOWClassifier",
-    "glove_path": "HOME/glove/glove.6B.100d.txt",
+    "glove_path": "$HOME/glove/glove.6B.100d.txt",
     "data": "$my_dataset_splits",
     "embedding_size": 100
   },
@@ -52,7 +52,7 @@
     "gradient_clipping": 0.25,
     "num_epochs": 2,
     "seed": 1337,
-    "tensorboard_logs": "HOME/surnames/tensorboard/cbow",
+    "tensorboard_logs": "$HOME/surnames/tensorboard/cbow",
     "metrics": [
       "$my_accuracy",
       "$my_loss_metric"
