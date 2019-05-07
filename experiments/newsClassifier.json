@@ -1,72 +1,72 @@
 {
   "my_vectorizer": {
     "_name": "NewsVectorizer",
-    "data_file_": "HOME/ag_news/news_with_splits.csv",
-    "cutoff_": 5
+    "data_file": "$HOME/ag_news/news_with_splits.csv",
+    "cutoff": 5
   },
   "my_dataset_splits": {
     "_name": "NewsDataset",
-    "data_file_": "HOME/ag_news/news_with_splits.csv",
-    "batch_size_": 128,
-    "vectorizer": "my_vectorizer"
+    "data_file": "$HOME/ag_news/news_with_splits.csv",
+    "batch_size": 128,
+    "vectorizer": "$my_vectorizer"
   },
   "my_model": {
     "_name": "NewsClassifier",
-    "glove_path_": "HOME/glove/glove.6B.100d.txt",
-    "data": "my_dataset_splits",
-    "embedding_size_": 100,
-    "num_channels_": 10,
-    "hidden_dim_": 10,
-    "dropout_p_": 0.3
+    "glove_path": "$HOME/glove/glove.6B.100d.txt",
+    "data": "$my_dataset_splits",
+    "embedding_size": 100,
+    "num_channels": 10,
+    "hidden_dim": 10,
+    "dropout_p": 0.3
   },
   "my_model_params": {
     "_name": "TrainableParameters",
-    "model": "my_model"
+    "model": "$my_model"
   },
   "my_loss": {
     "_name": "CrossEntropyLoss"
   },
   "my_optimizer": {
     "_name": "Adam",
-    "lr_": 0.01,
-    "alpha_": 0.99,
-    "params": "my_model_params"
+    "lr": 0.01,
+    "alpha": 0.99,
+    "params": "$my_model_params"
   },
   "regularizer": {
     "_name": "L1"
   },
   "scheduler": {
     "_name": "ReduceLROnPlateau",
-    "patience_": 1,
-    "mode_": "min",
-    "factor_": 0.5,
-    "optimizer": "my_optimizer"
+    "patience": 1,
+    "mode": "min",
+    "factor": 0.5,
+    "optimizer": "$my_optimizer"
   },
   "my_accuracy": {
     "_name": "Accuracy"
   },
   "my_loss_metric": {
     "_name": "LossMetric",
-    "loss_fn": "my_loss"
+    "loss_fn": "$my_loss"
   },
   "trainer": {
     "_name": "BasicTrainer",
-    "model": "my_model",
-    "dataset_splits": "my_dataset_splits",
-    "loss": "my_loss",
-    "optimizer": "my_optimizer",
-    "gradient_clipping_": 0.25,
-    "num_epochs_": 2,
-    "seed_": 1337,
-    "tensorboard_logs_": "HOME/surnames/tensorboard/news",
+    "model": "$my_model",
+    "dataset_splits": "$my_dataset_splits",
+    "loss": "$my_loss",
+    "optimizer": "$my_optimizer",
+    "gradient_clipping": 0.25,
+    "num_epochs": 2,
+    "seed": 1337,
+    "tensorboard_logs": "$HOME/surnames/tensorboard/news",
     "metrics": [
-      "my_accuracy",
-      "my_loss_metric"
+      "$my_accuracy",
+      "$my_loss_metric"
     ]
   },
   "predictor": {
     "_name": "NewsPredictor",
-    "vectorizer": "my_vectorizer",
-    "model": "my_model"
+    "vectorizer": "$my_vectorizer",
+    "model": "$my_model"
   }
 }

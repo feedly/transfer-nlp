@@ -1,48 +1,48 @@
 {
   "my_vectorizer": {
     "_name": "SurnameVectorizerGeneration",
-    "data_file_": "HOME/surnames/surnames_with_splits.csv"
+    "data_file": "$HOME/surnames/surnames_with_splits.csv"
   },
   "my_dataset_splits": {
     "_name": "SurnameDatasetGeneration",
-    "data_file_": "HOME/surnames/surnames_with_splits.csv",
-    "batch_size_": 128,
-    "vectorizer": "my_vectorizer"
+    "data_file": "$HOME/surnames/surnames_with_splits.csv",
+    "batch_size": 128,
+    "vectorizer": "$my_vectorizer"
   },
   "model": {
     "_name": "SurnameConditionedGenerationModel",
-    "char_embedding_size_": 100,
-    "rnn_hidden_size_": 100,
-    "data": "my_dataset_splits"
+    "char_embedding_size": 100,
+    "rnn_hidden_size": 100,
+    "data": "$my_dataset_splits"
   },
   "model_params": {
     "_name": "TrainableParameters"
   },
   "loss_hyper_params": {
     "_name": "SequenceLossHyperParams",
-    "dataset_splits": "my_dataset_splits"
+    "dataset_splits": "$my_dataset_splits"
   },
   "loss": {
     "_name": "SequenceLoss"
   },
   "optimizer": {
     "_name": "Adam",
-    "lr_": 0.01,
-    "alpha_": 0.99,
-    "params": "model_params"
+    "lr": 0.01,
+    "alpha": 0.99,
+    "params": "$model_params"
   },
   "regularizer": {
     "_name": "L1"
   },
   "scheduler": {
     "_name": "ReduceLROnPlateau",
-    "patience_": 1,
-    "mode_": "min",
-    "factor_": 0.5
+    "patience": 1,
+    "mode": "min",
+    "factor": 0.5
   },
   "my_loss_metric": {
     "_name": "LossMetric",
-    "loss_fn": "loss"
+    "loss_fn": "$loss"
   },
   "output_transform": {
     "_name": "OutputTransformSequence"
@@ -52,17 +52,17 @@
   },
   "trainer": {
     "_name": "BasicTrainer",
-    "model": "model",
-    "dataset_splits": "my_dataset_splits",
-    "loss": "loss",
-    "optimizer": "optimizer",
-    "gradient_clipping_": 0.25,
-    "num_epochs_": 5,
-    "seed_": 1337,
-    "tensorboard_logs_": "HOME/surnames/tensorboard/generation",
+    "model": "$model",
+    "dataset_splits": "$my_dataset_splits",
+    "loss": "$loss",
+    "optimizer": "$optimizer",
+    "gradient_clipping": 0.25,
+    "num_epochs": 5,
+    "seed": 1337,
+    "tensorboard_logs": "$HOME/surnames/tensorboard/generation",
     "metrics": [
-      "my_accuracy",
-      "my_loss_metric"
+      "$my_accuracy",
+      "$my_loss_metric"
     ]
   }
 }

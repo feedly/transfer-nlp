@@ -9,32 +9,20 @@ from transfer_nlp.plugins.trainers import BasicTrainer
 from .trainer_utils import *
 
 EXPERIMENT = {
-    "data_file": Path(__file__).parent.resolve() / "sample_data.csv",
-    "hidden_dim": 100,
-    "seed": 1337,
-    "lr": 0.001,
-    "batch_size": 40,
-    "num_epochs": 5,
-    "early_stopping_criteria": 5,
-    "alpha": 0.01,
-    "gradient_clipping": 0.25,
-    "mode": "min",
-    "factor": 0.5,
-    "patience": 1,
-    "vectorizer": {
-        "_name": "TestVectorizer"
+    "my_vectorizer": {
+        "_name": "TestVectorizer",
+        "data_file": Path(__file__).parent.resolve() / "sample_data.csv"
     },
-    "dataset_hyper_params": {
-        "_name": "TestDatasetHyperParams"
-    },
-    "dataset_splits": {
-        "_name": "TestDataset"
+    "my_dataset_splits": {
+        "_name": "TestDataset",
+        "data_file": Path(__file__).parent.resolve() / "sample_data.csv",
+        "batch_size": 128,
+        "vectorizer": "$my_vectorizer"
     },
     "model": {
-        "_name": "TestModel"
-    },
-    "model_hyper_params": {
-        "_name": "TestHyperParams"
+        "_name": "TestModel",
+        "hidden_dim": 100,
+        "data": "$my_dataset_splits"
     },
     "model_params": {
         "_name": "TrainableParameters"
@@ -44,26 +32,38 @@ EXPERIMENT = {
     },
     "optimizer": {
         "_name": "Adam",
-        "params": "model_params"
+        "lr": 0.01,
+        "alpha": 0.99,
+        "params": "$model_params"
     },
     "regularizer": {
         "_name": "L1"
     },
     "scheduler": {
-        "_name": "ReduceLROnPlateau"
+        "_name": "ReduceLROnPlateau",
+        "patience": 1,
+        "mode": "min",
+        "factor": 0.5
     },
-    "accuracy": {
+    "my_accuracy": {
         "_name": "Accuracy"
     },
-    "lossMetric": {
+    "my_loss_metric": {
         "_name": "LossMetric",
-        "loss_fn": "loss"
+        "loss_fn": "$loss"
     },
     "trainer": {
         "_name": "BasicTrainer",
+        "model": "$model",
+        "dataset_splits": "$my_dataset_splits",
+        "loss": "$loss",
+        "optimizer": "$optimizer",
+        "gradient_clipping": 0.25,
+        "num_epochs": 5,
+        "seed": 1337,
         "metrics": [
-            "accuracy",
-            "lossMetric"
+            "$my_accuracy",
+            "$my_loss_metric"
         ]
     },
     "finetune": False
@@ -85,10 +85,10 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(trainer.seed, 1337)
         self.assertEqual(trainer.loss_accumulation_steps, 4)
         self.assertIsInstance(trainer.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau)
-        self.assertEqual(trainer.num_epochs, EXPERIMENT['num_epochs'])
+        self.assertEqual(trainer.num_epochs, 5)
         self.assertIsInstance(trainer.regularizer, L1)
-        self.assertEqual(trainer.gradient_clipping, EXPERIMENT['gradient_clipping'])
-        # self.assertEqual(trainer.finetune, False)
+        self.assertEqual(trainer.gradient_clipping, 0.25)
+        self.assertEqual(trainer.finetune, False)
         self.assertEqual(trainer.embeddings_name, None)
         self.assertEqual(trainer.forward_params, ['x_in', 'apply_softmax'])
         # trainer.train()
@@ -101,7 +101,6 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(trainer, BasicTrainer)
 
     def test_setup(self):
-
         e = ExperimentConfig(EXPERIMENT)
         trainer = e.experiment['trainer']
         trainer.setup(training_metrics=trainer.training_metrics)
@@ -114,7 +113,6 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.ITERATION_STARTED]), 0)
 
     def test_forward(self):
-
         e = ExperimentConfig(EXPERIMENT)
         trainer = e.experiment['trainer']
         trainer.setup(training_metrics=trainer.training_metrics)
@@ -122,5 +120,5 @@ class RegistryTest(unittest.TestCase):
         batch = next(iter(trainer.dataset_splits.train_data_loader()))
         self.assertEqual(list(batch.keys()), ['x_in', 'y_target'])
         output = trainer._forward(batch=batch)
-        self.assertEqual(output.size()[0], min(len(trainer.dataset_splits.train_set), e.experiment['batch_size']))
+        self.assertEqual(output.size()[0], min(len(trainer.dataset_splits.train_set), 128))
         self.assertEqual(output.size()[1], trainer.model.output_dim)

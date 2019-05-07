@@ -74,13 +74,18 @@ class UnconfiguredItemsException(Exception):
         super().__init__(f'There are some unconfigured items, which makes these items not configurable: {items}')
         self.items = items
 
+
 class ConfigFactoryABC(ABC):
 
     @abstractmethod
     def create(self):
         pass
 
+
 class ParamFactory(ConfigFactoryABC):
+    """
+    Factory for simple parameters
+    """
 
     def __init__(self, param):
         self.param = param
@@ -90,6 +95,9 @@ class ParamFactory(ConfigFactoryABC):
 
 
 class PluginFactory(ConfigFactoryABC):
+    """
+    Factory for complex objects creation
+    """
 
     def __init__(self, cls, param2config_key: Optional[Dict[str, str]], *args, **kwargs):
         self.cls = cls
@@ -101,15 +109,20 @@ class PluginFactory(ConfigFactoryABC):
         return self.cls(*self.args, **self.kwargs)
 
 
-def replace(dico: Dict, env):
-
+def _replace(dico: Dict, env):
+    """
+    Replace all occurrences of environment variable to particular strings
+    :param dico:
+    :param env:
+    :return:
+    """
     env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
 
     def do_env_subs(v: Any) -> str:
         v_upd = v
         if isinstance(v_upd, str):
             for env_key in env_keys:
-                v_upd = v_upd.replace(env_key, env[env_key])
+                v_upd = v_upd.replace('$' + env_key, env[env_key])
 
             if v_upd != v:
                 logger.info('*** updating parameter %s -> %s', v, v_upd)
@@ -151,7 +164,7 @@ class ExperimentConfig:
         else:
             config = json.load(open(experiment))
 
-        replace(dico=config, env=env)
+        _replace(dico=config, env=env)
 
         # extract simple parameters
         logger.info(f"Initializing simple parameters:")
@@ -199,9 +212,20 @@ class ExperimentConfig:
 
         self.experiment = experiment
 
-
     def _build_items(self, config: Dict[str, Any], experiment: Dict[str, Any], default_params_mode: int):
         """
+        Build complex items
+        In the config file, if we want to use a pre-built object as parameter for another object creation, we must use the $ specifier. e.g.:
+        {
+      "my_object": {
+        "_name": "Foo",
+        "param": "bar"
+      },
+      "my_second_object": {
+        "_name": "SomeClass",
+        "object_param": "$my_object"
+      }
+    }
 
         :param config:
         :param experiment:
@@ -236,18 +260,15 @@ class ExperimentConfig:
 
                 literal_params = {}
                 for p, pv in v.items():
-                    if p[-1] == '_':
-                        literal_params[p[:-1]] = pv
-                    elif isinstance(pv, list):
-                        for pvv in pv:
-                            if not isinstance(pvv, str):
-                                raise ValueError(
-                                    f'string required for parameter names in list paramters...use key_ notation "{p}_" if you want to specify a literal parameter values.')
 
-                    elif not isinstance(pv, str):
-                        raise ValueError(f'string required for parameter names...use key_ notation "{p}_" if you want to specify a literal parameter value.')
+                    # Literals are any fixed values that are not string starting with '$'
+                    if (not isinstance(pv, str) or not pv[0] == '$') and not isinstance(pv, list):
+                        literal_params[p] = pv
+                    if isinstance(pv, list) and all(not isinstance(item, str) or not item[0] == '$' for item in pv):
+                        literal_params[p] = pv
 
                 for arg in spec.args[1:]:
+
                     if arg in literal_params:
                         params[arg] = literal_params[arg]
                         param2config_key[arg] = None
@@ -262,12 +283,16 @@ class ExperimentConfig:
                                 for p in alias:
                                     if p in experiment:
                                         param_list.append(experiment[p])
+                                    if isinstance(p, str) and p[0] == '$' and p[1:] in experiment:
+                                        param_list.append(experiment[p[1:]])
                                     else:
                                         break
                                 if len(param_list) == len(alias):
                                     params[arg] = param_list
                             elif alias in experiment:
                                 params[arg] = experiment[alias]
+                            elif isinstance(alias, str) and alias[0] == '$' and alias[1:] in experiment:
+                                params[arg] = experiment[alias[1:]]
                             param2config_key[arg] = alias
                         elif arg in experiment:
                             params[arg] = experiment[arg]
@@ -324,4 +349,3 @@ class ExperimentConfig:
 
     def __setitem__(self, key, value):
         raise ValueError("cannot update experiment!")
-

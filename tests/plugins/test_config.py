@@ -1,42 +1,47 @@
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException
 import unittest
+
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException
 
 
 @register_plugin
 class Demo2:
 
-    def __init__(self, simple_str:str):
+    def __init__(self, simple_str: str):
         self.val = simple_str
 
 
 @register_plugin
 class Demo3:
 
-    def __init__(self, simple_int:str):
+    def __init__(self, simple_int: str):
         self.val = simple_int
+
 
 @register_plugin
 class Demo4:
 
-    def __init__(self, simple_int:str, optional:int=None, optional2:int=1):
+    def __init__(self, simple_int: str, optional: int = None, optional2: int = 1):
         self.val = simple_int
         self.optional = optional
         self.optional2 = optional2
 
+
 @register_plugin
 class DemoDefaults:
 
-    def __init__(self, simple_int:str, foo:int=5, bar=10):
+    def __init__(self, simple_int: str, foo: int = 5, bar=10):
         self.val = simple_int
         self.foo = foo
         self.bar = bar
 
+
 @register_plugin
 class DemoComplexDefaults:
 
-    def __init__(self, simple_int:str, demod:DemoDefaults=None):
+    def __init__(self, simple_int: str, demod: DemoDefaults = None):
         self.val = simple_int
         self.dd = demod
+
 
 @register_plugin
 class Demo:
@@ -45,13 +50,15 @@ class Demo:
         self.demo2 = demo2
         self.demo3 = demo3
 
+
 @register_plugin
 class DemoWithConfig:
 
-    def __init__(self, demo2, simple_int:str, experiment_config):
+    def __init__(self, demo2, simple_int: str, experiment_config):
         self.demo2 = demo2
         self.simple_int = simple_int
         self.experiment_config = experiment_config
+
 
 class RegistryTest(unittest.TestCase):
 
@@ -82,7 +89,7 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             'demo': {
                 '_name': 'Demo',
-                'demo3': 'demo3a'
+                'demo3': '$demo3a'
 
             },
             'demo2': {
@@ -93,7 +100,7 @@ class RegistryTest(unittest.TestCase):
             },
             'demo3a': {
                 '_name': 'Demo3',
-                'simple_int': 'simple_inta'
+                'simple_int': '$simple_inta'
             },
             'simple_str': 'dummy',
             'simple_int': 5,
@@ -108,25 +115,30 @@ class RegistryTest(unittest.TestCase):
 
         self.assertEqual(e['demo2'].val, 'dummy')
         self.assertEqual(e['demo3'].val, 5)
-        self.assertEqual(e['demo3a'].val,  6)
+        self.assertEqual(e['demo3a'].val, 6)
         self.assertEqual(e['demo'].demo3.val, 6)
 
     def test_env(self):
         experiment = {
-            'path': "HOME/foo/bar"
+            'path': "$HOME/foo/bar",
+            'data': {
+                '_name': "Demo2",
+                'simple_str': "$HOME/foo/bar/bis"
+            }
         }
         e = ExperimentConfig(experiment, HOME='/tmp')
         self.assertEqual(e['path'], '/tmp/foo/bar')
+        self.assertEqual(e['data'].val, '/tmp/foo/bar/bis')
 
     def test_literal_injection(self):
         experiment = {
             'demo2': {
                 '_name': 'Demo2',
-                'simple_str_': 'dummy'
+                'simple_str': 'dummy'
             },
             'demo3': {
                 '_name': 'Demo3',
-                'simple_int_': 5
+                'simple_int': 5
             }
         }
         e = ExperimentConfig(experiment)
@@ -163,17 +175,17 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             'demoa': {
                 '_name': 'DemoDefaults',
-                'simple_int_': 0
+                'simple_int': 0
             },
             'demob': {
                 '_name': 'DemoDefaults',
-                'simple_int_': 1,
-                'foo_': 6
+                'simple_int': 1,
+                'foo': 6
             },
             'democ': {
                 '_name': 'DemoDefaults',
-                'simple_int_': 2,
-                'bar_': 6
+                'simple_int': 2,
+                'bar': 6
             }
         }
         e = ExperimentConfig(experiment)
@@ -198,12 +210,12 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             'demo': {
                 '_name': 'DemoComplexDefaults',
-                'simple_int_': 0
+                'simple_int': 0
             },
             'demod': {
                 '_name': 'DemoDefaults',
-                'simple_int_': 1,
-                'foo_': 6
+                'simple_int': 1,
+                'foo': 6
             }
         }
         e = ExperimentConfig(experiment)
@@ -224,17 +236,17 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             'demo4': {
                 '_name': 'Demo4',
-                'simple_int_': 0
+                'simple_int': 0
             },
             'demo4a': {
                 '_name': 'Demo4',
-                'simple_int_': 0,
-                'optional_': 1
+                'simple_int': 0,
+                'optional': 1
             },
             'demo4b': {
                 '_name': 'Demo4',
-                'simple_int_': 0,
-                'optional2_': None
+                'simple_int': 0,
+                'optional2': None
             }
 
         }
