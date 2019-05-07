@@ -62,6 +62,26 @@ class DemoWithConfig:
 
 class RegistryTest(unittest.TestCase):
 
+    def test_recursive_definition(self):
+        experiment = {
+            'demo': {
+                '_name': 'Demo',
+                'demo2': {
+                    '_name': 'Demo2',
+                    'simple_str': 'foo'
+                },
+                'demo3': {
+                    '_name': 'Demo3',
+                    'simple_int': 2
+                }
+            }
+        }
+        e = ExperimentConfig(experiment)
+        self.assertIsInstance(e.experiment['demo'].demo2, Demo2)
+        self.assertIsInstance(e.experiment['demo'].demo3, Demo3)
+        self.assertEqual(e.experiment['demo'].demo2.simple_str, 'foo')
+        self.assertEqual(e.experiment['demo'].demo3.simple_int, 2)
+
     def test_child_injection(self):
         experiment = {
             'demo': {
