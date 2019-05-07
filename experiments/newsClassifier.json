@@ -1,18 +1,18 @@
 {
   "my_vectorizer": {
     "_name": "NewsVectorizer",
-    "data_file": "HOME/ag_news/news_with_splits.csv",
+    "data_file": "$HOME/ag_news/news_with_splits.csv",
     "cutoff": 5
   },
   "my_dataset_splits": {
     "_name": "NewsDataset",
-    "data_file": "HOME/ag_news/news_with_splits.csv",
+    "data_file": "$HOME/ag_news/news_with_splits.csv",
     "batch_size": 128,
     "vectorizer": "$my_vectorizer"
   },
   "my_model": {
     "_name": "NewsClassifier",
-    "glove_path": "HOME/glove/glove.6B.100d.txt",
+    "glove_path": "$HOME/glove/glove.6B.100d.txt",
     "data": "$my_dataset_splits",
     "embedding_size": 100,
     "num_channels": 10,
@@ -58,7 +58,7 @@
     "gradient_clipping": 0.25,
     "num_epochs": 2,
     "seed": 1337,
-    "tensorboard_logs": "HOME/surnames/tensorboard/news",
+    "tensorboard_logs": "$HOME/surnames/tensorboard/news",
     "metrics": [
       "$my_accuracy",
       "$my_loss_metric"

@@ -1,11 +1,11 @@
 {
   "my_vectorizer": {
     "_name": "SurnamesVectorizerMLP",
-    "data_file": "HOME/surnames/surnames_with_splits.csv"
+    "data_file": "$HOME/surnames/surnames_with_splits.csv"
   },
   "my_dataset_splits": {
     "_name": "SurnamesDatasetMLP",
-    "data_file": "HOME/surnames/surnames_with_splits.csv",
+    "data_file": "$HOME/surnames/surnames_with_splits.csv",
     "batch_size": 128,
     "vectorizer": "$my_vectorizer"
   },
@@ -51,7 +51,7 @@
     "gradient_clipping": 0.25,
     "num_epochs": 5,
     "seed": 1337,
-    "tensorboard_logs": "HOME/surnames/tensorboard/mlp",
+    "tensorboard_logs": "$HOME/surnames/tensorboard/mlp",
     "metrics": [
       "$my_accuracy",
       "$my_loss_metric"

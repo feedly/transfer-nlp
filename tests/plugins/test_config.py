@@ -140,10 +140,10 @@ class RegistryTest(unittest.TestCase):
 
     def test_env(self):
         experiment = {
-            'path': "HOME/foo/bar",
+            'path': "$HOME/foo/bar",
             'data': {
                 '_name': "Demo2",
-                'simple_str': "HOME/foo/bar/bis"
+                'simple_str': "$HOME/foo/bar/bis"
             }
         }
         e = ExperimentConfig(experiment, HOME='/tmp')

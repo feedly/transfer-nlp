@@ -109,7 +109,7 @@ class PluginFactory(ConfigFactoryABC):
         return self.cls(*self.args, **self.kwargs)
 
 
-def replace(dico: Dict, env):
+def _replace(dico: Dict, env):
     """
     Replace all occurrences of environment variable to particular strings
     :param dico:
@@ -122,7 +122,7 @@ def replace(dico: Dict, env):
         v_upd = v
         if isinstance(v_upd, str):
             for env_key in env_keys:
-                v_upd = v_upd.replace(env_key, env[env_key])
+                v_upd = v_upd.replace('$' + env_key, env[env_key])
 
             if v_upd != v:
                 logger.info('*** updating parameter %s -> %s', v, v_upd)
@@ -164,7 +164,7 @@ class ExperimentConfig:
         else:
             config = json.load(open(experiment))
 
-        replace(dico=config, env=env)
+        _replace(dico=config, env=env)
 
         # extract simple parameters
         logger.info(f"Initializing simple parameters:")
