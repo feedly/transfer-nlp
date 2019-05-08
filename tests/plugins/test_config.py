@@ -1,6 +1,6 @@
 import unittest
 
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException, ExperimentConfig2
 
 
 @register_plugin
@@ -76,11 +76,11 @@ class RegistryTest(unittest.TestCase):
                 }
             }
         }
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
         self.assertIsInstance(e.experiment['demo'].demo2, Demo2)
         self.assertIsInstance(e.experiment['demo'].demo3, Demo3)
-        self.assertEqual(e.experiment['demo'].demo2.simple_str, 'foo')
-        self.assertEqual(e.experiment['demo'].demo3.simple_int, 2)
+        self.assertEqual(e.experiment['demo'].demo2.val, 'foo')
+        self.assertEqual(e.experiment['demo'].demo3.val, 2)
 
     def test_child_injection(self):
         experiment = {

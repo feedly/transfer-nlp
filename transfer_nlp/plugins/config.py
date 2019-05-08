@@ -3,7 +3,6 @@ This file contains all necessary plugins classes that the framework will use to 
 
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
-import abc
 import inspect
 import json
 import logging
@@ -146,6 +145,107 @@ def _replace(dico: Dict, env):
                 pass
 
     recursive_replace(dico=dico)
+
+
+class ExperimentConfig2:
+
+    def __init__(self, experiment: Union[str, Path, Dict], **env):
+        """
+        :param experiment: the experiment config
+        :param env: substitution variables, e.g. a HOME directory. generally use all caps.
+        :return: the experiment
+        """
+        self.factories: Dict[str, ConfigFactoryABC] = {}
+        self.experiment: Dict[str, Any] = {}
+
+        if isinstance(experiment, dict):
+            config = dict(experiment)
+        else:
+            config = json.load(open(experiment))
+
+        _replace(dico=config, env=env)
+
+        # extract simple parameters
+        logger.info(f"Initializing simple parameters:")
+        experiment = {}
+        for k, v in config.items():
+            if not isinstance(v, dict) and not isinstance(v, list):
+                logger.info(f"Parameter {k}: {v}")
+                self.experiment[k] = v
+                self.factories[k] = ParamFactory(v)
+
+        # extract simple lists
+        logger.info(f"Initializing simple lists:")
+        for k, v in config.items():
+            if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
+                logger.info(f"Parameter {k}: {v}")
+                self.experiment[k] = v
+                self.factories[k] = PluginFactory(list, None, v)
+
+        self._build_items2(config)
+
+    def recursive_build(self, object_dict: Dict):
+
+        if '_name' not in object_dict:
+            raise ValueError(f"The object a=should have a _name key to access its class")
+
+        class_name = object_dict['_name']
+        clazz = CLASSES.get(class_name)
+
+        if not clazz:
+            raise ValueError(
+                f'The object class is named {object_dict["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
+
+        spec = inspect.getfullargspec(clazz.__init__)
+        params = {}
+        param2config_key = {}
+        named_params = {p: pv for p, pv in object_dict.items() if p != '_name'}
+        default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
+
+        for arg in spec.args[1:]:
+
+            if arg == 'experiment_config':
+                params[arg] = self
+                param2config_key[arg] = arg
+
+            elif arg in named_params:
+                value = named_params[arg]
+
+                if isinstance(value, dict) and '_name' in value:
+                    value = self.recursive_build(object_dict=value)
+                elif isinstance(value, str) and value[0] == '$' and value[1:] in self.experiment:
+                    value = self.experiment[value[1:]]
+                elif isinstance(value, list):
+                    configured_list = []
+                    for item in value:
+                        if isinstance(item, str) and item[0] == '$' and item[1:] in self.experiment:
+                            configured_list.append(self.experiment[item[1:]])
+
+                        if isinstance(item, dict) and '_name' in item:
+                            configured_list.append(self.recursive_build(object_dict=item))
+                    value = configured_list
+                elif not isinstance(value, list) and value in self.experiment:
+                    value = self.experiment[value]
+                else:
+                    pass
+                params[arg] = value
+            elif arg in self.experiment:
+                params[arg] = self.experiment[arg]
+            elif arg in default_params:
+                value = default_params[arg]
+                params[arg] = value
+            else:
+                raise ValueError(f"{arg} is not a parameter from the {class_name} class")
+
+        return clazz(**params)
+
+    def _build_items2(self, config: Dict[str, Any]):
+
+        for object_key, object_dict in config.items():
+            try:
+                self.experiment[object_key] = self.recursive_build(object_dict)
+            except Exception as e:
+                raise UnconfiguredItemsException(object_key)
 
 
 class ExperimentConfig:
