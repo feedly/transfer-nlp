@@ -1,4 +1,4 @@
-<img src="data/images/TransferNLP_Logo.jpg " width="500">
+<img src="data/images/TransferNLP_Logo.jpg " width="700">
 
 Welcome to the Transfer NLP library, a framework built on top of PyTorch whose goal is to progressively achieve 2 kinds of Transfer:
 
