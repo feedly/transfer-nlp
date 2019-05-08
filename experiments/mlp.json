@@ -1,33 +1,25 @@
 {
-  "my_vectorizer": {
-    "_name": "SurnamesVectorizerMLP",
-    "data_file": "$HOME/surnames/surnames_with_splits.csv"
-  },
   "my_dataset_splits": {
     "_name": "SurnamesDatasetMLP",
     "data_file": "$HOME/surnames/surnames_with_splits.csv",
     "batch_size": 128,
-    "vectorizer": "$my_vectorizer"
+    "vectorizer": {
+      "_name": "SurnamesVectorizerMLP",
+      "data_file": "$HOME/surnames/surnames_with_splits.csv"
+    }
   },
   "model": {
     "_name": "MultiLayerPerceptron",
     "hidden_dim": 100,
     "data": "$my_dataset_splits"
   },
-  "model_params": {
-    "_name": "TrainableParameters"
-  },
-  "loss": {
-    "_name": "CrossEntropyLoss"
-  },
   "optimizer": {
     "_name": "Adam",
     "lr": 0.01,
     "alpha": 0.99,
-    "params": "$model_params"
-  },
-  "regularizer": {
-    "_name": "L1"
+    "params": {
+      "_name": "TrainableParameters"
+    }
   },
   "scheduler": {
     "_name": "ReduceLROnPlateau",
@@ -38,28 +30,36 @@
   "my_accuracy": {
     "_name": "Accuracy"
   },
-  "my_loss_metric": {
-    "_name": "LossMetric",
-    "loss_fn": "$loss"
-  },
   "trainer": {
     "_name": "BasicTrainer",
     "model": "$model",
     "dataset_splits": "$my_dataset_splits",
-    "loss": "$loss",
+    "loss": {
+      "_name": "CrossEntropyLoss"
+    },
     "optimizer": "$optimizer",
     "gradient_clipping": 0.25,
     "num_epochs": 5,
     "seed": 1337,
+    "regularizer": {
+      "_name": "L1"
+    },
     "tensorboard_logs": "$HOME/surnames/tensorboard/mlp",
-    "metrics": [
-      "$my_accuracy",
-      "$my_loss_metric"
-    ]
+    "metrics": {
+      "accuracy": {
+        "_name": "Accuracy"
+      },
+      "loss": {
+        "_name": "LossMetric",
+        "loss_fn": {
+          "_name": "CrossEntropyLoss"
+        }
+      }
+    }
   },
   "predictor": {
     "_name": "MLPPredictor",
-    "vectorizer": "$my_vectorizer",
+    "data": "$my_dataset_splits",
     "model": "$model"
   }
 }

@@ -184,7 +184,7 @@ class ExperimentConfig2:
 
         self._build_items2(config)
 
-    def recursive_build(self, object_dict: Dict):
+    def recursive_build(self, object_key: str, object_dict: Dict):
 
         if '_name' not in object_dict:
             raise ValueError(f"The object a=should have a _name key to access its class")
@@ -212,32 +212,33 @@ class ExperimentConfig2:
                 value = named_params[arg]
 
                 if isinstance(value, dict) and '_name' in value:
-                    value = self.recursive_build(object_dict=value)
+                    value = self.recursive_build(object_key=arg, object_dict=value)
                 elif isinstance(value, str) and value[0] == '$' and value[1:] in self.experiment:
                     value = self.experiment[value[1:]]
-                elif isinstance(value, list):
-                    configured_list = []
-                    for item in value:
-                        if isinstance(item, str) and item[0] == '$' and item[1:] in self.experiment:
-                            configured_list.append(self.experiment[item[1:]])
 
-                        if isinstance(item, dict) and '_name' in item:
-                            configured_list.append(self.recursive_build(object_dict=item))
-                    value = configured_list
+                elif isinstance(value, dict) and '_name' not in value:
+                    for item in value:
+                        value[item] = self.recursive_build(object_key=item, object_dict=value[item])
                 elif not isinstance(value, list) and value in self.experiment:
                     value = self.experiment[value]
                 else:
                     pass
                 params[arg] = value
+                param2config_key[arg] = value
 
             # For values that are not in named_params, we look first at the experiment dict, then at the defaults parameters
             elif arg in self.experiment:
                 params[arg] = self.experiment[arg]
+                param2config_key[arg] = arg
             elif arg in default_params:
                 value = default_params[arg]
                 params[arg] = value
+                param2config_key[arg] = None
             else:
                 raise ValueError(f"{arg} is not a parameter from the {class_name} class")
+
+        if object_key:
+            self.factories[object_key] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
 
         return clazz(**params)
 
@@ -245,7 +246,7 @@ class ExperimentConfig2:
 
         for object_key, object_dict in config.items():
             try:
-                self.experiment[object_key] = self.recursive_build(object_dict)
+                self.experiment[object_key] = self.recursive_build(object_key, object_dict)
             except Exception as e:
                 raise UnconfiguredItemsException(object_key)
 

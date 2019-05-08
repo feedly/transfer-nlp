@@ -1,43 +1,36 @@
+import copy
 import unittest
 from pathlib import Path
 
 import ignite
 
-from transfer_nlp.plugins.config import ExperimentConfig
+from transfer_nlp.plugins.config import ExperimentConfig2
 from transfer_nlp.plugins.regularizers import L1
 from transfer_nlp.plugins.trainers import BasicTrainer
 from .trainer_utils import *
 
 EXPERIMENT = {
-    "my_vectorizer": {
-        "_name": "TestVectorizer",
-        "data_file": Path(__file__).parent.resolve() / "sample_data.csv"
-    },
     "my_dataset_splits": {
         "_name": "TestDataset",
         "data_file": Path(__file__).parent.resolve() / "sample_data.csv",
         "batch_size": 128,
-        "vectorizer": "$my_vectorizer"
+        "vectorizer": {
+            "_name": "TestVectorizer",
+            "data_file": Path(__file__).parent.resolve() / "sample_data.csv"
+        }
     },
     "model": {
         "_name": "TestModel",
         "hidden_dim": 100,
         "data": "$my_dataset_splits"
     },
-    "model_params": {
-        "_name": "TrainableParameters"
-    },
-    "loss": {
-        "_name": "CrossEntropyLoss"
-    },
     "optimizer": {
         "_name": "Adam",
         "lr": 0.01,
         "alpha": 0.99,
-        "params": "$model_params"
-    },
-    "regularizer": {
-        "_name": "L1"
+        "params": {
+            "_name": "TrainableParameters"
+        }
     },
     "scheduler": {
         "_name": "ReduceLROnPlateau",
@@ -45,35 +38,42 @@ EXPERIMENT = {
         "mode": "min",
         "factor": 0.5
     },
-    "my_accuracy": {
-        "_name": "Accuracy"
-    },
-    "my_loss_metric": {
-        "_name": "LossMetric",
-        "loss_fn": "$loss"
-    },
     "trainer": {
         "_name": "BasicTrainer",
         "model": "$model",
         "dataset_splits": "$my_dataset_splits",
-        "loss": "$loss",
+        "loss": {
+            "_name": "CrossEntropyLoss"
+        },
         "optimizer": "$optimizer",
         "gradient_clipping": 0.25,
         "num_epochs": 5,
         "seed": 1337,
-        "metrics": [
-            "$my_accuracy",
-            "$my_loss_metric"
-        ]
-    },
-    "finetune": False
+        "regularizer": {
+            "_name": "L1"
+        },
+        "metrics": {
+            "accuracy": {
+                "_name": "Accuracy"
+            },
+            "loss": {
+                "_name": "LossMetric",
+                "loss_fn": {
+                    "_name": "CrossEntropyLoss"
+                }
+            }
+        },
+        "finetune": False
+    }
+
 }
 
 
 class RegistryTest(unittest.TestCase):
 
     def test_config(self):
-        e = ExperimentConfig(EXPERIMENT)
+        e = copy.deepcopy(EXPERIMENT)
+        e = ExperimentConfig2(e)
         trainer = e.experiment['trainer']
 
         self.assertIsInstance(trainer.model, TestModel)
@@ -101,7 +101,8 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(trainer, BasicTrainer)
 
     def test_setup(self):
-        e = ExperimentConfig(EXPERIMENT)
+        e = copy.deepcopy(EXPERIMENT)
+        e = ExperimentConfig2(e)
         trainer = e.experiment['trainer']
         trainer.setup(training_metrics=trainer.training_metrics)
 
@@ -113,7 +114,8 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.ITERATION_STARTED]), 0)
 
     def test_forward(self):
-        e = ExperimentConfig(EXPERIMENT)
+        e = copy.deepcopy(EXPERIMENT)
+        e = ExperimentConfig2(e)
         trainer = e.experiment['trainer']
         trainer.setup(training_metrics=trainer.training_metrics)
 

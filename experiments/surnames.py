@@ -110,8 +110,8 @@ class MLPPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
-        super().__init__(vectorizer=vectorizer, model=model)
+    def __init__(self, data: DatasetSplits, model: torch.nn.Module):
+        super().__init__(vectorizer=data.vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict):
         return {
@@ -234,8 +234,8 @@ class SurnameCNNPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
-        super().__init__(vectorizer=vectorizer, model=model)
+    def __init__(self, data: DatasetSplits, model: torch.nn.Module):
+        super().__init__(vectorizer=data.vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict) -> Dict:
         return {
@@ -435,8 +435,8 @@ class SurnameRNNPredictor(PredictorABC):
     Toy example: we want to make predictions on inputs of the form {"inputs": ["hello world", "foo", "bar"]}
     """
 
-    def __init__(self, vectorizer: Vectorizer, model: torch.nn.Module):
-        super().__init__(vectorizer=vectorizer, model=model)
+    def __init__(self, data: DatasetSplits, model: torch.nn.Module):
+        super().__init__(vectorizer=data.vectorizer, model=model)
 
     def json_to_data(self, input_json: Dict) -> Dict:
         # vector_length = 30

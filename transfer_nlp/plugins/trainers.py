@@ -72,7 +72,7 @@ class BasicTrainer:
                  dataset_splits: DatasetSplits,
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
-                 metrics: List[Metric],
+                 metrics: Dict[str, Metric],
                  experiment_config: ExperimentConfig,
                  device: str = None,
                  num_epochs: int = 1,
@@ -99,7 +99,8 @@ class BasicTrainer:
         self.dataset_splits: DatasetSplits = dataset_splits
         self.loss: nn.Module = loss
         self.optimizer: optim.Optimizer = optimizer
-        self.metrics: List[Metric] = metrics
+        self.metrics: Dict[str, Metric] = metrics
+        self.metrics: List[Metric] = [metric for _, metric in self.metrics.items()]
         self.experiment_config: ExperimentConfig = experiment_config
         self.device: str = device
         self.num_epochs: int = num_epochs
@@ -127,7 +128,7 @@ class BasicTrainer:
 
         self.optimizer_factory: PluginFactory = None
 
-        loss_metrics = [m for m in metrics if isinstance(m, Loss)]
+        loss_metrics = [m for m in self.metrics if isinstance(m, Loss)]
 
         if self.scheduler:
             if not loss_metrics:
@@ -338,15 +339,15 @@ class BasicTrainer:
         :return:
         """
         if self.finetune:
+
             logger.info(f"Fine-tuning the last classification layer to the data")
-            trainer_key = [k for k, v in self.experiment_config.items() if v is self]
+            trainer_key = [k for k, v in self.experiment_config.experiment.items() if v is self]
             if trainer_key:
-                trainer_factory: PluginFactory = self.experiment_config.factories[trainer_key[0]]
-                optimizer_key = trainer_factory.param2config_key['optimizer']
-                self.optimizer_factory = self.experiment_config.factories[optimizer_key]
+                self.optimizer_factory = self.experiment_config.factories['optimizer']
             else:
-                raise ValueError('this trainer object not found in config')
+                raise ValueError('this trainer object was not found in config')
 
             self.freeze_and_replace_final_layer()
             self.optimizer = self.optimizer_factory.create()
+
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
