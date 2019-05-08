@@ -244,11 +244,24 @@ class ExperimentConfig2:
 
     def _build_items2(self, config: Dict[str, Any]):
 
-        for object_key, object_dict in config.items():
-            try:
-                self.experiment[object_key] = self.recursive_build(object_key, object_dict)
-            except Exception as e:
-                raise UnconfiguredItemsException(object_key)
+        while config:
+
+            configured = set()
+
+            for object_key, object_dict in config.items():
+
+                try:
+                    self.experiment[object_key] = self.recursive_build(object_key, object_dict)
+                    configured.add(object_key)
+                except Exception as e:
+                    logger.info(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
+
+            if configured:
+                for k in configured:
+                    del config[k]
+        logger.info("Experiment successfully configured!")
+
+
 
     def _check_init(self):
         if self.experiment is None:

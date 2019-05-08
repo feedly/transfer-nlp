@@ -1,4 +1,9 @@
 {
+  "predictor": {
+    "_name": "MLPPredictor",
+    "data": "$my_dataset_splits",
+    "model": "$model"
+  },
   "my_dataset_splits": {
     "_name": "SurnamesDatasetMLP",
     "data_file": "$HOME/surnames/surnames_with_splits.csv",
@@ -56,10 +61,5 @@
         }
       }
     }
-  },
-  "predictor": {
-    "_name": "MLPPredictor",
-    "data": "$my_dataset_splits",
-    "model": "$model"
   }
 }
