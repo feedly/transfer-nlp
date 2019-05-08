@@ -229,6 +229,8 @@ class ExperimentConfig2:
                 else:
                     pass
                 params[arg] = value
+
+            # For values that are not in named_params, we look first at the experiment dict, then at the defaults parameters
             elif arg in self.experiment:
                 params[arg] = self.experiment[arg]
             elif arg in default_params:
