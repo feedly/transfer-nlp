@@ -250,6 +250,38 @@ class ExperimentConfig2:
             except Exception as e:
                 raise UnconfiguredItemsException(object_key)
 
+    def _check_init(self):
+        if self.experiment is None:
+            raise ValueError('experiment config is not setup yet!')
+
+    # map-like methods
+    def __getitem__(self, item):
+        self._check_init()
+        return self.experiment[item]
+
+    def get(self, item, default=None):
+        self._check_init()
+        return self.experiment.get(item, default)
+
+    def __iter__(self):
+        self._check_init()
+        return iter(self.experiment)
+
+    def items(self):
+        self._check_init()
+        return self.experiment.items()
+
+    def values(self):
+        self._check_init()
+        return self.experiment.values()
+
+    def keys(self):
+        self._check_init()
+        return self.experiment.keys()
+
+    def __setitem__(self, key, value):
+        raise ValueError("cannot update experiment!")
+
 
 class ExperimentConfig:
 
