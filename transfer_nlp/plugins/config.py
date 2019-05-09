@@ -182,9 +182,12 @@ class ExperimentConfig2:
                 self.experiment[k] = v
                 self.factories[k] = PluginFactory(list, None, v)
 
+        for k in self.experiment:
+            del config[k]
+
         self._build_items2(config)
 
-    def recursive_build(self, object_key: str, object_dict: Dict):
+    def recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: int):
 
         if '_name' not in object_dict:
             raise ValueError(f"The object a=should have a _name key to access its class")
@@ -212,13 +215,13 @@ class ExperimentConfig2:
                 value = named_params[arg]
 
                 if isinstance(value, dict) and '_name' in value:
-                    value = self.recursive_build(object_key=arg, object_dict=value)
+                    value = self.recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode)
                 elif isinstance(value, str) and value[0] == '$' and value[1:] in self.experiment:
                     value = self.experiment[value[1:]]
 
                 elif isinstance(value, dict) and '_name' not in value:
                     for item in value:
-                        value[item] = self.recursive_build(object_key=item, object_dict=value[item])
+                        value[item] = self.recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode)
                 elif not isinstance(value, list) and value in self.experiment:
                     value = self.experiment[value]
                 else:
@@ -230,37 +233,98 @@ class ExperimentConfig2:
             elif arg in self.experiment:
                 params[arg] = self.experiment[arg]
                 param2config_key[arg] = arg
-            elif arg in default_params:
-                value = default_params[arg]
-                params[arg] = value
+
+            elif default_params_mode == 1 and arg not in self.experiment and arg in default_params and default_params[arg] is not None:
+                params[arg] = default_params[arg]
                 param2config_key[arg] = None
+            elif default_params_mode == 2 and arg in default_params:
+                params[arg] = default_params[arg]
+                param2config_key[arg] = None
+
+            # elif arg in default_params:
+            #     value = default_params[arg]
+            #     params[arg] = value
+            #     param2config_key[arg] = None
             else:
                 raise ValueError(f"{arg} is not a parameter from the {class_name} class")
 
-        if object_key:
-            self.factories[object_key] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
+            # if len(params) == len(spec.args) - 1:
+            #     experiment[k] = clazz(**params)
+            #     self.factories[k] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
+            #     configured.add(k)
+            # else:
+            #     unconfigured[k] = {arg for arg in spec.args[1:] if arg not in params}
 
-        return clazz(**params)
+
+        if len(params) == len(spec.args) - 1:
+
+            self.factories[object_key] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
+            return clazz(**params)
+
+        else:
+            raise ValueError("Unconfigured object")
+
+    def one_pass(self, config: Dict, default_params_mode: int):
+
+        configured = set()
+
+        for object_key, object_dict in config.items():
+
+            try:
+                self.experiment[object_key] = self.recursive_build(object_key, object_dict, default_params_mode=default_params_mode)
+                configured.add(object_key)
+            except Exception as e:
+                logger.info(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
+
+        if configured:
+            for k in configured:
+                del config[k]
+            logger.info("Experiment successfully configured!")
+        unconfigured = {k: v for k, v in config.items()}
+        for item in unconfigured:
+
+            class_name = unconfigured[item]['_name']
+            clazz = CLASSES.get(class_name)
+
+            if not clazz:
+                raise ValueError(
+                    f'The object class is named {object_dict["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
+
+            spec = inspect.getfullargspec(clazz.__init__)
+            named_params = {p: pv for p, pv in unconfigured[item].items() if p != '_name'}
+
+            unconfigured[item] = {arg for arg in spec.args[1:] if arg not in self.experiment and arg not in named_params}
+        if config:
+            raise UnconfiguredItemsException(unconfigured)
 
     def _build_items2(self, config: Dict[str, Any]):
 
-        while config:
+        try:
+            logger.info(f"Initializing complex configurations ignoring default params:")
+            self.one_pass(config, 0)
+            # return 0
+        except UnconfiguredItemsException as e:
+            pass
 
-            configured = set()
+        try:
+            logger.info(f"Initializing complex configurations only filling in default params not found in the experiment:")
 
-            for object_key, object_dict in config.items():
+            self.one_pass(config, 1)
+            # return 0
+        except UnconfiguredItemsException as e:
+            pass
 
-                try:
-                    self.experiment[object_key] = self.recursive_build(object_key, object_dict)
-                    configured.add(object_key)
-                except Exception as e:
-                    logger.info(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
+        try:
+            logger.info(f"Initializing complex configurations filling in all default params:")
+            self.one_pass(config, 2)
+        except UnconfiguredItemsException as e:
+            logging.error('There are unconfigured items in the experiment. Please check your configuration:')
+            for k, v in e.items.items():
+                logging.error(f'"{k}" missing properties:')
+                for vv in v:
+                    logging.error(f'\t+ {vv}')
 
-            if configured:
-                for k in configured:
-                    del config[k]
-        logger.info("Experiment successfully configured!")
-
+            raise e
 
 
     def _check_init(self):

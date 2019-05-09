@@ -96,7 +96,7 @@ class RegistryTest(unittest.TestCase):
             'simple_str': 'dummy',
             'simple_int': 5
         }
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
         self.assertTrue(isinstance(e['demo2'], Demo2))
@@ -126,7 +126,7 @@ class RegistryTest(unittest.TestCase):
             'simple_int': 5,
             'simple_inta': 6,
         }
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
         self.assertTrue(isinstance(e['demo2'], Demo2))
@@ -146,7 +146,7 @@ class RegistryTest(unittest.TestCase):
                 'simple_str': "$HOME/foo/bar/bis"
             }
         }
-        e = ExperimentConfig(experiment, HOME='/tmp')
+        e = ExperimentConfig2(experiment, HOME='/tmp')
         self.assertEqual(e['path'], '/tmp/foo/bar')
         self.assertEqual(e['data'].val, '/tmp/foo/bar/bis')
 
@@ -161,7 +161,7 @@ class RegistryTest(unittest.TestCase):
                 'simple_int': 5
             }
         }
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
 
         self.assertTrue(isinstance(e['demo2'], Demo2))
         self.assertTrue(isinstance(e['demo3'], Demo3))
@@ -183,7 +183,7 @@ class RegistryTest(unittest.TestCase):
         }
 
         try:
-            ExperimentConfig(experiment)
+            ExperimentConfig2(experiment)
             self.fail()
         except UnconfiguredItemsException as e:
             self.assertEqual(3, len(e.items))
@@ -208,7 +208,7 @@ class RegistryTest(unittest.TestCase):
                 'bar': 6
             }
         }
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
 
         self.assertTrue(isinstance(e['demoa'], DemoDefaults))
         self.assertTrue(isinstance(e['demob'], DemoDefaults))
@@ -238,7 +238,7 @@ class RegistryTest(unittest.TestCase):
                 'foo': 6
             }
         }
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
 
         self.assertTrue(isinstance(e['demo'], DemoComplexDefaults))
         self.assertTrue(isinstance(e['demod'], DemoDefaults))
@@ -271,7 +271,7 @@ class RegistryTest(unittest.TestCase):
 
         }
 
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
 
         self.assertTrue(isinstance(e['demo4'], Demo4))
         self.assertTrue(isinstance(e['demo4a'], Demo4))
@@ -295,7 +295,7 @@ class RegistryTest(unittest.TestCase):
             'simple_int': 5
         }
 
-        e = ExperimentConfig(experiment)
+        e = ExperimentConfig2(experiment)
 
         d = e['with_config']
         self.assertEqual(5, d.simple_int)
