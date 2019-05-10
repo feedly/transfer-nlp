@@ -270,7 +270,7 @@ class ExperimentConfig:
                     self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode)
                     configured.add(object_key)
                 except Exception as e:
-                    logger.info(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
+                    logger.debug(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
 
             if configured:
                 for k in configured:
