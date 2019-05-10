@@ -32,9 +32,6 @@
     "mode": "min",
     "factor": 0.5
   },
-  "my_accuracy": {
-    "_name": "Accuracy"
-  },
   "trainer": {
     "_name": "BasicTrainer",
     "model": "$model",

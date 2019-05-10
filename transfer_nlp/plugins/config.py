@@ -186,7 +186,7 @@ class ExperimentConfig:
 
         self._build_items(config)
 
-    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: int):
+    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: int, parent_level: str):
 
         logger.info(f"Configuring {object_key}")
 
@@ -217,11 +217,11 @@ class ExperimentConfig:
 
                 if isinstance(value, dict):
                     if '_name' in value:
-                        value = self._do_recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode)
+                        value = self._do_recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode, parent_level=parent_level + "." + arg)
                     else:
                         for item in value:
                             if isinstance(value[item], dict):
-                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode)
+                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode, parent_level=parent_level + '.' + arg + '.' + item)
                             else:   # value[item] is either an object defined in a dictionary, or it's an already built object
                                 logger.info(f"{item} is already configured")
                 elif isinstance(value, str) and value[0] == '$':
@@ -252,7 +252,7 @@ class ExperimentConfig:
 
         if len(params) == len(spec.args) - 1:
 
-            self.factories[object_key] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
+            self.factories[parent_level] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
             return clazz(**params)
 
         else:
@@ -267,7 +267,7 @@ class ExperimentConfig:
             for object_key, object_dict in config.items():
 
                 try:
-                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode)
+                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode, parent_level=object_key)
                     configured.add(object_key)
                 except Exception as e:
                     logger.debug(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
