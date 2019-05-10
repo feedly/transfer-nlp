@@ -1,6 +1,6 @@
 import unittest
 
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException, ExperimentConfig2
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException, ExperimentConfig
 
 
 @register_plugin
@@ -60,6 +60,28 @@ class DemoWithConfig:
         self.experiment_config = experiment_config
 
 
+@register_plugin
+class DemoA:
+    def __init__(self, simple_int: int, attra: int = None):
+        self.simple_int = simple_int
+        self.attra = attra
+
+
+@register_plugin
+class DemoB:
+
+    def __init__(self, demoa: DemoA, attrb: int = 2):
+        self.demoa = demoa
+        self.attrb = attrb
+
+
+@register_plugin
+class DemoC:
+    def __init__(self, demob: DemoB, attrc: int = 3):
+        self.demob = demob
+        self.attrc = attrc
+
+
 class RegistryTest(unittest.TestCase):
 
     def test_recursive_definition(self):
@@ -76,7 +98,7 @@ class RegistryTest(unittest.TestCase):
                 }
             }
         }
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
         self.assertIsInstance(e.experiment['demo'].demo2, Demo2)
         self.assertIsInstance(e.experiment['demo'].demo3, Demo3)
         self.assertEqual(e.experiment['demo'].demo2.val, 'foo')
@@ -96,7 +118,7 @@ class RegistryTest(unittest.TestCase):
             'simple_str': 'dummy',
             'simple_int': 5
         }
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
         self.assertTrue(isinstance(e['demo2'], Demo2))
@@ -126,7 +148,7 @@ class RegistryTest(unittest.TestCase):
             'simple_int': 5,
             'simple_inta': 6,
         }
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
         self.assertTrue(isinstance(e['demo2'], Demo2))
@@ -146,7 +168,7 @@ class RegistryTest(unittest.TestCase):
                 'simple_str': "$HOME/foo/bar/bis"
             }
         }
-        e = ExperimentConfig2(experiment, HOME='/tmp')
+        e = ExperimentConfig(experiment, HOME='/tmp')
         self.assertEqual(e['path'], '/tmp/foo/bar')
         self.assertEqual(e['data'].val, '/tmp/foo/bar/bis')
 
@@ -161,7 +183,7 @@ class RegistryTest(unittest.TestCase):
                 'simple_int': 5
             }
         }
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo2'], Demo2))
         self.assertTrue(isinstance(e['demo3'], Demo3))
@@ -183,7 +205,7 @@ class RegistryTest(unittest.TestCase):
         }
 
         try:
-            ExperimentConfig2(experiment)
+            ExperimentConfig(experiment)
             self.fail()
         except UnconfiguredItemsException as e:
             self.assertEqual(3, len(e.items))
@@ -208,7 +230,7 @@ class RegistryTest(unittest.TestCase):
                 'bar': 6
             }
         }
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demoa'], DemoDefaults))
         self.assertTrue(isinstance(e['demob'], DemoDefaults))
@@ -238,7 +260,7 @@ class RegistryTest(unittest.TestCase):
                 'foo': 6
             }
         }
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], DemoComplexDefaults))
         self.assertTrue(isinstance(e['demod'], DemoDefaults))
@@ -271,7 +293,7 @@ class RegistryTest(unittest.TestCase):
 
         }
 
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo4'], Demo4))
         self.assertTrue(isinstance(e['demo4a'], Demo4))
@@ -295,7 +317,7 @@ class RegistryTest(unittest.TestCase):
             'simple_int': 5
         }
 
-        e = ExperimentConfig2(experiment)
+        e = ExperimentConfig(experiment)
 
         d = e['with_config']
         self.assertEqual(5, d.simple_int)
@@ -309,3 +331,24 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(5, d2.simple_int)
         self.assertEqual('dummy', d2.demo2.val)
         self.assertTrue(d2.experiment_config is e)
+
+    def test_misordered_nested_config(self):
+        experiment = {
+            'democ': {
+                '_name': 'DemoC'
+            },
+            'demob': {
+                '_name': 'DemoB'
+            },
+            'demoa': {
+                '_name': 'DemoA'
+            },
+            'simple_int': 2
+        }
+
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['demoa'].simple_int, 2)
+        self.assertEqual(e['demoa'].attra, None)
+        self.assertIsInstance(e['demob'].demoa, DemoA)
+        self.assertIsInstance(e['democ'].demob, DemoB)
+        self.assertIsInstance(e['democ'].demob.demoa, DemoA)

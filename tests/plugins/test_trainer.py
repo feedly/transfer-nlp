@@ -4,7 +4,7 @@ from pathlib import Path
 
 import ignite
 
-from transfer_nlp.plugins.config import ExperimentConfig2
+from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.regularizers import L1
 from transfer_nlp.plugins.trainers import BasicTrainer
 from .trainer_utils import *
@@ -73,7 +73,7 @@ class RegistryTest(unittest.TestCase):
 
     def test_config(self):
         e = copy.deepcopy(EXPERIMENT)
-        e = ExperimentConfig2(e)
+        e = ExperimentConfig(e)
         trainer = e.experiment['trainer']
 
         self.assertIsInstance(trainer.model, TestModel)
@@ -102,7 +102,7 @@ class RegistryTest(unittest.TestCase):
 
     def test_setup(self):
         e = copy.deepcopy(EXPERIMENT)
-        e = ExperimentConfig2(e)
+        e = ExperimentConfig(e)
         trainer = e.experiment['trainer']
         trainer.setup(training_metrics=trainer.training_metrics)
 
@@ -115,7 +115,7 @@ class RegistryTest(unittest.TestCase):
 
     def test_forward(self):
         e = copy.deepcopy(EXPERIMENT)
-        e = ExperimentConfig2(e)
+        e = ExperimentConfig(e)
         trainer = e.experiment['trainer']
         trainer.setup(training_metrics=trainer.training_metrics)
 
