@@ -103,6 +103,7 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(e.experiment['demo'].demo3, Demo3)
         self.assertEqual(e.experiment['demo'].demo2.val, 'foo')
         self.assertEqual(e.experiment['demo'].demo3.val, 2)
+        self.assertEqual(list(e.factories.keys()), ['demo.demo2', 'demo.demo3', 'demo'])
 
     def test_child_injection(self):
         experiment = {
