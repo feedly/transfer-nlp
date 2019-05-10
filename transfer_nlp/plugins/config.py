@@ -198,7 +198,7 @@ class ExperimentConfig:
 
         if not clazz:
             raise ValueError(
-                f'Object of class {object_dict["_name"]}, which is not registered. see transfer_nlp.config.register_plugin for more information')
+                f'Object of class {object_dict["_name"]} is not registered. see transfer_nlp.config.register_plugin for more information')
 
         spec = inspect.getfullargspec(clazz.__init__)
         params = {}
