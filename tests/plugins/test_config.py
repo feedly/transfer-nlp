@@ -352,3 +352,24 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(e['demob'].demoa, DemoA)
         self.assertIsInstance(e['democ'].demob, DemoB)
         self.assertIsInstance(e['democ'].demob.demoa, DemoA)
+
+    def test_nesting_two_levels(self):
+        experiment = {
+            'democ': {
+                '_name': 'DemoC',
+                'demob': {
+                    '_name': 'DemoB',
+                    'attrb': 10,
+                    'demoa': {
+                        '_name': 'DemoA'
+                    }
+                }
+            },
+            'simple_int': 2
+        }
+
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['democ'].demob.attrb, 10)
+        self.assertEqual(e['democ'].attrc, 3)
+        self.assertEqual(e['democ'].demob.demoa.simple_int, 2)
+
