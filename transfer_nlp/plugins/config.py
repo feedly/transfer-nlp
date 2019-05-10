@@ -220,9 +220,9 @@ class ExperimentConfig:
                         value = self._do_recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode)
                     else:
                         for item in value:
-                            if isinstance(value[item], dict):  # If the object
+                            if isinstance(value[item], dict):
                                 value[item] = self._do_recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode)
-                            else:
+                            else:   # value[item] is either an object defined in a dictionary, or it's an already built object
                                 logger.info(f"{item} is already configured")
                 elif isinstance(value, str) and value[0] == '$':
                     if value[1:] in self.experiment:
