@@ -286,7 +286,7 @@ class ExperimentConfig:
 
                         if not clazz:
                             raise ValueError(
-                                f'The object class is named {object_dict["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
+                                f'The object class is named {unconfigured[item]["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
 
                         spec = inspect.getfullargspec(clazz.__init__)
                         named_params = {p: pv for p, pv in unconfigured[item].items() if p != '_name'}
