@@ -332,7 +332,7 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual('dummy', d2.demo2.val)
         self.assertTrue(d2.experiment_config is e)
 
-    def test_misordered_nested_config(self):
+    def test_unordered_nested_config(self):
         experiment = {
             'democ': {
                 '_name': 'DemoC'
