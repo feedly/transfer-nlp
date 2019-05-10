@@ -258,7 +258,7 @@ class ExperimentConfig:
         else:
             raise ValueError("Unconfigured object")
 
-    def _build_items_with_default_params_care(self, config: Dict, default_params_mode: int):
+    def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: int):
 
         while config:
 
@@ -298,20 +298,20 @@ class ExperimentConfig:
 
         try:
             logger.info(f"Initializing complex configurations ignoring default params:")
-            self._build_items_with_default_params_care(config, 0)
+            self._build_items_with_default_params_mode(config, 0)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations only filling in default params not found in the experiment:")
 
-            self._build_items_with_default_params_care(config, 1)
+            self._build_items_with_default_params_mode(config, 1)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations filling in all default params:")
-            self._build_items_with_default_params_care(config, 2)
+            self._build_items_with_default_params_mode(config, 2)
         except UnconfiguredItemsException as e:
             logging.error('There are unconfigured items in the experiment. Please check your configuration:')
             for k, v in e.items.items():
