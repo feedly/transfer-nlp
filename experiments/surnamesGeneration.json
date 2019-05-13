@@ -1,13 +1,12 @@
 {
-  "my_vectorizer": {
-    "_name": "SurnameVectorizerGeneration",
-    "data_file": "$HOME/surnames/surnames_with_splits.csv"
-  },
   "my_dataset_splits": {
     "_name": "SurnameDatasetGeneration",
     "data_file": "$HOME/surnames/surnames_with_splits.csv",
     "batch_size": 128,
-    "vectorizer": "$my_vectorizer"
+    "vectorizer": {
+      "_name": "SurnameVectorizerGeneration",
+      "data_file": "$HOME/surnames/surnames_with_splits.csv"
+    }
   },
   "model": {
     "_name": "SurnameConditionedGenerationModel",
@@ -15,24 +14,13 @@
     "rnn_hidden_size": 100,
     "data": "$my_dataset_splits"
   },
-  "model_params": {
-    "_name": "TrainableParameters"
-  },
-  "loss_hyper_params": {
-    "_name": "SequenceLossHyperParams",
-    "dataset_splits": "$my_dataset_splits"
-  },
-  "loss": {
-    "_name": "SequenceLoss"
-  },
   "optimizer": {
     "_name": "Adam",
     "lr": 0.01,
     "alpha": 0.99,
-    "params": "$model_params"
-  },
-  "regularizer": {
-    "_name": "L1"
+    "params": {
+      "_name": "TrainableParameters"
+    }
   },
   "scheduler": {
     "_name": "ReduceLROnPlateau",
@@ -40,29 +28,44 @@
     "mode": "min",
     "factor": 0.5
   },
-  "my_loss_metric": {
-    "_name": "LossMetric",
-    "loss_fn": "$loss"
-  },
   "output_transform": {
     "_name": "OutputTransformSequence"
-  },
-  "my_accuracy": {
-    "_name": "Accuracy"
   },
   "trainer": {
     "_name": "BasicTrainer",
     "model": "$model",
     "dataset_splits": "$my_dataset_splits",
-    "loss": "$loss",
+    "loss": {
+      "_name": "SequenceLoss",
+      "loss_hyper_params": {
+        "_name": "SequenceLossHyperParams",
+        "dataset_splits": "$my_dataset_splits"
+      }
+    },
     "optimizer": "$optimizer",
     "gradient_clipping": 0.25,
     "num_epochs": 5,
     "seed": 1337,
+    "output_transform": "$output_transform",
+    "regularizer": {
+      "_name": "L1"
+    },
     "tensorboard_logs": "$HOME/surnames/tensorboard/generation",
-    "metrics": [
-      "$my_accuracy",
-      "$my_loss_metric"
-    ]
+    "metrics": {
+      "accuracy": {
+        "_name": "Accuracy",
+        "output_transform": "$output_transform"
+      },
+      "loss": {
+        "_name": "LossMetric",
+        "loss_fn": {
+          "_name": "SequenceLoss",
+          "loss_hyper_params": {
+            "_name": "SequenceLossHyperParams",
+            "dataset_splits": "$my_dataset_splits"
+          }
+        }
+      }
+    }
   }
 }

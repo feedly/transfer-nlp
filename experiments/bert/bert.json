@@ -1,69 +1,57 @@
 {
-  "data_file": "HOME/ag_news/news_with_splits.csv",
-  "seed": 1337,
-  "lr": 0.001,
-  "batch_size": 128,
-  "num_epochs": 1,
-  "early_stopping_criteria": 5,
-  "alpha": 0.01,
-  "gradient_clipping": 0.25,
-  "loss_accumulation_steps": 10,
-  "mode": "min",
-  "factor": 0.5,
-  "patience": 1,
-  "finetune": true,
-  "my_vectorizer": {
-    "_name": "BertVectorizer"
-  },
   "my_dataset_splits": {
     "_name": "BertDataset",
-    "data_file_": "HOME/ag_news/news_with_splits.csv",
-    "batch_size_": 64,
-    "vectorizer": "my_vectorizer"
+    "data_file": "$HOME/ag_news/news_with_splits.csv",
+    "batch_size": 128,
+    "vectorizer": {
+      "_name": "BertVectorizer",
+      "data_file": "$HOME/ag_news/news_with_splits.csv"
+    }
   },
   "model": {
     "_name": "bert_model"
   },
-  "model_params": {
-    "_name": "TrainableParameters"
-  },
-  "loss": {
-    "_name": "CrossEntropyLoss"
-  },
   "optimizer": {
     "_name": "BertAdam",
-    "lr_": 0.01,
-    "params": "model_params"
-  },
-  "regularizer": {
-    "_name": "L1"
+    "lr": 0.01,
+    "alpha": 0.99,
+    "params": {
+      "_name": "TrainableParameters",
+      "model": "$model"
+    }
   },
   "scheduler": {
     "_name": "ReduceLROnPlateau",
-    "patience_": 1,
-    "mode_": "min",
-    "factor_": 0.5
-  },
-  "my_accuracy": {
-    "_name": "Accuracy"
-  },
-  "my_loss_metric": {
-    "_name": "LossMetric",
-    "loss_fn": "loss"
+    "patience": 1,
+    "mode": "min",
+    "factor": 0.5
   },
   "trainer": {
     "_name": "BasicTrainer",
-    "model": "model",
-    "dataset_splits": "my_dataset_splits",
-    "loss": "loss",
-    "optimizer": "optimizer",
-    "gradient_clipping_": 0.25,
-    "num_epochs_": 2,
-    "seed_": 1337,
-    "metrics": [
-      "my_accuracy",
-      "my_loss_metric"
-    ],
-    "finetune_": true
+    "model": "$model",
+    "dataset_splits": "$my_dataset_splits",
+    "loss": {
+      "_name": "CrossEntropyLoss"
+    },
+    "optimizer": "$optimizer",
+    "scheduler": "$scheduler",
+    "gradient_clipping": 0.25,
+    "num_epochs": 5,
+    "seed": 1337,
+    "regularizer": {
+      "_name": "L1"
+    },
+    "metrics": {
+      "accuracy": {
+        "_name": "Accuracy"
+      },
+      "loss": {
+        "_name": "LossMetric",
+        "loss_fn": {
+          "_name": "CrossEntropyLoss"
+        }
+      }
+    },
+    "finetune": true
   }
 }

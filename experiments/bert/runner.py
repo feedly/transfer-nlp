@@ -12,4 +12,4 @@ if __name__ == "__main__":
 
     path = './bert.json'
     experiment = ExperimentConfig(path, HOME=home_env)
-    experiment['trainer'].train()
+    experiment.experiment['trainer'].train()

@@ -3,7 +3,6 @@ This file contains all necessary plugins classes that the framework will use to 
 
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
-import abc
 import inspect
 import json
 import logging
@@ -109,7 +108,7 @@ class PluginFactory(ConfigFactoryABC):
         return self.cls(*self.args, **self.kwargs)
 
 
-def _replace(dico: Dict, env):
+def _replace_env_variables(dico: Dict, env: Dict) -> None:
     """
     Replace all occurrences of environment variable to particular strings
     :param dico:
@@ -157,22 +156,21 @@ class ExperimentConfig:
         :return: the experiment
         """
         self.factories: Dict[str, ConfigFactoryABC] = {}
-        self.experiment: Dict[str, Any] = None
+        self.experiment: Dict[str, Any] = {}
 
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
             config = json.load(open(experiment))
 
-        _replace(dico=config, env=env)
+        _replace_env_variables(dico=config, env=env)
 
         # extract simple parameters
         logger.info(f"Initializing simple parameters:")
-        experiment = {}
         for k, v in config.items():
             if not isinstance(v, dict) and not isinstance(v, list):
                 logger.info(f"Parameter {k}: {v}")
-                experiment[k] = v
+                self.experiment[k] = v
                 self.factories[k] = ParamFactory(v)
 
         # extract simple lists
@@ -180,27 +178,140 @@ class ExperimentConfig:
         for k, v in config.items():
             if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
                 logger.info(f"Parameter {k}: {v}")
-                experiment[k] = v
+                self.experiment[k] = v
                 self.factories[k] = PluginFactory(list, None, v)
 
-        for k in experiment:
+        for k in self.experiment:
             del config[k]
+
+        self._build_items(config)
+
+    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: int, parent_level: str):
+
+        logger.info(f"Configuring {object_key}")
+
+        if '_name' not in object_dict:
+            raise ValueError(f"The object {object_key} should have a _name key to access its class")
+
+        class_name = object_dict['_name']
+        clazz = CLASSES.get(class_name)
+
+        if not clazz:
+            raise ValueError(
+                f'Object of class {object_dict["_name"]} is not registered. see transfer_nlp.config.register_plugin for more information')
+
+        spec = inspect.getfullargspec(clazz.__init__)
+        params = {}
+        param2config_key = {}
+        named_params = {p: pv for p, pv in object_dict.items() if p != '_name'}
+        default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
+
+        for arg in spec.args[1:]:
+
+            if arg == 'experiment_config':
+                params[arg] = self
+                param2config_key[arg] = arg
+
+            elif arg in named_params:
+                value = named_params[arg]
+
+                if isinstance(value, dict):
+                    if '_name' in value:
+                        value = self._do_recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode, parent_level=parent_level + "." + arg)
+                    else:
+                        for item in value:
+                            if isinstance(value[item], dict):
+                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode, parent_level=parent_level + '.' + arg + '.' + item)
+                            else:   # value[item] is either an object defined in a dictionary, or it's an already built object
+                                logger.info(f"{item} is already configured")
+                elif isinstance(value, str) and value[0] == '$':
+                    if value[1:] in self.experiment:
+                        logger.info(f"Using the object {value}, already instantiated")
+                        value = self.experiment[value[1:]]
+                    else:
+                        logger.info(f"{value} not configured yet, will be configured in next iteration")
+                else:
+                    logger.info(f"Using value {arg} / {named_params[arg]} from the config file")
+
+                params[arg] = value
+                param2config_key[arg] = value
+
+            # For values that are not in named_params, we look first at the experiment dict, then at the defaults parameters
+            elif arg in self.experiment:
+                params[arg] = self.experiment[arg]
+                param2config_key[arg] = arg
+
+            elif default_params_mode == 1 and arg not in self.experiment and arg in default_params and default_params[arg] is not None:
+                params[arg] = default_params[arg]
+                param2config_key[arg] = None
+            elif default_params_mode == 2 and arg in default_params:
+                params[arg] = default_params[arg]
+                param2config_key[arg] = None
+            else:
+                raise ValueError(f"{arg} is not a parameter from the {class_name} class")
+
+        if len(params) == len(spec.args) - 1:
+
+            self.factories[parent_level] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
+            return clazz(**params)
+
+        else:
+            raise ValueError("Unconfigured object")
+
+    def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: int):
+
+        while config:
+
+            configured = set()
+
+            for object_key, object_dict in config.items():
+
+                try:
+                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode, parent_level=object_key)
+                    configured.add(object_key)
+                except Exception as e:
+                    logger.debug(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
+
+            if configured:
+                for k in configured:
+                    del config[k]
+
+            else:
+                if config:
+                    unconfigured = {k: v for k, v in config.items()}
+                    for item in unconfigured:
+
+                        class_name = unconfigured[item]['_name']
+                        clazz = CLASSES.get(class_name)
+
+                        if not clazz:
+                            raise ValueError(
+                                f'The object class is named {unconfigured[item]["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
+
+                        spec = inspect.getfullargspec(clazz.__init__)
+                        named_params = {p: pv for p, pv in unconfigured[item].items() if p != '_name'}
+
+                        unconfigured[item] = {arg for arg in spec.args[1:] if arg not in self.experiment and arg not in named_params}
+                    raise UnconfiguredItemsException(unconfigured)
+
+    def _build_items(self, config: Dict[str, Any]):
 
         try:
             logger.info(f"Initializing complex configurations ignoring default params:")
-            self._build_items(config, experiment, 0)
+            self._build_items_with_default_params_mode(config, 0)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations only filling in default params not found in the experiment:")
-            self._build_items(config, experiment, 1)
+
+            self._build_items_with_default_params_mode(config, 1)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations filling in all default params:")
-            self._build_items(config, experiment, 2)
+            self._build_items_with_default_params_mode(config, 2)
         except UnconfiguredItemsException as e:
             logging.error('There are unconfigured items in the experiment. Please check your configuration:')
             for k, v in e.items.items():
@@ -209,114 +320,6 @@ class ExperimentConfig:
                     logging.error(f'\t+ {vv}')
 
             raise e
-
-        self.experiment = experiment
-
-    def _build_items(self, config: Dict[str, Any], experiment: Dict[str, Any], default_params_mode: int):
-        """
-        Build complex items
-        In the config file, if we want to use a pre-built object as parameter for another object creation, we must use the $ specifier. e.g.:
-        {
-      "my_object": {
-        "_name": "Foo",
-        "param": "bar"
-      },
-      "my_second_object": {
-        "_name": "SomeClass",
-        "object_param": "$my_object"
-      }
-    }
-
-        :param config:
-        :param experiment:
-        :param default_params_mode: 0 - ignore default params, 1 - only fill in default params not found in the experiment, 2 - fill in all default params
-        :return: None
-        :raise UnconfiguredItemsException: if items are unable to be configured
-        """
-        i = 1
-        while config:
-            logger.info(f"Pass {i}")
-            i += 1
-            configured = set()  # items configured in this iteration
-            unconfigured = {}  # items unable to be configured in this iteration
-            for k, v in config.items():
-                logger.info(f"Parameter {k}")
-                if not isinstance(v, dict):
-                    raise ValueError(f'complex configuration object config[{k}] must be a dict')
-
-                if '_name' not in v:
-                    raise ValueError(f'complex configuration object config[{k}] must be have a "_name" property')
-
-                clazz = CLASSES.get(v['_name'])
-                if not clazz:
-                    raise ValueError(
-                        f'config[{k}] is named {v["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
-
-                spec = inspect.getfullargspec(clazz.__init__)
-                params = {}
-                param2config_key = {}
-                named_params = {p: pv for p, pv in v.items() if p != '_name'}
-                default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
-
-                literal_params = {}
-                for p, pv in v.items():
-
-                    # Literals are any fixed values that are not string starting with '$'
-                    if (not isinstance(pv, str) or not pv[0] == '$') and not isinstance(pv, list):
-                        literal_params[p] = pv
-                    if isinstance(pv, list) and all(not isinstance(item, str) or not item[0] == '$' for item in pv):
-                        literal_params[p] = pv
-
-                for arg in spec.args[1:]:
-
-                    if arg in literal_params:
-                        params[arg] = literal_params[arg]
-                        param2config_key[arg] = None
-                    else:
-                        if arg == 'experiment_config':
-                            params[arg] = self
-                            param2config_key[arg] = arg
-                        if arg in named_params:
-                            alias = named_params[arg]
-                            if isinstance(alias, list):
-                                param_list = []
-                                for p in alias:
-                                    if p in experiment:
-                                        param_list.append(experiment[p])
-                                    if isinstance(p, str) and p[0] == '$' and p[1:] in experiment:
-                                        param_list.append(experiment[p[1:]])
-                                    else:
-                                        break
-                                if len(param_list) == len(alias):
-                                    params[arg] = param_list
-                            elif alias in experiment:
-                                params[arg] = experiment[alias]
-                            elif isinstance(alias, str) and alias[0] == '$' and alias[1:] in experiment:
-                                params[arg] = experiment[alias[1:]]
-                            param2config_key[arg] = alias
-                        elif arg in experiment:
-                            params[arg] = experiment[arg]
-                            param2config_key[arg] = arg
-                        elif default_params_mode == 1 and arg not in config and arg in default_params:
-                            params[arg] = default_params[arg]
-                            param2config_key[arg] = None
-                        elif default_params_mode == 2 and arg in default_params:
-                            params[arg] = default_params[arg]
-                            param2config_key[arg] = None
-
-                if len(params) == len(spec.args) - 1:
-                    experiment[k] = clazz(**params)
-                    self.factories[k] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
-                    configured.add(k)
-                else:
-                    unconfigured[k] = {arg for arg in spec.args[1:] if arg not in params}
-
-            if configured:
-                for k in configured:
-                    del config[k]
-            else:
-                if config:
-                    raise UnconfiguredItemsException(unconfigured)
 
     def _check_init(self):
         if self.experiment is None:

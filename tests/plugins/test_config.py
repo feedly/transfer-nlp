@@ -1,6 +1,6 @@
 import unittest
 
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException, ExperimentConfig
 
 
 @register_plugin
@@ -60,7 +60,50 @@ class DemoWithConfig:
         self.experiment_config = experiment_config
 
 
+@register_plugin
+class DemoA:
+    def __init__(self, simple_int: int, attra: int = None):
+        self.simple_int = simple_int
+        self.attra = attra
+
+
+@register_plugin
+class DemoB:
+
+    def __init__(self, demoa: DemoA, attrb: int = 2):
+        self.demoa = demoa
+        self.attrb = attrb
+
+
+@register_plugin
+class DemoC:
+    def __init__(self, demob: DemoB, attrc: int = 3):
+        self.demob = demob
+        self.attrc = attrc
+
+
 class RegistryTest(unittest.TestCase):
+
+    def test_recursive_definition(self):
+        experiment = {
+            'demo': {
+                '_name': 'Demo',
+                'demo2': {
+                    '_name': 'Demo2',
+                    'simple_str': 'foo'
+                },
+                'demo3': {
+                    '_name': 'Demo3',
+                    'simple_int': 2
+                }
+            }
+        }
+        e = ExperimentConfig(experiment)
+        self.assertIsInstance(e.experiment['demo'].demo2, Demo2)
+        self.assertIsInstance(e.experiment['demo'].demo3, Demo3)
+        self.assertEqual(e.experiment['demo'].demo2.val, 'foo')
+        self.assertEqual(e.experiment['demo'].demo3.val, 2)
+        self.assertEqual(list(e.factories.keys()), ['demo.demo2', 'demo.demo3', 'demo'])
 
     def test_child_injection(self):
         experiment = {
@@ -289,3 +332,45 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(5, d2.simple_int)
         self.assertEqual('dummy', d2.demo2.val)
         self.assertTrue(d2.experiment_config is e)
+
+    def test_unordered_nested_config(self):
+        experiment = {
+            'democ': {
+                '_name': 'DemoC'
+            },
+            'demob': {
+                '_name': 'DemoB'
+            },
+            'demoa': {
+                '_name': 'DemoA'
+            },
+            'simple_int': 2
+        }
+
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['demoa'].simple_int, 2)
+        self.assertEqual(e['demoa'].attra, None)
+        self.assertIsInstance(e['demob'].demoa, DemoA)
+        self.assertIsInstance(e['democ'].demob, DemoB)
+        self.assertIsInstance(e['democ'].demob.demoa, DemoA)
+
+    def test_nesting_two_levels(self):
+        experiment = {
+            'democ': {
+                '_name': 'DemoC',
+                'demob': {
+                    '_name': 'DemoB',
+                    'attrb': 10,
+                    'demoa': {
+                        '_name': 'DemoA'
+                    }
+                }
+            },
+            'simple_int': 2
+        }
+
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['democ'].demob.attrb, 10)
+        self.assertEqual(e['democ'].attrc, 3)
+        self.assertEqual(e['democ'].demob.demoa.simple_int, 2)
+
