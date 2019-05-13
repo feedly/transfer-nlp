@@ -91,4 +91,4 @@ While experimenting with your own models / data, the training might take some ti
  - Include probing tasks to try to understand the properties that are learned by the models
 
 # Acknowledgment
-This example experiments in `experiments` are based on the book <cite>["Natural Language Processing with PyTorch"](https://www.amazon.com/dp/1491978236/)<cite> by Delip Rao and Brian McMahan.
+This example experiments in [`experiments`](https://github.com/feedly/transfer-nlp/tree/master/experiments) are based on the book <cite>["Natural Language Processing with PyTorch"](https://www.amazon.com/dp/1491978236/)<cite> by Delip Rao and Brian McMahan.
