@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from experiments.cbow import *
-from experiments.surnames import *
-from experiments.news import *
+from experiments.deep_learning_with_pytorch.surnames import *
+from experiments.deep_learning_with_pytorch.cbow import *
+from experiments.deep_learning_with_pytorch.news import *
 from transfer_nlp.plugins.config import ExperimentConfig
 
 logger = logging.getLogger(__name__)
@@ -10,13 +10,13 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     home_env = str(Path.home() / 'work/transfer-nlp-data')
-    surname_paths = ['./mlp.json',
-                     './surnamesRNN.json',
-                     './surnameClassifier.json',
-                     './surnamesGeneration.json'
+    surname_paths = ['./deep_learning_with_pytorch/mlp.json',
+                     './deep_learning_with_pytorch/surnamesRNN.json',
+                     './deep_learning_with_pytorch/surnameClassifier.json',
+                     './deep_learning_with_pytorch/surnamesGeneration.json'
                      ]
-    cbow_path = './cbow.json'
-    news_path = './newsClassifier.json'
+    cbow_path = './deep_learning_with_pytorch/cbow.json'
+    news_path = './deep_learning_with_pytorch/newsClassifier.json'
 
     for path in surname_paths:
         logger.info(f"Launching test for experiment {path}")
