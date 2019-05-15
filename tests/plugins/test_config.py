@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException, ExperimentConfig
 
@@ -164,14 +165,21 @@ class RegistryTest(unittest.TestCase):
     def test_env(self):
         experiment = {
             'path': "$HOME/foo/bar",
+            'path2': "$HOMEPATH/foo/bar",
             'data': {
                 '_name': "Demo2",
                 'simple_str': "$HOME/foo/bar/bis"
+            },
+            'data2': {
+                '_name': "Demo4",
+                'simple_int': "$SVAL"
             }
         }
-        e = ExperimentConfig(experiment, HOME='/tmp')
+        e = ExperimentConfig(experiment, HOME='/tmp', HOMEPATH=Path('/tmp2'), SVAL=7)
         self.assertEqual(e['path'], '/tmp/foo/bar')
+        self.assertEqual(e['path2'], '/tmp2/foo/bar')
         self.assertEqual(e['data'].val, '/tmp/foo/bar/bis')
+        self.assertEqual(e['data2'].val, 7)
 
     def test_literal_injection(self):
         experiment = {

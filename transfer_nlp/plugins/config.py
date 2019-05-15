@@ -6,6 +6,7 @@ The Registry pattern used here is inspired from this post: https://realpython.co
 import inspect
 import json
 import logging
+import os
 from abc import abstractmethod, ABC
 from pathlib import Path
 from typing import Dict, Union, Any, Optional
@@ -121,7 +122,18 @@ def _replace_env_variables(dico: Dict, env: Dict) -> None:
         v_upd = v
         if isinstance(v_upd, str):
             for env_key in env_keys:
-                v_upd = v_upd.replace('$' + env_key, env[env_key])
+                env_val = env[env_key]
+
+                if isinstance(env_val, os.PathLike):
+                    env_val = str(env_val)
+
+                if not isinstance(env_val, str):
+                    if v == f'${env_key}':
+                        # allow for non string value replacements
+                        v_upd = env_val
+                        break
+                else:
+                    v_upd = v_upd.replace('$' + env_key, env_val)
 
             if v_upd != v:
                 logger.info('*** updating parameter %s -> %s', v, v_upd)
