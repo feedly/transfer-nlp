@@ -225,8 +225,6 @@ Now that all classes are properly designed, we can define an experiment in a con
       }
     }
   }
-}
-
 
     # Configure the experiment
     experiment = ExperimentConfig(experiment_config)
