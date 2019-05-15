@@ -165,71 +165,68 @@ Now that all classes are properly designed, we can define an experiment in a con
     from transfer_nlp.plugins.config import ExperimentConfig
 
     experiment_config = {
-      "data_file": "path/to/surnames_with_splits.csv",
-      "tensorboard_logs": "path/to/tensorboard/mlp",
-      "hidden_dim": 100,
-      "seed": 1337,
-      "lr": 0.001,
-      "batch_size": 128,
-      "num_epochs": 5,
-      "early_stopping_criteria": 5,
-      "alpha": 0.01,
-      "gradient_clipping": 0.25,
-      "mode": "min",
-      "factor": 0.5,
-      "patience": 1,
-      "vectorizer": {
-        "_name": "MyVectorizer"
-      },
-      "dataset_hyper_params": {
-        "_name": "DatasetHyperParams"
-      },
-      "dataset_splits": {
-        "_name": "MyDataLoader"
-      },
-      "model": {
-        "_name": "MultiLayerPerceptron"
-      },
-      "model_hyper_params": {
-        "_name": "ModelHyperParams"
-      },
-      "model_params": {
-        "_name": "TrainableParameters"
-      },
-      "loss": {
-        "_name": "CrossEntropyLoss"
-      },
-      "optimizer": {
-        "_name": "Adam",
-        "params": "model_params"
-      },
-      "regularizer": {
-        "_name": "L1"
-      },
-      "scheduler": {
-        "_name": "ReduceLROnPlateau"
-      },
+  "predictor": {
+    "_name": "MLPPredictor",
+    "data": "$my_dataset_splits",
+    "model": "$model"
+  },
+  "my_dataset_splits": {
+    "_name": "SurnamesDatasetMLP",
+    "data_file": "$HOME/surnames/surnames_with_splits.csv",
+    "batch_size": 128,
+    "vectorizer": {
+      "_name": "SurnamesVectorizerMLP",
+      "data_file": "$HOME/surnames/surnames_with_splits.csv"
+    }
+  },
+  "model": {
+    "_name": "MultiLayerPerceptron",
+    "hidden_dim": 100,
+    "data": "$my_dataset_splits"
+  },
+  "optimizer": {
+    "_name": "Adam",
+    "lr": 0.01,
+    "alpha": 0.99,
+    "params": {
+      "_name": "TrainableParameters"
+    }
+  },
+  "scheduler": {
+    "_name": "ReduceLROnPlateau",
+    "patience": 1,
+    "mode": "min",
+    "factor": 0.5
+  },
+  "trainer": {
+    "_name": "BasicTrainer",
+    "model": "$model",
+    "dataset_splits": "$my_dataset_splits",
+    "loss": {
+      "_name": "CrossEntropyLoss"
+    },
+    "optimizer": "$optimizer",
+    "gradient_clipping": 0.25,
+    "num_epochs": 5,
+    "seed": 1337,
+    "regularizer": {
+      "_name": "L1"
+    },
+    "tensorboard_logs": "$HOME/surnames/tensorboard/mlp",
+    "metrics": {
       "accuracy": {
         "_name": "Accuracy"
       },
-      "lossMetric": {
+      "loss": {
         "_name": "LossMetric",
-        "loss_fn": "loss"
-      },
-      "trainer": {
-        "_name": "BasicTrainer",
-        "metrics": [
-          "accuracy",
-          "lossMetric"
-        ]
-      },
-      "predictor": {
-        "_name": "MyPredictor"
-      },
-      "predictor_hyper_params": {
-        "_name": "PredictorHyperParams"
+        "loss_fn": {
+          "_name": "CrossEntropyLoss"
+        }
       }
     }
+  }
+}
+
 
     # Configure the experiment
     experiment = ExperimentConfig(experiment_config)
