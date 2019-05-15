@@ -16,6 +16,7 @@ Launching experiments from json config files has two main advantages:
 
 - **reproducibility**: when you are happy with the outcome of an experiment, the json file you used defines it entirely, so it is really easy to reproduce
 - **ablation studies**: when experimenting with new architectures, it is becoming a standards practice to assess the importance of some model components to the outcome.
+
 Using json files facilitates this process, where you just have to remove some components from the json file and run the experiment again.
 
 
@@ -57,8 +58,7 @@ The experiment instantiator is able to deal with 3 kinds of inputs from the json
     experiment_config = {"layer_sizes": [10, 50, 10]}
 
 
-- **complex configuration**: here you can instantiate an object from any class. The framework will require the json file
-to contain the name of the used class, e.g.:
+- **complex configuration**: here you can instantiate an object from any class. The framework will require the json file to contain the name of the used class, e.g.:
 
 .. code-block:: python
 
@@ -71,10 +71,57 @@ if the `MyClassifier` class takes `input_dim` and `output_dim` as hyperparameter
 
 .. code-block:: python
 
-    experiment_config = {"lr": 0.01,
-                       "input_dim": 10000,
+    experiment_config = {"input_dim": 10000,
                        "output_dim": 5,
                        "model": {"_name": "MyClassifier"}}
+
+or:
+
+.. code-block:: python
+
+    experiment_config = {"model": {"_name": "MyClassifier",
+                       "input_dim": 10000,
+                       "output_dim": 5}}
+
+
+If one of your objects takes another complex object as initialization parameter, `ExperimentConfig` can build it
+recursively, e.g.:
+
+.. code-block:: python
+
+    experiment_config = {
+    "my_dataset_splits": {
+    "_name": "SurnamesDatasetMLP",
+    "data_file": "$HOME/surnames/surnames_with_splits.csv",
+    "batch_size": 128,
+    "vectorizer": {
+      "_name": "SurnamesVectorizerMLP",
+      "data_file": "$HOME/surnames/surnames_with_splits.csv"
+    }
+    }
+
+The framework encourages the use of this nesting definition for clarity. However, in this example if the object `vectorizer`
+was needed to initialize another object in your experiment, you should isolate this multi-use object. Objects which will
+use it will call a reference to that object using the common `$` notation. This enables to not defining different objects
+when we don't need them.
+
+.. code-block:: python
+
+    experiment_config = {
+
+      "common_object": {
+      "_name": "MyCommonObject",
+      "some_parameter": "foo/bar"
+      },
+      "complex_object_A": {
+    "_name": "ComplexObjectA",
+    "common_object": "$common_object"
+    },
+          "complex_object_B": {
+    "_name": "ComplexObjectB",
+    "common_object": "$common_object"
+    }
+    }
 
 To let Transfer NLP know about your custom classes, you add them to a registry. The framework does not require using
 separate registries for some fixed set of components, such as Models, Optimizers, etc..
@@ -98,3 +145,29 @@ you need to do is add the class to the registry using the `@register_plugin` dec
         def forward(self, input_tensor):
             # Do complex transofmrations
             return result
+
+Finally, to enable the sharing of experiment configuration files, we can use environment variables for paths parameters,
+and the framework will automatically replace them:
+
+.. code-block:: python
+
+    experiment_config = {
+    "my_dataset_splits": {
+    "_name": "SurnamesDatasetMLP",
+    "data_file": "$HOME/surnames/surnames_with_splits.csv",
+    "batch_size": 128,
+    "vectorizer": {
+      "_name": "SurnamesVectorizerMLP",
+      "data_file": "$HOME/surnames/surnames_with_splits.csv"
+    }
+    }
+    experiment = ExperimentConfig(path, HOME=str(Path.home() / 'data'))  # Changes $HOME to a custom folder
+
+Final thoughts
+--------------
+In the core design of Transfer NLP, the framework allows any kind of experiment to be instantiated, run, checkpointed, monitored, etc...
+The framework is not PyTorch-specific at its core, which make it easy to extend to objects using other machine learning
+backends such as tensorflow.
+Although the framework allows this flexibility, we will start focusing on PyTorch for next steps on our end. You are very welcome
+to contribute with Tensorflow building blocks to run easily-customizable experiments!
+In the long-run we hope that Transfer NLP becomes backend-agnostic and can enable any kind of ML experiments.
