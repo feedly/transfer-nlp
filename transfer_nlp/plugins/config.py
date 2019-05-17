@@ -311,7 +311,7 @@ class ExperimentConfig:
                         named_params = {p: pv for p, pv in unconfigured[item].items() if p != '_name'}
 
                         unconfigured[item] = {arg for arg in spec.args[1:] if arg not in self.experiment and (
-                                    arg not in named_params or (isinstance(named_params.get(arg), str) and '$' in named_params.get(arg)))}
+                                arg not in named_params or (isinstance(named_params.get(arg), str) and '$' in named_params.get(arg)))}
                     raise UnconfiguredItemsException(unconfigured)
 
     def _build_items(self, config: Dict[str, Any]):

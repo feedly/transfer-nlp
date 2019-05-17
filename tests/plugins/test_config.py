@@ -82,11 +82,13 @@ class DemoC:
         self.demob = demob
         self.attrc = attrc
 
+
 @register_plugin
 class Foo:
 
     def __init__(self, params):
         self.params = params
+
 
 class RegistryTest(unittest.TestCase):
 
