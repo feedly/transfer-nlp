@@ -10,7 +10,7 @@ import os
 from abc import abstractmethod, ABC
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Union, Any, Optional, Set
+from typing import Dict, Union, Any, Optional, AbstractSet
 
 import ignite.metrics as metrics
 import torch.nn as nn
@@ -211,7 +211,7 @@ class ExperimentConfig:
 
         self._build_items(config)
 
-    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: DefaultParamsMode, unconfigured_keys, parent_level: str):
+    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: DefaultParamsMode, unconfigured_keys: AbstractSet, parent_level: str):
 
         logger.info(f"Configuring {object_key}")
 
