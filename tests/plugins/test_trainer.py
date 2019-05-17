@@ -27,7 +27,6 @@ EXPERIMENT = {
     "optimizer": {
         "_name": "Adam",
         "lr": 0.01,
-        "alpha": 0.99,
         "params": {
             "_name": "TrainableParameters"
         }

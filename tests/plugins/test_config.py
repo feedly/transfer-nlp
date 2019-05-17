@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, UnconfiguredItemsException, ExperimentConfig
+from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter
 
 
 @register_plugin
@@ -413,3 +413,21 @@ class RegistryTest(unittest.TestCase):
         except UnconfiguredItemsException as e:
             self.assertEqual(len(e.items), 1)
             self.assertEqual({'params'}, e.items['item'])
+
+    def test_additional_params(self):
+
+        experiment = {
+            "bar": 5,
+            "item": {
+                "_name": "Foo",
+                "params": "$bar",
+                "bad_param": 2
+            }
+        }
+        try:
+            ExperimentConfig(experiment)
+            self.fail()
+        except BadParameter as b:
+            self.assertEqual(b.param, 'bad_param')
+            self.assertEqual(b.clazz, 'Foo')
+
