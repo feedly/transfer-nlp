@@ -82,6 +82,11 @@ class DemoC:
         self.demob = demob
         self.attrc = attrc
 
+@register_plugin
+class Foo:
+
+    def __init__(self, params):
+        self.params = params
 
 class RegistryTest(unittest.TestCase):
 
@@ -382,3 +387,27 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['democ'].attrc, 3)
         self.assertEqual(e['democ'].demob.demoa.simple_int, 2)
 
+    def test_unsubstituted_param(self):
+
+        experiment = {
+            "bar": 5,
+            "item": {
+                "_name": "Foo",
+                "params": "$bar"
+            }
+        }
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['item'].params, 5)
+
+        experiment = {
+            "item": {
+                "_name": "Foo",
+                "params": "$bar"
+            }
+        }
+        try:
+            ExperimentConfig(experiment)
+            self.fail()
+        except UnconfiguredItemsException as e:
+            self.assertEqual(len(e.items), 1)
+            self.assertEqual({'params'}, e.items['item'])
