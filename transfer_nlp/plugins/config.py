@@ -229,14 +229,17 @@ class ExperimentConfig:
 
                 if isinstance(value, dict):
                     if '_name' in value:
-                        value = self._do_recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode, parent_level=parent_level + "." + arg)
+                        value = self._do_recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode,
+                                                         parent_level=parent_level + "." + arg)
                     else:
                         for item in value:
                             if isinstance(value[item], dict):
-                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode, parent_level=parent_level + '.' + arg + '.' + item)
-                            else:   # value[item] is either an object defined in a dictionary, or it's an already built object
+                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode,
+                                                                       parent_level=parent_level + '.' + arg + '.' + item)
+                            else:  # value[item] is either an object defined in a dictionary, or it's an already built object
                                 logger.info(f"{item} is already configured")
                 elif isinstance(value, str) and value[0] == '$':
+
                     if value[1:] in self.experiment:
                         logger.info(f"Using the object {value}, already instantiated")
                         value = self.experiment[value[1:]]
@@ -245,8 +248,11 @@ class ExperimentConfig:
                 else:
                     logger.info(f"Using value {arg} / {named_params[arg]} from the config file")
 
-                params[arg] = value
-                param2config_key[arg] = value
+                if not (isinstance(value, str) and value[0] == '$'):
+                    params[arg] = value
+                    param2config_key[arg] = value
+                else:
+                    logger.debug(f"You need to define '{value}' as a '{value[1:]}' object in the config file")
 
             # For values that are not in named_params, we look first at the experiment dict, then at the defaults parameters
             elif arg in self.experiment:
@@ -279,7 +285,8 @@ class ExperimentConfig:
             for object_key, object_dict in config.items():
 
                 try:
-                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode, parent_level=object_key)
+                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode,
+                                                                           parent_level=object_key)
                     configured.add(object_key)
                 except Exception as e:
                     logger.debug(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
@@ -303,7 +310,8 @@ class ExperimentConfig:
                         spec = inspect.getfullargspec(clazz.__init__)
                         named_params = {p: pv for p, pv in unconfigured[item].items() if p != '_name'}
 
-                        unconfigured[item] = {arg for arg in spec.args[1:] if arg not in self.experiment and arg not in named_params}
+                        unconfigured[item] = {arg for arg in spec.args[1:] if arg not in self.experiment and (
+                                arg not in named_params or (isinstance(named_params.get(arg), str) and '$' in named_params.get(arg)))}
                     raise UnconfiguredItemsException(unconfigured)
 
     def _build_items(self, config: Dict[str, Any]):
