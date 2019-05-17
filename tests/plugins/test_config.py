@@ -1,53 +1,50 @@
 import unittest
 from pathlib import Path
+from typing import List, Any, Dict
 
 from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter
 
 
 @register_plugin
-class Demo2:
+class DemoWithVal:
 
-    def __init__(self, simple_str: str):
-        self.val = simple_str
+    def __init__(self, val: Any):
+        self.val = val
+
+@register_plugin
+class DemoWithStr:
+
+    def __init__(self, strval: str):
+        self.strval = strval
 
 
 @register_plugin
-class Demo3:
+class DemoWithInt:
 
-    def __init__(self, simple_int: str):
-        self.val = simple_int
-
-
-@register_plugin
-class Demo4:
-
-    def __init__(self, simple_int: str, optional: int = None, optional2: int = 1):
-        self.val = simple_int
-        self.optional = optional
-        self.optional2 = optional2
-
+    def __init__(self, intval: str):
+        self.intval = intval
 
 @register_plugin
 class DemoDefaults:
 
-    def __init__(self, simple_int: str, foo: int = 5, bar=10):
-        self.val = simple_int
-        self.foo = foo
-        self.bar = bar
+    def __init__(self, strval: str, intval1: int = 5, intval2: int = None):
+        self.strval = strval
+        self.intval1 = intval1
+        self.intval2 = intval2
 
 
 @register_plugin
 class DemoComplexDefaults:
 
-    def __init__(self, simple_int: str, demod: DemoDefaults = None):
-        self.val = simple_int
-        self.dd = demod
+    def __init__(self, strval: str, obj: DemoDefaults = None): # use different param and property names as additonal check
+        self.simple = strval
+        self.complex = obj
 
 
 @register_plugin
 class Demo:
 
-    def __init__(self, demo2, demo3: Demo3):
+    def __init__(self, demo2, demo3):
         self.demo2 = demo2
         self.demo3 = demo3
 
@@ -55,9 +52,9 @@ class Demo:
 @register_plugin
 class DemoWithConfig:
 
-    def __init__(self, demo2, simple_int: str, experiment_config):
+    def __init__(self, demo2, intval: int, experiment_config):
         self.demo2 = demo2
-        self.simple_int = simple_int
+        self.intval = intval
         self.experiment_config = experiment_config
 
 
@@ -82,12 +79,18 @@ class DemoC:
         self.demob = demob
         self.attrc = attrc
 
+@register_plugin
+class DemoWithList:
+    def __init__(self, children: List[Any], simple_int: int = 3):
+        self.children = children
+        self.simple_int = simple_int
 
 @register_plugin
-class Foo:
+class DemoWithDict:
+    def __init__(self, children: Dict[str, Any], simple_int: int = 3):
+        self.children = children
+        self.simple_int = simple_int
 
-    def __init__(self, params):
-        self.params = params
 
 
 class RegistryTest(unittest.TestCase):
@@ -97,21 +100,21 @@ class RegistryTest(unittest.TestCase):
             'demo': {
                 '_name': 'Demo',
                 'demo2': {
-                    '_name': 'Demo2',
-                    'simple_str': 'foo'
+                    '_name': 'DemoWithStr',
+                    'strval': 'foo'
                 },
                 'demo3': {
-                    '_name': 'Demo3',
-                    'simple_int': 2
+                    '_name': 'DemoWithInt',
+                    'intval': 2
                 }
             }
         }
         e = ExperimentConfig(experiment)
-        self.assertIsInstance(e.experiment['demo'].demo2, Demo2)
-        self.assertIsInstance(e.experiment['demo'].demo3, Demo3)
-        self.assertEqual(e.experiment['demo'].demo2.val, 'foo')
-        self.assertEqual(e.experiment['demo'].demo3.val, 2)
-        self.assertEqual(list(e.factories.keys()), ['demo.demo2', 'demo.demo3', 'demo'])
+        self.assertIsInstance(e.experiment['demo'].demo2, DemoWithStr)
+        self.assertIsInstance(e.experiment['demo'].demo3, DemoWithInt)
+        self.assertEqual(e.experiment['demo'].demo2.strval, 'foo')
+        self.assertEqual(e.experiment['demo'].demo3.intval, 2)
+        self.assertEqual(e.factories.keys(), {'demo.demo2', 'demo.demo3', 'demo'})
 
     def test_child_injection(self):
         experiment = {
@@ -119,22 +122,22 @@ class RegistryTest(unittest.TestCase):
                 '_name': 'Demo',
             },
             'demo2': {
-                '_name': 'Demo2'
+                '_name': 'DemoWithStr'
             },
             'demo3': {
-                '_name': 'Demo3'
+                '_name': 'DemoWithInt'
             },
-            'simple_str': 'dummy',
-            'simple_int': 5
+            'strval': 'dummy',
+            'intval': 5
         }
         e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
-        self.assertTrue(isinstance(e['demo2'], Demo2))
-        self.assertTrue(isinstance(e['demo3'], Demo3))
+        self.assertTrue(isinstance(e['demo2'], DemoWithStr))
+        self.assertTrue(isinstance(e['demo3'], DemoWithInt))
 
-        self.assertEqual(e['demo2'].val, 'dummy')
-        self.assertEqual(e['demo3'].val, e['demo3'].val, 5)
+        self.assertEqual(e['demo2'].strval, 'dummy')
+        self.assertEqual(e['demo3'].intval, 5)
 
     def test_child_named_injection(self):
         experiment = {
@@ -144,68 +147,73 @@ class RegistryTest(unittest.TestCase):
 
             },
             'demo2': {
-                '_name': 'Demo2'
+                '_name': 'DemoWithStr'
             },
             'demo3': {
-                '_name': 'Demo3'
+                '_name': 'DemoWithInt'
             },
             'demo3a': {
-                '_name': 'Demo3',
-                'simple_int': '$simple_inta'
+                '_name': 'DemoWithInt',
+                'intval': '$simple_inta'
             },
-            'simple_str': 'dummy',
-            'simple_int': 5,
+            'strval': 'dummy',
+            'intval': 5,
             'simple_inta': 6,
         }
         e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], Demo))
-        self.assertTrue(isinstance(e['demo2'], Demo2))
-        self.assertTrue(isinstance(e['demo3'], Demo3))
-        self.assertTrue(isinstance(e['demo3a'], Demo3))
+        self.assertTrue(isinstance(e['demo2'], DemoWithStr))
+        self.assertTrue(isinstance(e['demo3'], DemoWithInt))
+        self.assertTrue(isinstance(e['demo3a'], DemoWithInt))
 
-        self.assertEqual(e['demo2'].val, 'dummy')
-        self.assertEqual(e['demo3'].val, 5)
-        self.assertEqual(e['demo3a'].val, 6)
-        self.assertEqual(e['demo'].demo3.val, 6)
+        self.assertEqual(e['demo2'].strval, 'dummy')
+        self.assertEqual(e['demo3'].intval, 5)
+        self.assertEqual(e['demo3a'].intval, 6)
+        self.assertEqual(e['demo'].demo3.intval, 6)
 
     def test_env(self):
         experiment = {
             'path': "$HOME/foo/bar",
             'path2': "$HOMEPATH/foo/bar",
             'data': {
-                '_name': "Demo2",
-                'simple_str': "$HOME/foo/bar/bis"
+                '_name': "DemoWithStr",
+                'strval': "$HOME/foo/bar/bis"
             },
             'data2': {
-                '_name': "Demo4",
-                'simple_int': "$SVAL"
+                '_name': "DemoDefaults",
+                'strval': "foo",
+                'intval1': "$SVAL"
             }
         }
         e = ExperimentConfig(experiment, HOME='/tmp', HOMEPATH=Path('/tmp2'), SVAL=7)
         self.assertEqual(e['path'], '/tmp/foo/bar')
         self.assertEqual(e['path2'], '/tmp2/foo/bar')
-        self.assertEqual(e['data'].val, '/tmp/foo/bar/bis')
-        self.assertEqual(e['data2'].val, 7)
+
+        self.assertEqual(e['data'].strval, '/tmp/foo/bar/bis')
+
+        self.assertEqual(e['data2'].strval, 'foo')
+        self.assertEqual(e['data2'].intval1, 7)
+        self.assertIsNone(e['data2'].intval2)
 
     def test_literal_injection(self):
         experiment = {
             'demo2': {
-                '_name': 'Demo2',
-                'simple_str': 'dummy'
+                '_name': 'DemoWithStr',
+                'strval': 'dummy'
             },
             'demo3': {
-                '_name': 'Demo3',
-                'simple_int': 5
+                '_name': 'DemoWithInt',
+                'intval': 5
             }
         }
         e = ExperimentConfig(experiment)
 
-        self.assertTrue(isinstance(e['demo2'], Demo2))
-        self.assertTrue(isinstance(e['demo3'], Demo3))
+        self.assertTrue(isinstance(e['demo2'], DemoWithStr))
+        self.assertTrue(isinstance(e['demo3'], DemoWithInt))
 
-        self.assertEqual(e['demo2'].val, 'dummy')
-        self.assertEqual(e['demo3'].val, 5)
+        self.assertEqual(e['demo2'].strval, 'dummy')
+        self.assertEqual(e['demo3'].intval, 5)
 
     def test_unconfigured(self):
         experiment = {
@@ -213,10 +221,10 @@ class RegistryTest(unittest.TestCase):
                 '_name': 'Demo',
             },
             'demo2': {
-                '_name': 'Demo2',
+                '_name': 'DemoWithStr',
             },
             'demo3': {
-                '_name': 'Demo3',
+                '_name': 'DemoWithInt',
             }
         }
 
@@ -226,127 +234,112 @@ class RegistryTest(unittest.TestCase):
         except UnconfiguredItemsException as e:
             self.assertEqual(3, len(e.items))
             self.assertEqual({'demo2', 'demo3'}, e.items['demo'])
-            self.assertEqual({'simple_str'}, e.items['demo2'])
-            self.assertEqual({'simple_int'}, e.items['demo3'])
+            self.assertEqual({'strval'}, e.items['demo2'])
+            self.assertEqual({'intval'}, e.items['demo3'])
 
     def test_defaults(self):
         experiment = {
             'demoa': {
                 '_name': 'DemoDefaults',
-                'simple_int': 0
+                'strval': 'a',
             },
             'demob': {
                 '_name': 'DemoDefaults',
-                'simple_int': 1,
-                'foo': 6
+                'strval': 'b',
+                'intval1': 1
             },
             'democ': {
                 '_name': 'DemoDefaults',
-                'simple_int': 2,
-                'bar': 6
-            }
+                'strval': 'c',
+                'intval2': 2
+            },
+            'demod': {
+                '_name': 'DemoDefaults',
+                'strval': 'd',
+                'intval1': 3,
+                'intval2': 4
+            },
+            'demoe': {
+                '_name': 'DemoDefaults',
+                'strval': 'e',
+                'intval1': None,
+                'intval2': None
+            },
         }
         e = ExperimentConfig(experiment)
 
-        self.assertTrue(isinstance(e['demoa'], DemoDefaults))
-        self.assertTrue(isinstance(e['demob'], DemoDefaults))
+        for c in 'abcde':
+            self.assertTrue(isinstance(e[f'demo{c}'], DemoDefaults))
+            self.assertEqual(e[f'demo{c}'].strval, c)
 
-        self.assertEqual(e['demoa'].val, 0)
-        self.assertEqual(e['demoa'].foo, 5)
-        self.assertEqual(e['demoa'].bar, 10)
+        self.assertEqual(e['demoa'].intval1, 5)
+        self.assertEqual(e['demoa'].intval2, None)
 
-        self.assertEqual(e['demob'].val, 1)
-        self.assertEqual(e['demob'].foo, 6)
-        self.assertEqual(e['demob'].bar, 10)
+        self.assertEqual(e['demob'].intval1, 1)
+        self.assertEqual(e['demob'].intval2, None)
 
-        self.assertEqual(e['democ'].val, 2)
-        self.assertEqual(e['democ'].foo, 5)
-        self.assertEqual(e['democ'].bar, 6)
+        self.assertEqual(e['democ'].intval1, 5)
+        self.assertEqual(e['democ'].intval2, 2)
+
+        self.assertEqual(e['demod'].intval1, 3)
+        self.assertEqual(e['demod'].intval2, 4)
+
+        self.assertEqual(e['demoe'].intval1, None)
+        self.assertEqual(e['demoe'].intval2, None)
 
     def test_complex_defaults(self):
         ### test that demod gets created first and then is used to create demo instead of the None default
         experiment = {
             'demo': {
                 '_name': 'DemoComplexDefaults',
-                'simple_int': 0
+                'strval': 'foo'
             },
-            'demod': {
+            'obj': {
                 '_name': 'DemoDefaults',
-                'simple_int': 1,
-                'foo': 6
+                'strval': 'bar',
+                'intval1': 20
             }
         }
         e = ExperimentConfig(experiment)
 
         self.assertTrue(isinstance(e['demo'], DemoComplexDefaults))
-        self.assertTrue(isinstance(e['demod'], DemoDefaults))
+        self.assertTrue(isinstance(e['obj'], DemoDefaults))
 
-        self.assertEqual(e['demod'].val, 1)
-        self.assertEqual(e['demod'].foo, 6)
-        self.assertEqual(e['demod'].bar, 10)
+        self.assertEqual(e['obj'].strval, 'bar')
+        self.assertEqual(e['obj'].intval1, 20)
+        self.assertEqual(e['obj'].intval2, None)
 
-        self.assertEqual(e['demo'].val, 0)
-        self.assertEqual(e['demo'].dd.val, 1)
-        self.assertEqual(e['demo'].dd.foo, 6)
-        self.assertEqual(e['demo'].dd.bar, 10)
-
-    def test_none_default(self):
-        experiment = {
-            'demo4': {
-                '_name': 'Demo4',
-                'simple_int': 0
-            },
-            'demo4a': {
-                '_name': 'Demo4',
-                'simple_int': 0,
-                'optional': 1
-            },
-            'demo4b': {
-                '_name': 'Demo4',
-                'simple_int': 0,
-                'optional2': None
-            }
-
-        }
-
-        e = ExperimentConfig(experiment)
-
-        self.assertTrue(isinstance(e['demo4'], Demo4))
-        self.assertTrue(isinstance(e['demo4a'], Demo4))
-
-        self.assertEqual(e['demo4'].val, 0)
-        self.assertEqual(e['demo4'].optional, None)
-        self.assertEqual(e['demo4'].optional2, 1)
-        self.assertEqual(e['demo4a'].val, 0)
-        self.assertEqual(e['demo4b'].optional, None)
-        self.assertEqual(e['demo4b'].optional2, None)
+        self.assertEqual(e['demo'].simple, 'foo')
+        self.assertEqual(e['demo'].complex.strval, 'bar')
+        self.assertEqual(e['demo'].complex.intval1, 20)
+        self.assertEqual(e['demo'].complex.intval2, None)
 
     def test_with_config(self):
         experiment = {
             'demo2': {
-                '_name': 'Demo2'
+                '_name': 'DemoWithInt'
             },
             'with_config': {
-                '_name': 'DemoWithConfig'
+                '_name': 'DemoWithConfig',
+                'intval': 10
             },
-            'simple_str': 'dummy',
-            'simple_int': 5
+            'intval': 5
         }
 
         e = ExperimentConfig(experiment)
 
         d = e['with_config']
-        self.assertEqual(5, d.simple_int)
-        self.assertEqual('dummy', d.demo2.val)
+        self.assertEqual(10, d.intval)
+        self.assertEqual(5, d.demo2.intval)
         self.assertTrue(d.experiment_config is e)
-        self.assertEqual({'demo2', 'with_config', 'simple_str', 'simple_int'}, e.factories.keys())
-        self.assertEqual(5, e.factories['simple_int'].create())
-        self.assertEqual('dummy', e.factories['simple_str'].create())
 
-        d2 = e.factories['with_config'].create()
-        self.assertEqual(5, d2.simple_int)
-        self.assertEqual('dummy', d2.demo2.val)
-        self.assertTrue(d2.experiment_config is e)
+        self.assertEqual({'demo2', 'with_config', 'intval'}, e.factories.keys())
+        self.assertEqual(5, e.factories['intval'].create())
+
+        d = e.factories['with_config'].create()
+        self.assertEqual(10, d.intval)
+        self.assertEqual(5, d.demo2.intval)
+        self.assertTrue(d.experiment_config is e)
 
     def test_unordered_nested_config(self):
         experiment = {
@@ -392,19 +385,19 @@ class RegistryTest(unittest.TestCase):
     def test_unsubstituted_param(self):
 
         experiment = {
-            "bar": 5,
+            "bar": 'foo',
             "item": {
-                "_name": "Foo",
-                "params": "$bar"
+                "_name": "DemoWithStr",
+                "strval": "$bar"
             }
         }
         e = ExperimentConfig(experiment)
-        self.assertEqual(e['item'].params, 5)
+        self.assertEqual(e['item'].strval, 'foo')
 
         experiment = {
             "item": {
-                "_name": "Foo",
-                "params": "$bar"
+                "_name": "DemoWithStr",
+                "strval": "$bar"
             }
         }
         try:
@@ -412,15 +405,15 @@ class RegistryTest(unittest.TestCase):
             self.fail()
         except UnconfiguredItemsException as e:
             self.assertEqual(len(e.items), 1)
-            self.assertEqual({'params'}, e.items['item'])
+            self.assertEqual({'strval'}, e.items['item'])
 
     def test_additional_params(self):
 
         experiment = {
             "bar": 5,
             "item": {
-                "_name": "Foo",
-                "params": "$bar",
+                "_name": "DemoWithInt",
+                "intval": "$bar",
                 "bad_param": 2
             }
         }
@@ -429,5 +422,5 @@ class RegistryTest(unittest.TestCase):
             self.fail()
         except BadParameter as b:
             self.assertEqual(b.param, 'bad_param')
-            self.assertEqual(b.clazz, 'Foo')
+            self.assertEqual(b.clazz, 'DemoWithInt')
 

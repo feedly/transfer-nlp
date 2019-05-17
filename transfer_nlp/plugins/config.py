@@ -8,8 +8,9 @@ import json
 import logging
 import os
 from abc import abstractmethod, ABC
+from enum import Enum
 from pathlib import Path
-from typing import Dict, Union, Any, Optional
+from typing import Dict, Union, Any, Optional, Set
 
 import ignite.metrics as metrics
 import torch.nn as nn
@@ -116,6 +117,11 @@ class PluginFactory(ConfigFactoryABC):
         return self.cls(*self.args, **self.kwargs)
 
 
+class DefaultParamsMode(Enum):
+    IGNORE_DEFAULTS = 0,
+    NOT_IN_EXPERIMENT = 1,
+    USE_DEFAULTS = 2
+
 def _replace_env_variables(dico: Dict, env: Dict) -> None:
     """
     Replace all occurrences of environment variable to particular strings
@@ -205,7 +211,7 @@ class ExperimentConfig:
 
         self._build_items(config)
 
-    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: int, parent_level: str):
+    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: DefaultParamsMode, unconfigured_keys, parent_level: str):
 
         logger.info(f"Configuring {object_key}")
 
@@ -240,12 +246,16 @@ class ExperimentConfig:
 
                 if isinstance(value, dict):
                     if '_name' in value:
-                        value = self._do_recursive_build(object_key=arg, object_dict=value, default_params_mode=default_params_mode,
+                        value = self._do_recursive_build(object_key=arg, object_dict=value,
+                                                         default_params_mode=default_params_mode,
+                                                         unconfigured_keys=unconfigured_keys,
                                                          parent_level=parent_level + "." + arg)
                     else:
                         for item in value:
                             if isinstance(value[item], dict):
-                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item], default_params_mode=default_params_mode,
+                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item],
+                                                                       default_params_mode=default_params_mode,
+                                                                       unconfigured_keys=unconfigured_keys,
                                                                        parent_level=parent_level + '.' + arg + '.' + item)
                             else:  # value[item] is either an object defined in a dictionary, or it's an already built object
                                 logger.info(f"{item} is already configured")
@@ -270,10 +280,12 @@ class ExperimentConfig:
                 params[arg] = self.experiment[arg]
                 param2config_key[arg] = arg
 
-            elif default_params_mode == 1 and arg not in self.experiment and arg in default_params and default_params[arg] is not None:
+            elif default_params_mode == DefaultParamsMode.NOT_IN_EXPERIMENT and \
+                    arg not in self.experiment and arg not in unconfigured_keys and \
+                    arg in default_params:
                 params[arg] = default_params[arg]
                 param2config_key[arg] = None
-            elif default_params_mode == 2 and arg in default_params:
+            elif default_params_mode == DefaultParamsMode.USE_DEFAULTS and arg in default_params:
                 params[arg] = default_params[arg]
                 param2config_key[arg] = None
             else:
@@ -287,7 +299,7 @@ class ExperimentConfig:
         else:
             raise ValueError("Unconfigured object")
 
-    def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: int):
+    def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):
 
         while config:
 
@@ -296,7 +308,9 @@ class ExperimentConfig:
             for object_key, object_dict in config.items():
 
                 try:
-                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode,
+                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict,
+                                                                           default_params_mode=default_params_mode,
+                                                                           unconfigured_keys=config.keys(),
                                                                            parent_level=object_key)
                     configured.add(object_key)
 
@@ -333,20 +347,20 @@ class ExperimentConfig:
 
         try:
             logger.info(f"Initializing complex configurations ignoring default params:")
-            self._build_items_with_default_params_mode(config, 0)
+            self._build_items_with_default_params_mode(config, DefaultParamsMode.IGNORE_DEFAULTS)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations only filling in default params not found in the experiment:")
 
-            self._build_items_with_default_params_mode(config, 1)
+            self._build_items_with_default_params_mode(config, DefaultParamsMode.NOT_IN_EXPERIMENT)
         except UnconfiguredItemsException as e:
             pass
 
         try:
             logger.info(f"Initializing complex configurations filling in all default params:")
-            self._build_items_with_default_params_mode(config, 2)
+            self._build_items_with_default_params_mode(config, DefaultParamsMode.USE_DEFAULTS)
         except UnconfiguredItemsException as e:
             logging.error('There are unconfigured items in the experiment. Please check your configuration:')
             for k, v in e.items.items():
