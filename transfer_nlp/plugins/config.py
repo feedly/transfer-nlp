@@ -75,6 +75,13 @@ class UnconfiguredItemsException(Exception):
         self.items = items
 
 
+class BadParameter(Exception):
+    def __init__(self, clazz, param):
+        super().__init__(f"Parameter naming error: '{param}' is not a parameter of class '{clazz}'")
+        self.param = param
+        self.clazz = clazz
+
+
 class ConfigFactoryABC(ABC):
 
     @abstractmethod
@@ -218,6 +225,10 @@ class ExperimentConfig:
         named_params = {p: pv for p, pv in object_dict.items() if p != '_name'}
         default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
 
+        for named_param in named_params:
+            if named_param not in spec.args[1:]:
+                raise BadParameter(clazz=class_name, param=named_param)
+
         for arg in spec.args[1:]:
 
             if arg == 'experiment_config':
@@ -288,8 +299,12 @@ class ExperimentConfig:
                     self.experiment[object_key] = self._do_recursive_build(object_key, object_dict, default_params_mode=default_params_mode,
                                                                            parent_level=object_key)
                     configured.add(object_key)
+
+                except BadParameter as b:
+                    raise BadParameter(clazz=b.clazz, param=b.param)
                 except Exception as e:
                     logger.debug(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
+
 
             if configured:
                 for k in configured:
