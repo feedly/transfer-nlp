@@ -69,7 +69,7 @@ Currently, the config file logic has 3 kinds of components:
 ```
 {"layers_dropout": [0.1, 0.2, 0.3], ...}
 ```
-- Complex config: this is whre the library instantiates your objects: this needs to have the `_name` of the object class (you need to `@register_plugin` it), and some parameters. If your class has default parameters and your config file doesn't contain them, objects will be instantiated as default. Otherwise the parameters have to be present in the config file. Sometimes, initialization parameters are not available before launching the experiment. E.g., suppose your Model object needs a Vocabulary size as init input. The config file logic here makes it easy to deal with this while keeping the library code very general. 
+- Complex config: this is where the library instantiates your objects: every object needs to have its `_name` specified (the name of a class that you have register through the `@register_plugin` decorator), and its parameters defined. If your class has default parameters and your config file doesn't contain them, objects will be instantiated as default. Otherwise the parameters have to be present in the config file. Sometimes, initialization parameters are not available before launching the experiment. E.g., suppose your Model object needs a Vocabulary size as init input. The config file logic here makes it easy to deal with this while keeping the library code very general. 
 
 You can have a look at the [tests](https://github.com/feedly/transfer-nlp/blob/master/tests/plugins/test_config.py) for examples of experiment settings the config loader can build.
 Addionnally we provide runnable experiments in [`experiments/`](https://github.com/feedly/transfer-nlp/tree/master/experiments).
