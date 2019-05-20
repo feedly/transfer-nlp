@@ -19,7 +19,7 @@ cd transfer-nlp
 pip install -r requirements.txt
 ```
 
-- create a virtual environment: `mkvirtualenv YourEnvName`
+- create a virtual environment: `mkvirtualenv YourEnvName` (with mkvirtualenv or your choice of virtual env manager)
 - clone the repository: `git clone https://github.com/feedly/transfer-nlp.git`
 - Install requirements: `pip install -r requirements.txt`
 
@@ -32,22 +32,22 @@ API documentation and an overview of the library can be found [here](https://tra
 
 You can have a look at the [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=IuBcpSdZtcmo) to get a simple sense of the library usage.
 
-A basic usage is:
+The core of the library is made of an experiment builder: you define the different objects that your experiment needs, and the configuration loader builds them in a nice way:
 
 ```
-# Setup the experiment
-config_file  = [Dict config file, or str/Path to a json config file]
-experiment = ExperimentConfig.from_json(experiment=config_file)
+from transfer_nlp.plugins.config import ExperimentConfig
 
-# Launch the training session
+# Launch an experiment
+config_file  = {...}  # Dictionary config file, or str/Path to a json config file
+experiment = ExperimentConfig(experiment=config_file)
+
+# Interaact with the experiment's objects, e.g. launch a training job of a `trainer` object
 experiment['trainer'].train()
 
-# Use the predictor for inference
+# Another use of experiment object: use the `predictor` object for inference
 input_json = {"inputs": [Some Examples]}
 output_json = experiment['predictor'].json_to_json(input_json=input_json)
 ```
-
-You can use this code with all existing experiments in `experiments/`.
 
 # How to experiment with the library?
 For reproducible research and easy ablation studies, the library enforces the use of configuration files for experiments.
@@ -69,22 +69,24 @@ Currently, the config file logic has 3 kinds of components:
 ```
 {"layers_dropout": [0.1, 0.2, 0.3], ...}
 ```
-- Complex config: this is whre the library instantiates your objects: this needs to have the `_name` of the object class (you need to `@register_plugin` it), and some parameters. If your class has default parameters and your config file doesn't contain them, objects will be instantiated as default. Otherwise the parameters have to be present in the config file. Sometimes, initialization parameters are not available before launching the experiment. E.g., suppose your Model object needs a Vocabulary size as init input. The config file logic here makes it easy to deal with this while keeping the library code very general. You can have a look at the experiments for examples: [`surnames.py`](https://github.com/feedly/transfer-nlp/blob/master/experiments/surnames.py), [`news.py`](https://github.com/feedly/transfer-nlp/blob/master/experiments/news.py)
- or [`cbow.py`](https://github.com/feedly/transfer-nlp/blob/master/experiments/cbow.py). The corresponding json files in [`experiments`](https://github.com/feedly/transfer-nlp/tree/master/experiments) will show you examples of how to get started.
- 
+- Complex config: this is whre the library instantiates your objects: this needs to have the `_name` of the object class (you need to `@register_plugin` it), and some parameters. If your class has default parameters and your config file doesn't contain them, objects will be instantiated as default. Otherwise the parameters have to be present in the config file. Sometimes, initialization parameters are not available before launching the experiment. E.g., suppose your Model object needs a Vocabulary size as init input. The config file logic here makes it easy to deal with this while keeping the library code very general. 
+
+You can have a look at the [tests](https://github.com/feedly/transfer-nlp/blob/master/tests/plugins/test_config.py) for examples of experiment settings the config loader can build.
+Addionnally we provide runnable experiments in [`experiments/`](https://github.com/feedly/transfer-nlp/tree/master/experiments).
 
 # Usage Pipeline
-The goal of the config file is to load a Trainer and run the experiment from it. We provide a `BasicTrainer` in [`transfer_nlp.plugins.trainers.py`](https://github.com/feedly/transfer-nlp/blob/master/transfer_nlp/plugins/trainers.py).
-This basic trainer will take a model and some data as input, and run a whole training pipeline. We make use of the [PyTorch-Ignite](https://github.com/pytorch/ignite) library to monitor events during training (logging some metrics, manipulating learning rates, checkpointing models, etc...). Tensorboard logs are also included as an option, you will have to specify a `tensorboard_logs` simple parameters path in the config file. Then just run `tensorboard --logdir=path/to/logs` in a terminal and you can monitor your experiment while it's training.
-Tensorboard comes with very nice utilities to keep track of the norms of your model weights, histograms, distributions, visualizing embeddings, ...
+The goal of the config file is to load different objects and run your experiment from it. 
+
+A very common object to use is trainer, which you will run during your experiment. We provide a `BasicTrainer` in [`transfer_nlp.plugins.trainers.py`](https://github.com/feedly/transfer-nlp/blob/master/transfer_nlp/plugins/trainers.py).
+This basic trainer will take a model and some data as input, and run a whole training pipeline. We make use of the [PyTorch-Ignite](https://github.com/pytorch/ignite) library to monitor events during training (logging some metrics, manipulating learning rates, checkpointing models, etc...). Tensorboard logs are also included as an option, you will have to specify a `tensorboard_logs` simple parameters path in the config file. Then just run `tensorboard --logdir=path/to/logs` in a terminal and you can monitor your experiment while it's training!
+Tensorboard comes with very nice utilities to keep track of the norms of your model weights, histograms, distributions, visualizing embeddings, etc so we really recommend using it. 
 
 
 # Slack integration
-While experimenting with your own models / data, the training might take some time. To get notified when your training finishes or crashes, we recommend the simple library [knockknock](https://github.com/huggingface/knockknock) by folks at HuggingFace, which add a simple decorator to your running function to notify you via Slack, E-mail, etc.
+While experimenting with your own models / data, the training might take some time. To get notified when your training finishes or crashes, you can use the simple library [knockknock](https://github.com/huggingface/knockknock) by folks at HuggingFace, which add a simple decorator to your running function to notify you via Slack, E-mail, etc.
 
 
 # Some objectves to reach:
- - Unit-test everything
  - Include examples using state of the art pre-trained models
  - Include linguistic properties to models
  - Experiment with RL for sequential tasks
