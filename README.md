@@ -87,7 +87,7 @@ Tensorboard comes with very nice utilities to keep track of the norms of your mo
 While experimenting with your own models / data, the training might take some time. To get notified when your training finishes or crashes, you can use the simple library [knockknock](https://github.com/huggingface/knockknock) by folks at HuggingFace, which add a simple decorator to your running function to notify you via Slack, E-mail, etc.
 
 
-# Some objectves to reach:
+# Some objectives to reach:
  - Include examples using state of the art pre-trained models
  - Include linguistic properties to models
  - Experiment with RL for sequential tasks
