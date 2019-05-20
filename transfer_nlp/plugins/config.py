@@ -10,7 +10,7 @@ import os
 from abc import abstractmethod, ABC
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Union, Any, Optional, AbstractSet
+from typing import Dict, Union, Any, Optional, AbstractSet, Set
 
 import ignite.metrics as metrics
 import torch.nn as nn
@@ -70,10 +70,15 @@ def register_plugin(clazz):
         return clazz
 
 
+class UnknownPluginException(Exception):
+    def __init__(self, clazz: str):
+        super().__init__(f'Class {clazz} is not registered. See transfer_nlp.config.register_plugin for more information.')
+        self.clazz: str = clazz
+
 class UnconfiguredItemsException(Exception):
-    def __init__(self, items):
+    def __init__(self, items: Dict[str, Set]):
         super().__init__(f'There are some unconfigured items, which makes these items not configurable: {items}')
-        self.items = items
+        self.items: Dict[str, Set] = items
 
 
 class BadParameter(Exception):
@@ -213,6 +218,18 @@ class ExperimentConfig:
 
     def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: DefaultParamsMode, unconfigured_keys: AbstractSet, parent_level: str):
 
+        def resolve_simple_value(factory_key: str, val: Any) -> Any:
+            if isinstance(val, str):
+                if val[0] == '$':
+                    keyval = val[1:]
+                    if keyval in self.experiment:
+                        self.factories[factory_key] = self.factories[keyval]
+                        return self.experiment[keyval]
+                    else:
+                        raise UnconfiguredItemsException({factory_key: {val}})
+
+            return val
+
         logger.info(f"Configuring {object_key}")
 
         if '_name' not in object_dict:
@@ -222,8 +239,7 @@ class ExperimentConfig:
         clazz = CLASSES.get(class_name)
 
         if not clazz:
-            raise ValueError(
-                f'Object of class {object_dict["_name"]} is not registered. see transfer_nlp.config.register_plugin for more information')
+            raise UnknownPluginException(object_dict["_name"])
 
         spec = inspect.getfullargspec(clazz.__init__)
         params = {}
@@ -256,9 +272,25 @@ class ExperimentConfig:
                                 value[item] = self._do_recursive_build(object_key=item, object_dict=value[item],
                                                                        default_params_mode=default_params_mode,
                                                                        unconfigured_keys=unconfigured_keys,
-                                                                       parent_level=parent_level + '.' + arg + '.' + item)
+                                                                       parent_level=f'{parent_level}.{arg}.{item}')
                             else:  # value[item] is either an object defined in a dictionary, or it's an already built object
-                                logger.info(f"{item} is already configured")
+                                value[item] = resolve_simple_value(f'{parent_level}.{arg}.{item}', value[item])
+                        self.factories[f'{parent_level}.{arg}'] = PluginFactory(dict, None, list(value.items()))
+
+                elif isinstance(value, list):
+                    copy = []
+                    for i, item in enumerate(value):
+                        if isinstance(item, dict):
+                            item = self._do_recursive_build(object_key=str(i), object_dict=item,
+                                                                   default_params_mode=default_params_mode,
+                                                                   unconfigured_keys=unconfigured_keys,
+                                                                   parent_level=f'{parent_level}.{arg}.{i}')
+                        else:  # value[item] is either an object defined in a dictionary, or it's an already built object
+                            item = resolve_simple_value(f'{parent_level}.{arg}.{i}', value[i])
+                        copy.append(item)
+                    value = copy
+                    self.factories[f'{parent_level}.{arg}'] = PluginFactory(list, None, list(copy))
+
                 elif isinstance(value, str) and value[0] == '$':
 
                     if value[1:] in self.experiment:
@@ -288,23 +320,20 @@ class ExperimentConfig:
             elif default_params_mode == DefaultParamsMode.USE_DEFAULTS and arg in default_params:
                 params[arg] = default_params[arg]
                 param2config_key[arg] = None
-            else:
-                raise ValueError(f"{arg} is not a parameter from the {class_name} class")
 
         if len(params) == len(spec.args) - 1:
-
             self.factories[parent_level] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
             return clazz(**params)
 
         else:
-            raise ValueError("Unconfigured object")
+            unconfigured_params = spec.args[1:] - params.keys()
+            raise UnconfiguredItemsException({parent_level: unconfigured_params})
 
     def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):
 
         while config:
-
             configured = set()
-
+            config_errors = {}
             for object_key, object_dict in config.items():
 
                 try:
@@ -316,8 +345,8 @@ class ExperimentConfig:
 
                 except BadParameter as b:
                     raise BadParameter(clazz=b.clazz, param=b.param)
-                except Exception as e:
-                    logger.debug(f"Cannot configure the item '{object_key}' yet, we need to do another pass on the config file")
+                except UnconfiguredItemsException as e:
+                    config_errors.update(e.items)
 
 
             if configured:
@@ -325,23 +354,8 @@ class ExperimentConfig:
                     del config[k]
 
             else:
-                if config:
-                    unconfigured = {k: v for k, v in config.items()}
-                    for item in unconfigured:
-
-                        class_name = unconfigured[item]['_name']
-                        clazz = CLASSES.get(class_name)
-
-                        if not clazz:
-                            raise ValueError(
-                                f'The object class is named {unconfigured[item]["_name"]} but this name is not registered. see transfer_nlp.config.register_plugin for more information')
-
-                        spec = inspect.getfullargspec(clazz.__init__)
-                        named_params = {p: pv for p, pv in unconfigured[item].items() if p != '_name'}
-
-                        unconfigured[item] = {arg for arg in spec.args[1:] if arg not in self.experiment and (
-                                arg not in named_params or (isinstance(named_params.get(arg), str) and '$' in named_params.get(arg)))}
-                    raise UnconfiguredItemsException(unconfigured)
+                if config_errors:
+                    raise UnconfiguredItemsException(config_errors)
 
     def _build_items(self, config: Dict[str, Any]):
 

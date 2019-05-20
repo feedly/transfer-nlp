@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from typing import List, Any, Dict
 
-from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter
+from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter, UnknownPluginException
 
 
 @register_plugin
@@ -407,6 +407,39 @@ class RegistryTest(unittest.TestCase):
             self.assertEqual(len(e.items), 1)
             self.assertEqual({'strval'}, e.items['item'])
 
+        experiment = {
+            'demo': {
+                '_name': 'DemoWithDict',
+                'simple_int': 22,
+                'children': {
+                    'child0': "$demo3"
+                }
+            }
+        }
+
+        try:
+            ExperimentConfig(experiment)
+            self.fail()
+        except UnconfiguredItemsException as e:
+            self.assertEqual(len(e.items), 1)
+            self.assertEqual({'$demo3'}, e.items['demo.children.child0'])
+
+        experiment = {
+            'demo': {
+                '_name': 'DemoWithList',
+                'simple_int': 22,
+                'children': ["$demo3"]
+            }
+        }
+
+        try:
+            ExperimentConfig(experiment)
+            self.fail()
+        except UnconfiguredItemsException as e:
+            self.assertEqual(len(e.items), 1)
+            self.assertEqual({'$demo3'}, e.items['demo.children.0'])
+
+
     def test_additional_params(self):
 
         experiment = {
@@ -424,3 +457,139 @@ class RegistryTest(unittest.TestCase):
             self.assertEqual(b.param, 'bad_param')
             self.assertEqual(b.clazz, 'DemoWithInt')
 
+
+    def test_bad_plugin(self):
+
+        experiment = {
+            "item": {
+                "_name": "NoConfig",
+            }
+        }
+        try:
+            ExperimentConfig(experiment)
+            self.fail()
+        except UnknownPluginException as e:
+            self.assertEqual(e.clazz, 'NoConfig')
+
+        experiment = {
+            "item": {
+                "_name": "DemoWithDict",
+                'children': {
+                    'child': {
+                        "_name": "NoConfig"
+                    }
+                }
+            }
+        }
+        try:
+            ExperimentConfig(experiment)
+            self.fail()
+        except UnknownPluginException as e:
+            self.assertEqual(e.clazz, 'NoConfig')
+
+        experiment = {
+            "item": {
+                "_name": "DemoWithList",
+                'children': [
+                    {
+                        "_name": "NoConfig"
+                    }
+                ]
+            }
+        }
+        try:
+            ExperimentConfig(experiment)
+            self.fail()
+        except UnknownPluginException as e:
+            self.assertEqual(e.clazz, 'NoConfig')
+
+
+    def test_recursive_list(self):
+        experiment = {
+            'demo': {
+                '_name': 'DemoWithList',
+                'simple_int': 22,
+                'children': [
+                    {
+                    '_name': 'DemoWithStr',
+                    'strval': 'foo'
+                    },
+                    '$demo3']
+            },
+            'demo3': {
+                '_name': 'DemoWithInt',
+                'intval': 2
+            }
+        }
+        e = ExperimentConfig(experiment)
+        demo: DemoWithList = e.experiment['demo']
+        self.assertEqual(22, demo.simple_int)
+
+        self.assertIsInstance(demo.children[0], DemoWithStr)
+        self.assertEqual(demo.children[0].strval, 'foo')
+
+        self.assertIsInstance(demo.children[1], DemoWithInt)
+        self.assertEqual(demo.children[1].intval, 2)
+
+        self.assertEqual(e.factories.keys(), {'demo', 'demo3', 'demo.children', 'demo.children.0', 'demo.children.1'})
+
+        copy = e.factories['demo.children'].create()
+        self.assertIsInstance(copy[0], DemoWithStr)
+        self.assertEqual(copy[0].strval, 'foo')
+
+        self.assertIsInstance(copy[1], DemoWithInt)
+        self.assertEqual(copy[1].intval, 2)
+
+        copy = e.factories['demo.children.0'].create()
+        self.assertIsInstance(copy, DemoWithStr)
+        self.assertEqual(copy.strval, 'foo')
+
+        copy = e.factories['demo.children.1'].create()
+        self.assertIsInstance(copy, DemoWithInt)
+        self.assertEqual(copy.intval, 2)
+
+    def test_recursive_dict(self):
+        experiment = {
+            'demo': {
+                '_name': 'DemoWithDict',
+                'simple_int': 22,
+                'children': {
+                    'child0': {
+                    '_name': 'DemoWithStr',
+                    'strval': 'foo'
+                    },
+                    'child1': "$demo3"
+                }
+            },
+            'demo3': {
+                '_name': 'DemoWithInt',
+                'intval': 2
+            }
+        }
+
+        e = ExperimentConfig(experiment)
+        demo: DemoWithDict = e.experiment['demo']
+        self.assertEqual(22, demo.simple_int)
+
+        self.assertIsInstance(demo.children['child0'], DemoWithStr)
+        self.assertEqual(demo.children['child0'].strval, 'foo')
+
+        self.assertIsInstance(demo.children['child1'], DemoWithInt)
+        self.assertEqual(demo.children['child1'].intval, 2)
+
+        self.assertEqual(e.factories.keys(), {'demo', 'demo3', 'demo.children', 'demo.children.child0', 'demo.children.child1'})
+
+        copy = e.factories['demo.children'].create()
+        self.assertIsInstance(copy['child0'], DemoWithStr)
+        self.assertEqual(copy['child0'].strval, 'foo')
+
+        self.assertIsInstance(copy['child1'], DemoWithInt)
+        self.assertEqual(copy['child1'].intval, 2)
+
+        copy = e.factories['demo.children.child0'].create()
+        self.assertIsInstance(copy, DemoWithStr)
+        self.assertEqual(copy.strval, 'foo')
+
+        copy = e.factories['demo.children.child1'].create()
+        self.assertIsInstance(copy, DemoWithInt)
+        self.assertEqual(copy.intval, 2)
