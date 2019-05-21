@@ -7,6 +7,7 @@ Check experiments for examples of experiment json files
 """
 import inspect
 import logging
+from abc import ABC, abstractmethod
 from itertools import zip_longest
 from typing import Dict, List, Any
 
@@ -64,8 +65,14 @@ class TrainingMetric(Metric):
         return self.source_metric.compute()
 
 
+class TrainerABC(ABC):
+
+    @abstractmethod
+    def train(self):
+        pass
+
 @register_plugin
-class BasicTrainer:
+class BasicTrainer(TrainerABC):
 
     def __init__(self,
                  model: nn.Module,
