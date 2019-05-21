@@ -1,5 +1,7 @@
 import configparser
+import json
 import logging
+from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, Any, Union
 
@@ -18,16 +20,17 @@ def load_config(p: Path) -> Dict[str, ConfigEnv]:
             pass
         try:
             return cfg.getfloat(section, key)
-        except TypeError:
+        except ValueError:
             pass
         try:
             return cfg.getboolean(section, key)
-        except TypeError:
+        except ValueError:
             pass
 
         return cfg[section][key]
 
     cfg = configparser.ConfigParser()
+    cfg.optionxform = str
     cfg.read(p)
 
     rv = {}
@@ -62,15 +65,19 @@ class ExperimentRunner:
         logger.removeHandler(handler)
 
     @staticmethod
-    def _write_config(cfg_name: str,  cfg:ConfigEnv, exp_report_path:Path):
+    def _write_config(cfg_name: str, experiment:Dict, cfg:ConfigEnv, exp_report_path:Path):
         """duplicate the config used to run the experiment in the report directory to preserve history"""
-        config = configparser.RawConfigParser()
+        config = configparser.ConfigParser({}, OrderedDict)
+        config.optionxform = str
         config.add_section(cfg_name)
-        for k, in sorted(cfg.keys()):
-            config.set(cfg_name, k, cfg[k])
+        for k in sorted(cfg.keys()):
+            config.set(cfg_name, k, str(cfg[k]))
 
         with (exp_report_path / 'experiment.cfg').open('w') as configfile:
             config.write(configfile)
+
+        with (exp_report_path / 'experiment.json').open('w') as expfile:
+            json.dump(experiment, expfile, indent=4)
 
     @staticmethod
     def run_all(experiment: Union[str, Path, Dict],
@@ -99,16 +106,18 @@ class ExperimentRunner:
 
         for exp_name, env in envs.items():
             exp_report_path = report_path / exp_name
+            exp_report_path.mkdir()
             log_handler = ExperimentRunner._capture_logs(exp_report_path)
             try:
                 logging.info('running %s', exp_name)
                 all_vars = dict(env_vars)
                 all_vars.update(env)
-                experiment = ExperimentConfig(experiment, **all_vars)
-                trainer: TrainerABC = experiment[trainer_config_name]
-                reporter: ReporterABC = experiment[reporter_config_name]
+                experiment_config = ExperimentConfig(experiment, **all_vars)
+                trainer: TrainerABC = experiment_config[trainer_config_name]
+                reporter: ReporterABC = experiment_config[reporter_config_name]
                 trainer.train()
-                ExperimentRunner._write_config(exp_name, env, exp_report_path)
-                reporter.report(experiment, exp_report_path)
+                exp_json = ExperimentConfig.load_experiment_json(experiment)
+                ExperimentRunner._write_config(exp_name, exp_json, all_vars, exp_report_path)
+                reporter.report(exp_name, experiment_config, exp_report_path)
             finally:
                 ExperimentRunner._stop_log_capture(log_handler)

@@ -1,0 +1,13 @@
+{
+  "the_trainer": {
+    "_name": "MockTrainer",
+    "env_param": "$ENV_PARAM",
+    "bool_param": "$bparam",
+    "int_param": "$iparam",
+    "float_param": "$fparam",
+    "str_param": "$sparam"
+  },
+  "the_reporter": {
+    "_name": "MockReporter"
+  }
+}
