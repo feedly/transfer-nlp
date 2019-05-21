@@ -9,12 +9,13 @@
     }
   },
   "model": {
-    "_name": "bert_model"
+    "_name": "bert_model",
+    "pretrained_model_name_or_path": "bert-base-uncased",
+    "num_labels": 4
   },
   "optimizer": {
     "_name": "BertAdam",
     "lr": 0.01,
-    "alpha": 0.99,
     "params": {
       "_name": "TrainableParameters",
       "model": "$model"
