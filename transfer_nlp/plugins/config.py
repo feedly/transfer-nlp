@@ -179,6 +179,15 @@ def _replace_env_variables(dico: Dict, env: Dict) -> None:
 
 class ExperimentConfig:
 
+    @staticmethod
+    def load_experiment_json(experiment: Union[str, Path, Dict]) -> Dict:
+        if isinstance(experiment, dict):
+            config = dict(experiment)
+        else:
+            with open(experiment) as f:
+                config = json.load(f)
+        return config
+
     def __init__(self, experiment: Union[str, Path, Dict], **env):
         """
         :param experiment: the experiment config
@@ -188,11 +197,7 @@ class ExperimentConfig:
         self.factories: Dict[str, ConfigFactoryABC] = {}
         self.experiment: Dict[str, Any] = {}
 
-        if isinstance(experiment, dict):
-            config = dict(experiment)
-        else:
-            config = json.load(open(experiment))
-
+        config = ExperimentConfig.load_experiment_json(experiment)
         _replace_env_variables(dico=config, env=env)
 
         # extract simple parameters
