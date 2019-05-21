@@ -19,6 +19,11 @@ class DemoWithStr:
 
 
 @register_plugin
+def demo_method_with_str(str_val: str):
+    return DemoWithStr(strval=str_val)
+
+
+@register_plugin
 class DemoWithInt:
 
     def __init__(self, intval: str):
@@ -593,3 +598,25 @@ class RegistryTest(unittest.TestCase):
         copy = e.factories['demo.children.child1'].create()
         self.assertIsInstance(copy, DemoWithInt)
         self.assertEqual(copy.intval, 2)
+
+    def test_method_config(self):
+        experiment = {
+            'demo': {
+                '_name': 'DemoWithStr',
+                'strval': "foo",
+                },
+            "object_from_method": {
+                "_name": "demo_method_with_str",
+                "str_val": 5
+            }
+            }
+
+        # Test that the initialization is correct
+        e = ExperimentConfig(experiment)
+        self.assertIsInstance(e['object_from_method'], DemoWithStr)
+        self.assertEqual(e['object_from_method'].strval, 5)
+
+        # Test that we can reconfigur ethe object from the factory
+        object_from_method = e.factories['object_from_method'].create()
+        self.assertIsInstance(object_from_method, DemoWithStr)
+        self.assertEqual(object_from_method.strval, 5)
