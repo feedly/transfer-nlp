@@ -24,7 +24,7 @@ class MyReporter(ReporterABC):
 
 
 if __name__ == "__main__":
-
+    logging.basicConfig(level=logging.INFO)
     dir = Path(__file__).parent
     home_env = str(Path.home() / 'work/transfer-nlp-data')
     ExperimentRunner.run_all(experiment=dir / 'mlp_parameter_tuning.json',
