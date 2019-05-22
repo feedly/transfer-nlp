@@ -1,3 +1,5 @@
+import logging
+from pathlib import Path
 from typing import Tuple
 
 import numpy as np
@@ -8,7 +10,7 @@ from tqdm import tqdm
 from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset
 from transfer_nlp.loaders.vectorizers import Vectorizer
 from transfer_nlp.loaders.vocabulary import Vocabulary
-from transfer_nlp.plugins.config import register_plugin
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig
 
 tqdm.pandas()
 
@@ -51,3 +53,10 @@ def bert_model(pretrained_model_name_or_path: str = 'bert-base-uncased', num_lab
 
 
 register_plugin(BertAdam)
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    home_env = str(Path.home() / 'work/transfer-nlp-data')
+    path = './bert.json'
+    experiment = ExperimentConfig(path, HOME=home_env)
+    experiment.experiment['trainer'].train()
