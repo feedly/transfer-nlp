@@ -10,6 +10,7 @@ import logging
 from abc import ABC, abstractmethod
 from itertools import zip_longest
 from typing import Dict, List, Any
+from collections import defaultdict
 
 import numpy as np
 import torch
@@ -144,6 +145,10 @@ class BasicTrainer(TrainerABC):
                 logging.warning('multiple loss metrics detected, using %s for LR scheduling', loss_metrics[0])
             self.loss_metric = loss_metrics[0]
 
+        self.metrics_history = {"training": defaultdict(list),
+                                "validation": defaultdict(list),
+                                "test": defaultdict(list)}
+
         self.setup(self.training_metrics)
 
     def setup(self, training_metrics):
@@ -163,6 +168,11 @@ class BasicTrainer(TrainerABC):
                 else:
                     rv += f'{metric_name(k)}: {metrics[k]:.6}'
             return rv
+
+        def store_metrics(metrics: Dict, mode: str):
+            metric_keys = sorted(k for k in metrics)
+            for k in metric_keys:
+                self.metrics_history[mode][metric_name(k)].append(metrics[k])
 
         if self.seed:
             set_seed_everywhere(self.seed, self.cuda)
@@ -185,9 +195,16 @@ class BasicTrainer(TrainerABC):
         # Ignite provides the necessary abstractions and a furnished repository of useful tools
 
         @self.trainer.on(Events.EPOCH_COMPLETED)
-        def log_validation_results(trainer):
+        def log_training_validation_results(trainer):
+
+            self.evaluator.run(self.dataset_splits.train_data_loader())
+            metrics = self.evaluator.state.metrics
+            store_metrics(metrics=metrics, mode="training")
+            logger.info(f"Training Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
+
             self.evaluator.run(self.dataset_splits.val_data_loader())
             metrics = self.evaluator.state.metrics
+            store_metrics(metrics=metrics, mode="validation")
             logger.info(f"Validation Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
             if self.scheduler:
@@ -197,6 +214,7 @@ class BasicTrainer(TrainerABC):
         def log_test_results(trainer):
             self.evaluator.run(self.dataset_splits.test_data_loader())
             metrics = self.evaluator.state.metrics
+            store_metrics(metrics=metrics, mode="test")
             logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
         if self.tensorboard_logs:
