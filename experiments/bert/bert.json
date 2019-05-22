@@ -52,6 +52,7 @@
         }
       }
     },
-    "finetune": true
+    "finetune": true,
+    "tensorboard_logs": "$HOME/news/tensorboard/bert"
   }
 }
