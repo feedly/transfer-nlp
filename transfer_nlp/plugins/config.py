@@ -250,9 +250,14 @@ class ExperimentConfig:
         if inspect.isclass(clazz):
             spec = inspect.getfullargspec(clazz.__init__)
             spec_args = spec.args[1:]
-        else:
+        elif inspect.isfunction(clazz):
             spec = inspect.getfullargspec(clazz)
             spec_args = spec.args
+        elif inspect.ismethod(clazz):
+            spec = inspect.getfullargspec(clazz)
+            spec_args = spec.args[1:]
+        else:
+            raise ValueError(f"{class_name} should be either a class, a function or a method")
 
         params = {}
         param2config_key = {}
