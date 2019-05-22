@@ -127,6 +127,7 @@ class DefaultParamsMode(Enum):
     NOT_IN_EXPERIMENT = 1,
     USE_DEFAULTS = 2
 
+
 def _replace_env_variables(dico: Dict, env: Dict) -> None:
     """
     Replace all occurrences of environment variable to particular strings
@@ -246,17 +247,28 @@ class ExperimentConfig:
         if not clazz:
             raise UnknownPluginException(object_dict["_name"])
 
-        spec = inspect.getfullargspec(clazz.__init__)
+        if inspect.isclass(clazz):
+            spec = inspect.getfullargspec(clazz.__init__)
+            spec_args = spec.args[1:]
+        elif inspect.isfunction(clazz):
+            spec = inspect.getfullargspec(clazz)
+            spec_args = spec.args
+        elif inspect.ismethod(clazz):
+            spec = inspect.getfullargspec(clazz)
+            spec_args = spec.args[1:]
+        else:
+            raise ValueError(f"{class_name} should be either a class, a function or a method")
+
         params = {}
         param2config_key = {}
         named_params = {p: pv for p, pv in object_dict.items() if p != '_name'}
         default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
 
         for named_param in named_params:
-            if named_param not in spec.args[1:]:
+            if named_param not in spec_args:
                 raise BadParameter(clazz=class_name, param=named_param)
 
-        for arg in spec.args[1:]:
+        for arg in spec_args:
 
             if arg == 'experiment_config':
                 params[arg] = self
@@ -326,12 +338,12 @@ class ExperimentConfig:
                 params[arg] = default_params[arg]
                 param2config_key[arg] = None
 
-        if len(params) == len(spec.args) - 1:
+        if len(params) == len(spec_args):
             self.factories[parent_level] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
             return clazz(**params)
 
         else:
-            unconfigured_params = spec.args[1:] - params.keys()
+            unconfigured_params = spec_args - params.keys()
             raise UnconfiguredItemsException({parent_level: unconfigured_params})
 
     def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):

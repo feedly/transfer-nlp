@@ -1,41 +1,41 @@
 {
-  "my_dataset_splits": {
-    "_name": "BertDataset",
+  "bert_version": "bert-base-uncased",
+  "data_loader": {
+    "_name": "BertDataloader",
     "data_file": "$HOME/ag_news/news_with_splits.csv",
     "batch_size": 128,
+    "max_sequence": 50,
     "vectorizer": {
       "_name": "BertVectorizer",
-      "data_file": "$HOME/ag_news/news_with_splits.csv"
+      "data_file": "$HOME/ag_news/news_with_splits.csv",
+      "bert_version": "$bert_version"
     }
   },
   "model": {
-    "_name": "bert_model"
+    "_name": "bert_model",
+    "pretrained_model_name_or_path": "$bert_version",
+    "num_labels": 4
   },
   "optimizer": {
     "_name": "BertAdam",
     "lr": 0.01,
-    "alpha": 0.99,
     "params": {
       "_name": "TrainableParameters",
       "model": "$model"
     }
   },
-  "scheduler": {
-    "_name": "ReduceLROnPlateau",
-    "patience": 1,
-    "mode": "min",
-    "factor": 0.5
-  },
   "trainer": {
     "_name": "BasicTrainer",
     "model": "$model",
-    "dataset_splits": "$my_dataset_splits",
+    "dataset_splits": "$data_loader",
     "loss": {
       "_name": "CrossEntropyLoss"
     },
     "optimizer": "$optimizer",
-    "scheduler": "$scheduler",
-    "gradient_clipping": 0.25,
+    "scheduler": {
+      "_name": "ReduceLROnPlateau",
+      "optimizer": "$optimizer"
+    },
     "num_epochs": 5,
     "seed": 1337,
     "regularizer": {
