@@ -247,12 +247,17 @@ class ExperimentConfig:
         if not clazz:
             raise UnknownPluginException(object_dict["_name"])
 
-        spec = inspect.getfullargspec(clazz)
+        if inspect.isclass(clazz):
+            spec = inspect.getfullargspec(clazz.__init__)
+            spec_args = spec.args[1:]
+        else:
+            spec = inspect.getfullargspec(clazz)
+            spec_args = spec.args
+
         params = {}
         param2config_key = {}
         named_params = {p: pv for p, pv in object_dict.items() if p != '_name'}
         default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
-        spec_args = spec.args[1:] if 'self' in spec.args else spec.args
 
         for named_param in named_params:
             if named_param not in spec_args:
