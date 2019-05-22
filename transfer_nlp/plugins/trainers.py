@@ -92,6 +92,7 @@ class BasicTrainer(TrainerABC):
                  gradient_clipping: float = 1.0,
                  output_transform=None,
                  tensorboard_logs: str = None,
+                 optional_tensorboard_features: bool=False,
                  embeddings_name: str = None,
                  finetune: bool = False):
 
@@ -121,9 +122,10 @@ class BasicTrainer(TrainerABC):
         self.regularizer: RegularizerABC = regularizer
         self.gradient_clipping: float = gradient_clipping
         self.output_transform = output_transform
-        self.tensorboard_logs = tensorboard_logs
+        self.tensorboard_logs: str = tensorboard_logs
         if self.tensorboard_logs:
             self.writer = SummaryWriter(log_dir=self.tensorboard_logs)
+        self.optional_tensorboard_features: bool = optional_tensorboard_features
         self.embeddings_name = embeddings_name
 
         if self.output_transform:
@@ -151,7 +153,7 @@ class BasicTrainer(TrainerABC):
 
         self.setup(self.training_metrics)
 
-    def setup(self, training_metrics):
+    def setup(self, training_metrics: Dict):
         def metric_name(n) -> str:
             if n.endswith('Accuracy'):
                 n = 'acc'
@@ -228,18 +230,20 @@ class BasicTrainer(TrainerABC):
                                                        metric_names=["LossMetric"],
                                                        another_engine=self.trainer),
                              event_name=Events.EPOCH_COMPLETED)
-            tb_logger.attach(self.trainer,
-                             log_handler=OptimizerParamsHandler(self.optimizer),
-                             event_name=Events.ITERATION_STARTED)
-            tb_logger.attach(self.trainer,
-                             log_handler=WeightsScalarHandler(self.model),
-                             event_name=Events.ITERATION_COMPLETED)
-            tb_logger.attach(self.trainer,
-                             log_handler=WeightsHistHandler(self.model),
-                             event_name=Events.EPOCH_COMPLETED)
-            tb_logger.attach(self.trainer,
-                             log_handler=GradsScalarHandler(self.model),
-                             event_name=Events.ITERATION_COMPLETED)
+
+            if self.optional_tensorboard_features:
+                tb_logger.attach(self.trainer,
+                                 log_handler=OptimizerParamsHandler(self.optimizer),
+                                 event_name=Events.ITERATION_STARTED)
+                tb_logger.attach(self.trainer,
+                                 log_handler=WeightsScalarHandler(self.model),
+                                 event_name=Events.ITERATION_COMPLETED)
+                tb_logger.attach(self.trainer,
+                                 log_handler=WeightsHistHandler(self.model),
+                                 event_name=Events.EPOCH_COMPLETED)
+                tb_logger.attach(self.trainer,
+                                 log_handler=GradsScalarHandler(self.model),
+                                 event_name=Events.ITERATION_COMPLETED)
 
             # This is important to close the tensorboard file logger
             @self.trainer.on(Events.COMPLETED)
