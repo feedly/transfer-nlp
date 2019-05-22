@@ -8,6 +8,8 @@ Welcome to the Transfer NLP library, a framework built on top of PyTorch whose g
 You can have an overview of the high-level API on this [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=Xzu3HPdGrnza), which shows how to use the framework on several examples.
 All examples on these notebooks embed in-cell Tensorboard training monitoring!
 
+For an example of pre-trained model finetuning, we provide a short executable tutorial on BertClassifier finetuning on this [Colab Notebook](https://colab.research.google.com/drive/10Toyi0V4fp0Sn33RSPCkoPrtf5FVpm3q#scrollTo=PXJFfulWkEl6)
+
 # Set up your environment
 
 ```
