@@ -26,7 +26,7 @@ setup(
         'requests==2.21.0',
         'torch==1.0.1.post2',
         'ipython==6.2.1',
-        'feedly-client==0.19',
+        'feedly-client==0.20',
         'bs4==0.0.1',
         'tensorboardX==1.6',
         'knockknock==0.1',
