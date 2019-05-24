@@ -665,7 +665,8 @@ class RegistryTest(unittest.TestCase):
                         "k3": ['second', '$second']},
                     {
                         "k1": 1,
-                        "k2": 2}
+                        "k2": 2},
+                    [1, 2, 3]
                 ]
             }
         }
@@ -712,3 +713,4 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(a, DemoWithInt)
         a = e.factories['pipeline_list_of_dict_objects.steps.2.k3.1'].create()
         self.assertIsInstance(a, DemoWithInt)
+        self.assertEqual(e['pipeline_list_of_dict_objects'].steps[4], [1, 2, 3])
