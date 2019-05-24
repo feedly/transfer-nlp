@@ -13,8 +13,9 @@ import numpy as np
 import pandas as pd
 import urllib3
 from bs4 import BeautifulSoup
-from feedly.data import StreamOptions, Entry
-from feedly.session import FeedlySession
+from feedly.api_client.stream import StreamOptions
+from feedly.api_client.data import Entry
+from feedly.api_client.session import FeedlySession
 
 urllib3.disable_warnings()
 
