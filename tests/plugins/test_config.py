@@ -97,6 +97,12 @@ class DemoWithDict:
         self.simple_int = simple_int
 
 
+@register_plugin
+class Pipeline:
+
+    def __init__(self, steps: List):
+        self.steps = steps
+
 
 class RegistryTest(unittest.TestCase):
 
@@ -616,7 +622,54 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(e['object_from_method'], DemoWithStr)
         self.assertEqual(e['object_from_method'].strval, 5)
 
-        # Test that we can reconfigur ethe object from the factory
+        # Test that we can reconfigure the object from the factory
         object_from_method = e.factories['object_from_method'].create()
         self.assertIsInstance(object_from_method, DemoWithStr)
         self.assertEqual(object_from_method.strval, 5)
+
+    def test_nested_lists(self):
+
+        experiment = {
+            'pipeline': {
+                '_name': 'Pipeline',
+                'steps': [
+                    [['first', '$first'], '$first'],
+                    ['second', '$second'],
+                ]
+            },
+            'first': {
+                '_name': 'DemoWithInt',
+                "intval": 2
+            },
+            'second': {
+                '_name': 'DemoWithInt',
+                "intval": 1
+            }
+        }
+        e = ExperimentConfig(experiment)
+
+        self.assertEqual(e['pipeline'].steps[0][0][0], 'first')
+        self.assertIsInstance(e['pipeline'].steps[0][0][1], DemoWithInt)
+        self.assertIsInstance(e['pipeline'].steps[0][1], DemoWithInt)
+        self.assertIsInstance(e['pipeline'].steps[1][1], DemoWithInt)
+        self.assertEqual(e['pipeline'].steps[1][0], 'second')
+
+        # # Test tha factory creation works as expected
+        a = e.factories['pipeline.steps.0.0.1'].create()
+        self.assertIsInstance(a, DemoWithInt)
+        a = e.factories['pipeline.steps.0.1'].create()
+        self.assertIsInstance(a, DemoWithInt)
+        a = e.factories['pipeline.steps.1.1'].create()
+        self.assertIsInstance(a, DemoWithInt)
+
+        a = e.factories['pipeline.steps.1'].create()
+        self.assertIsInstance(a, list)
+        self.assertIsInstance(a[1], DemoWithInt)
+        self.assertEqual(a[0], 'second')
+
+        a = e.factories['pipeline.steps'].create()
+        self.assertIsInstance(a, list)
+        self.assertIsInstance(a[1], list)
+        self.assertIsInstance(a[0], list)
+        self.assertIsInstance(a[1][1], DemoWithInt)
+        self.assertIsInstance(a[0][0][1], DemoWithInt)

@@ -10,7 +10,7 @@ import os
 from abc import abstractmethod, ABC
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Union, Any, Optional, AbstractSet, Set
+from typing import Dict, Union, Any, Optional, AbstractSet, Set, List
 
 import ignite.metrics as metrics
 import torch.nn as nn
@@ -74,6 +74,7 @@ class UnknownPluginException(Exception):
     def __init__(self, clazz: str):
         super().__init__(f'Class {clazz} is not registered. See transfer_nlp.config.register_plugin for more information.')
         self.clazz: str = clazz
+
 
 class UnconfiguredItemsException(Exception):
     def __init__(self, items: Dict[str, Set]):
@@ -222,7 +223,8 @@ class ExperimentConfig:
 
         self._build_items(config)
 
-    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: DefaultParamsMode, unconfigured_keys: AbstractSet, parent_level: str):
+    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: DefaultParamsMode, unconfigured_keys: AbstractSet,
+                            parent_level: str):
 
         def resolve_simple_value(factory_key: str, val: Any) -> Any:
             if isinstance(val, str):
@@ -235,6 +237,31 @@ class ExperimentConfig:
                         raise UnconfiguredItemsException({factory_key: {val}})
 
             return val
+
+        def do_recursive_build_list(list_object: List, arg_name: str) -> List:
+            """
+            Function to recursively deal with nested lists
+            :param list_object:
+            :param arg_name:
+            :return:
+            """
+            copy = []
+            for i, element in enumerate(list_object):
+                if isinstance(element, dict):
+                    element = self._do_recursive_build(object_key=str(i), object_dict=element,
+                                                       default_params_mode=default_params_mode,
+                                                       unconfigured_keys=unconfigured_keys,
+                                                       parent_level=f'{parent_level}.{arg_name}.{i}')
+                elif isinstance(element, list):
+                    element = do_recursive_build_list(list_object=element, arg_name=f"{arg_name}.{i}")
+
+                else:
+                    element = resolve_simple_value(f'{parent_level}.{arg_name}.{i}', element)
+                copy.append(element)
+
+            result = copy
+            self.factories[f'{parent_level}.{arg_name}'] = PluginFactory(list, None, list(copy))
+            return result
 
         logger.info(f"Configuring {object_key}")
 
@@ -295,18 +322,7 @@ class ExperimentConfig:
                         self.factories[f'{parent_level}.{arg}'] = PluginFactory(dict, None, list(value.items()))
 
                 elif isinstance(value, list):
-                    copy = []
-                    for i, item in enumerate(value):
-                        if isinstance(item, dict):
-                            item = self._do_recursive_build(object_key=str(i), object_dict=item,
-                                                                   default_params_mode=default_params_mode,
-                                                                   unconfigured_keys=unconfigured_keys,
-                                                                   parent_level=f'{parent_level}.{arg}.{i}')
-                        else:  # value[item] is either an object defined in a dictionary, or it's an already built object
-                            item = resolve_simple_value(f'{parent_level}.{arg}.{i}', value[i])
-                        copy.append(item)
-                    value = copy
-                    self.factories[f'{parent_level}.{arg}'] = PluginFactory(list, None, list(copy))
+                    value = do_recursive_build_list(list_object=value, arg_name=arg)
 
                 elif isinstance(value, str) and value[0] == '$':
 
@@ -364,8 +380,6 @@ class ExperimentConfig:
                     raise BadParameter(clazz=b.clazz, param=b.param)
                 except UnconfiguredItemsException as e:
                     config_errors.update(e.items)
-
-
             if configured:
                 for k in configured:
                     del config[k]
