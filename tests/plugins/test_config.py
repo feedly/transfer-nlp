@@ -11,6 +11,7 @@ class DemoWithVal:
     def __init__(self, val: Any):
         self.val = val
 
+
 @register_plugin
 class DemoWithStr:
 
@@ -29,6 +30,7 @@ class DemoWithInt:
     def __init__(self, intval: str):
         self.intval = intval
 
+
 @register_plugin
 class DemoDefaults:
 
@@ -41,7 +43,7 @@ class DemoDefaults:
 @register_plugin
 class DemoComplexDefaults:
 
-    def __init__(self, strval: str, obj: DemoDefaults = None): # use different param and property names as additonal check
+    def __init__(self, strval: str, obj: DemoDefaults = None):  # use different param and property names as additonal check
         self.simple = strval
         self.complex = obj
 
@@ -84,11 +86,13 @@ class DemoC:
         self.demob = demob
         self.attrc = attrc
 
+
 @register_plugin
 class DemoWithList:
     def __init__(self, children: List[Any], simple_int: int = 3):
         self.children = children
         self.simple_int = simple_int
+
 
 @register_plugin
 class DemoWithDict:
@@ -450,7 +454,6 @@ class RegistryTest(unittest.TestCase):
             self.assertEqual(len(e.items), 1)
             self.assertEqual({'$demo3'}, e.items['demo.children.0'])
 
-
     def test_additional_params(self):
 
         experiment = {
@@ -467,7 +470,6 @@ class RegistryTest(unittest.TestCase):
         except BadParameter as b:
             self.assertEqual(b.param, 'bad_param')
             self.assertEqual(b.clazz, 'DemoWithInt')
-
 
     def test_bad_plugin(self):
 
@@ -514,7 +516,6 @@ class RegistryTest(unittest.TestCase):
         except UnknownPluginException as e:
             self.assertEqual(e.clazz, 'NoConfig')
 
-
     def test_recursive_list(self):
         experiment = {
             'demo': {
@@ -522,8 +523,8 @@ class RegistryTest(unittest.TestCase):
                 'simple_int': 22,
                 'children': [
                     {
-                    '_name': 'DemoWithStr',
-                    'strval': 'foo'
+                        '_name': 'DemoWithStr',
+                        'strval': 'foo'
                     },
                     '$demo3']
             },
@@ -566,8 +567,8 @@ class RegistryTest(unittest.TestCase):
                 'simple_int': 22,
                 'children': {
                     'child0': {
-                    '_name': 'DemoWithStr',
-                    'strval': 'foo'
+                        '_name': 'DemoWithStr',
+                        'strval': 'foo'
                     },
                     'child1': "$demo3"
                 }
@@ -610,12 +611,12 @@ class RegistryTest(unittest.TestCase):
             'demo': {
                 '_name': 'DemoWithStr',
                 'strval': "foo",
-                },
+            },
             "object_from_method": {
                 "_name": "demo_method_with_str",
                 "str_val": 5
             }
-            }
+        }
 
         # Test that the initialization is correct
         e = ExperimentConfig(experiment)
@@ -627,7 +628,7 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(object_from_method, DemoWithStr)
         self.assertEqual(object_from_method.strval, 5)
 
-    def test_nested_lists(self):
+    def test_nested_lists_dicts(self):
 
         experiment = {
             'pipeline': {
@@ -644,6 +645,28 @@ class RegistryTest(unittest.TestCase):
             'second': {
                 '_name': 'DemoWithInt',
                 "intval": 1
+            },
+            'pipeline_list_of_dict_objects': {
+                "_name": "Pipeline",
+                "steps": [{
+                    '_name': 'DemoWithInt',
+                    "intval": 10
+                },
+                    {
+                        '_name': 'DemoWithInt',
+                        "intval": 20
+                    },
+                    {
+                        "k1": "v1",
+                        "k2": {
+                            "_name": "DemoWithInt",
+                            "intval": 0
+                        },
+                        "k3": ['second', '$second']},
+                    {
+                        "k1": 1,
+                        "k2": 2}
+                ]
             }
         }
         e = ExperimentConfig(experiment)
@@ -673,3 +696,19 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(a[0], list)
         self.assertIsInstance(a[1][1], DemoWithInt)
         self.assertIsInstance(a[0][0][1], DemoWithInt)
+
+        self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[0], DemoWithInt)
+        self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[1], DemoWithInt)
+        self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[2]['k2'], DemoWithInt)
+        self.assertEqual(e['pipeline_list_of_dict_objects'].steps[3], {
+            "k1": 1,
+            "k2": 2})
+
+        a = e.factories['pipeline_list_of_dict_objects.steps'].create()
+        self.assertIsInstance(a, list)
+        a = e.factories['pipeline_list_of_dict_objects.steps.0'].create()
+        self.assertIsInstance(a, DemoWithInt)
+        a = e.factories['pipeline_list_of_dict_objects.steps.2.k2'].create()
+        self.assertIsInstance(a, DemoWithInt)
+        a = e.factories['pipeline_list_of_dict_objects.steps.2.k3.1'].create()
+        self.assertIsInstance(a, DemoWithInt)

@@ -248,10 +248,25 @@ class ExperimentConfig:
             copy = []
             for i, element in enumerate(list_object):
                 if isinstance(element, dict):
-                    element = self._do_recursive_build(object_key=str(i), object_dict=element,
-                                                       default_params_mode=default_params_mode,
-                                                       unconfigured_keys=unconfigured_keys,
-                                                       parent_level=f'{parent_level}.{arg_name}.{i}')
+                    if "_name" in element:
+                        element = self._do_recursive_build(object_key=str(i), object_dict=element,
+                                                           default_params_mode=default_params_mode,
+                                                           unconfigured_keys=unconfigured_keys,
+                                                           parent_level=f'{parent_level}.{arg_name}.{i}')
+                    else:
+                        for key in element:
+                            if isinstance(element[key], dict):
+                                element[key] = self._do_recursive_build(object_key=key, object_dict=element[key],
+                                                                       default_params_mode=default_params_mode,
+                                                                       unconfigured_keys=unconfigured_keys,
+                                                                       parent_level=f'{parent_level}.{arg}.{i}.{key}')
+
+                            elif isinstance(element[key], list):
+                                element[key] = do_recursive_build_list(list_object=element[key], arg_name=f"{arg_name}.{i}.{key}")
+                            else:
+                                element[key] = resolve_simple_value(f'{parent_level}.{arg}.{key}', element[key])
+                        self.factories[f'{parent_level}.{arg}'] = PluginFactory(dict, None, list(element.items()))
+
                 elif isinstance(element, list):
                     element = do_recursive_build_list(list_object=element, arg_name=f"{arg_name}.{i}")
 
