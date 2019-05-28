@@ -1,4 +1,4 @@
-<img src="data/images/TransferNLP_Logo.jpg " width="1000">
+<img src="https://github.com/feedly/transfer-nlp/blob/v0.1/data/images/TransferNLP_Logo.jpg" width="1000">
 
 Welcome to the Transfer NLP library, a framework built on top of PyTorch whose goal is to progressively achieve 2 kinds of Transfer:
 
@@ -83,7 +83,7 @@ A very common object to use is trainer, which you will run during your experimen
 This basic trainer will take a model and some data as input, and run a whole training pipeline. We make use of the [PyTorch-Ignite](https://github.com/pytorch/ignite) library to monitor events during training (logging some metrics, manipulating learning rates, checkpointing models, etc...). Tensorboard logs are also included as an option, you will have to specify a `tensorboard_logs` simple parameters path in the config file. Then just run `tensorboard --logdir=path/to/logs` in a terminal and you can monitor your experiment while it's training!
 Tensorboard comes with very nice utilities to keep track of the norms of your model weights, histograms, distributions, visualizing embeddings, etc so we really recommend using it.
 
-<img src="data/images/tensorboard.png " width="1000">
+<img src="https://github.com/feedly/transfer-nlp/blob/v0.1/data/images/tensorboard.png" width="1000">
 
 # Slack integration
 While experimenting with your own models / data, the training might take some time. To get notified when your training finishes or crashes, you can use the simple library [knockknock](https://github.com/huggingface/knockknock) by folks at HuggingFace, which add a simple decorator to your running function to notify you via Slack, E-mail, etc.
