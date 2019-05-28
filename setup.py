@@ -1,9 +1,10 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from io import open
 
 setup(
     name='transfer_nlp',
-    packages=['transfer_nlp'],
+    packages=find_packages(exclude=["*.tests", "*.tests.*",
+                                    "tests.*", "tests"]),
     version='0.1.1',
     license='MIT',
     description='NLP library designed for flexible research and development',
