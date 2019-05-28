@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 from io import open
 
 setup(
@@ -8,7 +8,7 @@ setup(
     license='MIT',
     description='NLP library designed for flexible research and development',
     long_description=open("README.md", "r", encoding='utf-8').read(),
-    long_description_content_type="text/markdown",
+    long_description_content_type='text/markdown',
     author='Peter Martigny',
     author_email='peter.martigny@gmail.com',
     url='https://github.com/feedly/transfer-nlp',
