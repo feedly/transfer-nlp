@@ -12,7 +12,7 @@ setup(
     author='Peter Martigny',
     author_email='peter.martigny@gmail.com',
     url='https://github.com/feedly/transfer-nlp',
-    download_url='https://github.com/feedly/transfer-nlp/archive/V0.0.2.zip',
+    download_url='https://github.com/feedly/transfer-nlp/archive/v0.1.tar.gz',
     keywords=['NLP', 'transfer learning', 'language models', 'NLU'],
     install_requires=[
         'tqdm==4.31.1',
