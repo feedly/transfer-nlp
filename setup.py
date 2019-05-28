@@ -4,7 +4,7 @@ from io import open
 setup(
     name='transfer_nlp',
     packages=['transfer_nlp'],
-    version='0.0.2',
+    version='0.1',
     license='MIT',
     description='NLP library designed for flexible research and development',
     long_description=open("README.md", "r", encoding='utf-8').read(),
