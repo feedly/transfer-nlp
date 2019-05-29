@@ -5,7 +5,7 @@ setup(
     name='transfer_nlp',
     packages=find_packages(exclude=["*.tests", "*.tests.*",
                                     "tests.*", "tests"]),
-    version='0.1.1',
+    version='0.1.2',
     license='MIT',
     description='NLP library designed for flexible research and development',
     long_description=open("README.md", "r", encoding='utf-8').read(),
@@ -13,7 +13,7 @@ setup(
     author='Peter Martigny',
     author_email='peter.martigny@gmail.com',
     url='https://github.com/feedly/transfer-nlp',
-    download_url='https://github.com/feedly/transfer-nlp/archive/v0.1.1.tar.gz',
+    download_url='https://github.com/feedly/transfer-nlp/archive/v0.1.2.tar.gz',
     keywords=['NLP', 'transfer learning', 'language models', 'NLU'],
     install_requires=[
         'tqdm==4.31.1',
@@ -34,6 +34,7 @@ setup(
         'pytorch-ignite==0.2.0',
         'smart_open==1.8.1'
     ],
+    setup_requires=['green'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
