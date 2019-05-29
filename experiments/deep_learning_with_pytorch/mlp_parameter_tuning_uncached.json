@@ -1,0 +1,50 @@
+{
+  "model": {
+    "_name": "MultiLayerPerceptron",
+    "hidden_dim": "$hidden_dim",
+    "data": "$my_dataset_splits"
+  },
+  "optimizer": {
+    "_name": "Adam",
+    "lr": "$lr",
+    "params": {
+      "_name": "TrainableParameters"
+    }
+  },
+  "scheduler": {
+    "_name": "ReduceLROnPlateau",
+    "patience": 1,
+    "mode": "min",
+    "factor": 0.5
+  },
+  "trainer": {
+    "_name": "BasicTrainer",
+    "model": "$model",
+    "dataset_splits": "$my_dataset_splits",
+    "loss": {
+      "_name": "CrossEntropyLoss"
+    },
+    "optimizer": "$optimizer",
+    "gradient_clipping": 0.25,
+    "num_epochs": 5,
+    "seed": 1337,
+    "regularizer": {
+      "_name": "L1"
+    },
+    "tensorboard_logs": "$HOME/surnames/tensorboard/mlp",
+    "metrics": {
+      "accuracy": {
+        "_name": "Accuracy"
+      },
+      "loss": {
+        "_name": "LossMetric",
+        "loss_fn": {
+          "_name": "CrossEntropyLoss"
+        }
+      }
+    }
+  },
+  "reporter": {
+    "_name": "MyReporter"
+  }
+}
