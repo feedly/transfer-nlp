@@ -9,7 +9,7 @@ requests>=2.21.0
 ipython==6.2.1
 bs4>=0.0.1
 knockknock>=0.1
-smart_open=1.8.1
+smart_open>=1.8.1
 pytorch-ignite>=0.2.0
 tensorboardX==1.6
 feedly-client>=0.20
