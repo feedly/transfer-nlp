@@ -2,6 +2,7 @@ import configparser
 import json
 import logging
 from collections import OrderedDict
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any, Union
 
@@ -11,9 +12,9 @@ from transfer_nlp.plugins.trainers import TrainerABC
 
 ConfigEnv = Dict[str, Any]
 
-def load_config(p: Path) -> Dict[str, ConfigEnv]:
 
-    def get_val(cfg:configparser.ConfigParser, section: str, key):
+def load_config(p: Path) -> Dict[str, ConfigEnv]:
+    def get_val(cfg: configparser.ConfigParser, section: str, key):
         try:
             return cfg.getint(section, key)
         except ValueError:
@@ -43,6 +44,7 @@ def load_config(p: Path) -> Dict[str, ConfigEnv]:
 
     return rv
 
+
 class ExperimentRunner:
     """
     Run an experiment several times with varying configurations.
@@ -51,7 +53,7 @@ class ExperimentRunner:
     """
 
     @staticmethod
-    def _capture_logs(report_path:Path):
+    def _capture_logs(report_path: Path):
         logger = logging.getLogger('')
         handler = logging.FileHandler(str(report_path / 'runner.log'))
         fmt = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')  # TODO configurable?
@@ -65,7 +67,7 @@ class ExperimentRunner:
         logger.removeHandler(handler)
 
     @staticmethod
-    def _write_config(cfg_name: str, experiment:Dict, cfg:ConfigEnv, exp_report_path:Path):
+    def _write_config(cfg_name: str, experiment: Dict, cfg: ConfigEnv, exp_report_path: Path, experiment_cache: Dict = None):
         """duplicate the config used to run the experiment in the report directory to preserve history"""
         config = configparser.ConfigParser({}, OrderedDict)
         config.optionxform = str
@@ -79,12 +81,17 @@ class ExperimentRunner:
         with (exp_report_path / 'experiment.json').open('w') as expfile:
             json.dump(experiment, expfile, indent=4)
 
+        if experiment_cache:
+            with (exp_report_path / 'experiment_cache.json').open('w') as expfile:
+                json.dump(experiment_cache, expfile, indent=4)
+
     @staticmethod
     def run_all(experiment: Union[str, Path, Dict],
                 experiment_config: Union[str, Path],
                 report_dir: Union[str, Path],
                 trainer_config_name: str = 'trainer',
                 reporter_config_name: str = 'reporter',
+                experiment_cache: Union[str, Path, Dict] = None,
                 **env_vars) -> None:
         """
         :param experiment: the experiment config
@@ -104,6 +111,12 @@ class ExperimentRunner:
         report_path = Path(report_dir)
         report_path.mkdir(parents=True)
 
+        experiment_config_cache = {}
+        if experiment_cache:
+            logging.info("#" * 5 + f"Building a set of read-only objects and cache them for use in different experiment settings" + "#" * 5)
+            experiment_config_cache = ExperimentConfig(experiment_cache, **env_vars)
+            logging.info("#" * 5 + f"Read-only objects are built and cached for use in different experiment settings" + "#" * 5)
+
         for exp_name, env in envs.items():
             exp_report_path = report_path / exp_name
             exp_report_path.mkdir()
@@ -112,12 +125,19 @@ class ExperimentRunner:
                 logging.info('running %s', exp_name)
                 all_vars = dict(env_vars)
                 all_vars.update(env)
-                experiment_config = ExperimentConfig(experiment, **all_vars)
+
+                exp = deepcopy(experiment)
+                if experiment_cache:
+                    exp = ExperimentConfig.load_experiment_json(exp)
+                    exp.update(experiment_config_cache)
+
+                experiment_config = ExperimentConfig(exp, **all_vars)
                 trainer: TrainerABC = experiment_config[trainer_config_name]
                 reporter: ReporterABC = experiment_config[reporter_config_name]
                 trainer.train()
                 exp_json = ExperimentConfig.load_experiment_json(experiment)
-                ExperimentRunner._write_config(exp_name, exp_json, all_vars, exp_report_path)
+                exp_cache_json = ExperimentConfig.load_experiment_json(experiment_cache) if experiment_cache else None
+                ExperimentRunner._write_config(exp_name, exp_json, all_vars, exp_report_path, exp_cache_json)
                 reporter.report(exp_name, experiment_config, exp_report_path)
             finally:
                 ExperimentRunner._stop_log_capture(log_handler)

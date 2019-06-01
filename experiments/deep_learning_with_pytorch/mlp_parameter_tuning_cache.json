@@ -1,0 +1,11 @@
+{
+  "my_dataset_splits": {
+    "_name": "SurnamesDatasetMLP",
+    "data_file": "$HOME/surnames/surnames_with_splits.csv",
+    "batch_size": 128,
+    "vectorizer": {
+      "_name": "SurnamesVectorizerMLP",
+      "data_file": "$HOME/surnames/surnames_with_splits.csv"
+    }
+  }
+}
