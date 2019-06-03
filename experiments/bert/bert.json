@@ -25,7 +25,7 @@
     }
   },
   "trainer": {
-    "_name": "BasicTrainer",
+    "_name": "SingleTaskTrainer",
     "model": "$model",
     "dataset_splits": "$data_loader",
     "loss": {

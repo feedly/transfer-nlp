@@ -8,23 +8,21 @@ Check experiments for examples of experiment json files
 import inspect
 import logging
 from abc import ABC, abstractmethod
-from itertools import zip_longest
-from typing import Dict, List, Any
 from collections import defaultdict
+from typing import Dict, List, Any
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
+    GradsScalarHandler
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.engine import Events
 from ignite.engine.engine import Engine
 from ignite.metrics import Loss, Metric, RunningAverage
 from ignite.utils import convert_tensor
-from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
-    GradsScalarHandler
 from tensorboardX import SummaryWriter
-
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
@@ -72,8 +70,9 @@ class TrainerABC(ABC):
     def train(self):
         pass
 
+
 @register_plugin
-class BasicTrainer(TrainerABC):
+class BaseIgniteTrainer(TrainerABC):
 
     def __init__(self,
                  model: nn.Module,
@@ -87,14 +86,11 @@ class BasicTrainer(TrainerABC):
                  seed: int = None,
                  cuda: bool = None,
                  loss_accumulation_steps: int = 4,
-                 scheduler: Any = None,  # no common parent class?
+                 scheduler: Any = None,
                  regularizer: RegularizerABC = None,
                  gradient_clipping: float = 1.0,
                  output_transform=None,
-                 tensorboard_logs: str = None,
-                 optional_tensorboard_features: bool=False,
-                 embeddings_name: str = None,
-                 finetune: bool = False):
+                 tensorboard_logs: str = None):
 
         self.model: nn.Module = model
 
@@ -125,16 +121,14 @@ class BasicTrainer(TrainerABC):
         self.tensorboard_logs: str = tensorboard_logs
         if self.tensorboard_logs:
             self.writer = SummaryWriter(log_dir=self.tensorboard_logs)
-        self.optional_tensorboard_features: bool = optional_tensorboard_features
-        self.embeddings_name = embeddings_name
 
-        if self.output_transform:
-            self.trainer, self.training_metrics = self.create_supervised_trainer(output_transform=self.output_transform)
-            self.evaluator = self.create_supervised_evaluator(output_transform=self.output_transform)
-        else:
-            self.trainer, self.training_metrics = self.create_supervised_trainer()
-            self.evaluator = self.create_supervised_evaluator()
-        self.finetune = finetune
+        if not self.output_transform:
+            self.output_transform = lambda y_pred, y_target, loss: (y_pred, y_target, loss)
+
+        self.eval_output_transform = lambda y, y_pred: (y, y_pred)
+
+        self.trainer, self.training_metrics = self.create_supervised_trainer()
+        self.evaluator = self.create_supervised_evaluator()
 
         self.optimizer_factory: PluginFactory = None
 
@@ -147,9 +141,10 @@ class BasicTrainer(TrainerABC):
                 logging.warning('multiple loss metrics detected, using %s for LR scheduling', loss_metrics[0])
             self.loss_metric = loss_metrics[0]
 
-        self.metrics_history = {"training": defaultdict(list),
-                                "validation": defaultdict(list),
-                                "test": defaultdict(list)}
+        self.metrics_history = {
+            "training": defaultdict(list),
+            "validation": defaultdict(list),
+            "test": defaultdict(list)}
 
         self.setup(self.training_metrics)
 
@@ -179,7 +174,7 @@ class BasicTrainer(TrainerABC):
         if self.seed:
             set_seed_everywhere(self.seed, self.cuda)
 
-        pbar = ProgressBar()
+        pbar = ProgressBar(persist=True)
 
         names = []
         for k, v in training_metrics.items():
@@ -190,8 +185,7 @@ class BasicTrainer(TrainerABC):
         names.append('rloss')
         pbar.attach(self.trainer, names)
 
-        pbar = ProgressBar()
-        pbar.attach(self.evaluator)
+        ProgressBar(persist=True).attach(engine=self.evaluator, metric_names=names)
 
         # A few events handler. To add / modify the events handler, you need to extend the __init__ method of RunnerABC
         # Ignite provides the necessary abstractions and a furnished repository of useful tools
@@ -218,6 +212,109 @@ class BasicTrainer(TrainerABC):
             metrics = self.evaluator.state.metrics
             store_metrics(metrics=metrics, mode="test")
             logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
+
+    def custom_setup(self):
+        raise NotImplementedError
+
+    def _forward(self, batch):
+        model_inputs = {}
+        for p in self.forward_params:
+            val = batch.get(p)
+            if val is None:
+                if p in self.forward_param_defaults:
+                    val = self.forward_param_defaults[p]
+                else:
+                    raise ValueError(f'missing model parameter "{p}"')
+
+            model_inputs[p] = val
+
+        return self.model(**model_inputs)
+
+    def update_engine(self, engine, batch):
+        raise NotImplementedError
+
+    def infer_engine(self, engine, batch):
+        raise NotImplementedError
+
+    def create_supervised_trainer(self):
+
+        if self.device:
+            self.model.to(self.device)
+
+        engine = Engine(self.update_engine)
+        metrics = {}
+        for i, metric in enumerate(self.metrics):
+            if not isinstance(metric, Loss):
+                n = metric.__class__.__name__
+                tm = TrainingMetric(metric)
+                metrics[n] = tm
+                tm.attach(engine, n)
+
+        return engine, metrics
+
+    def create_supervised_evaluator(self):
+
+        if self.device:
+            self.model.to(self.device)
+
+        engine = Engine(self.infer_engine)
+
+        for i, metric in enumerate(self.metrics):
+            metric.attach(engine, f'{str(metric.__class__.__name__)}')
+
+        return engine
+
+    def train(self):
+        raise NotImplementedError
+
+
+@register_plugin
+class SingleTaskTrainer(BaseIgniteTrainer):
+
+    def __init__(self,
+                 model: nn.Module,
+                 dataset_splits: DatasetSplits,
+                 loss: nn.Module,
+                 optimizer: optim.Optimizer,
+                 metrics: Dict[str, Metric],
+                 experiment_config: ExperimentConfig,
+                 device: str = None,
+                 num_epochs: int = 1,
+                 seed: int = None,
+                 cuda: bool = None,
+                 loss_accumulation_steps: int = 4,
+                 scheduler: Any = None,
+                 regularizer: RegularizerABC = None,
+                 gradient_clipping: float = 1.0,
+                 output_transform=None,
+                 tensorboard_logs: str = None,
+                 optional_tensorboard_features: bool = False,
+                 embeddings_name: str = None):
+
+        super().__init__(
+            model=model,
+            dataset_splits=dataset_splits,
+            loss=loss,
+            optimizer=optimizer,
+            metrics=metrics,
+            experiment_config=experiment_config,
+            device=device,
+            num_epochs=num_epochs,
+            seed=seed,
+            cuda=cuda,
+            loss_accumulation_steps=loss_accumulation_steps,
+            scheduler=scheduler,
+            regularizer=regularizer,
+            gradient_clipping=gradient_clipping,
+            output_transform=output_transform,
+            tensorboard_logs=tensorboard_logs)
+
+        self.optional_tensorboard_features: bool = optional_tensorboard_features
+        self.embeddings_name: str = embeddings_name
+
+        self.custom_setup()
+
+    def custom_setup(self):
 
         if self.tensorboard_logs:
             tb_logger = TensorboardLogger(log_dir=self.tensorboard_logs)
@@ -261,104 +358,38 @@ class BasicTrainer(TrainerABC):
                                 range(embeddings.shape[0])]
                     self.writer.add_embedding(mat=embeddings, metadata=metadata, global_step=self.trainer.state.epoch)
 
-    def _forward(self, batch):
-        model_inputs = {}
-        for p in self.forward_params:
-            val = batch.get(p)
-            if val is None:
-                if p in self.forward_param_defaults:
-                    val = self.forward_param_defaults[p]
-                else:
-                    raise ValueError(f'missing model parameter "{p}"')
-
-            model_inputs[p] = val
-
-        return self.model(**model_inputs)
-
-    def create_supervised_trainer(self, prepare_batch=_prepare_batch, non_blocking=False,
-                                  output_transform=lambda y_pred, y_target, loss: (y_pred, y_target, loss)):
-
-        if self.device:
-            self.model.to(self.device)
+    def update_engine(self, engine, batch):
 
         # Gradient accumulation trick adapted from :
         # https://medium.com/huggingface/training-larger-batches-practical-tips-on-1-gpu-multi-gpu-distributed-setups-ec88c3e51255
-        accumulation_steps = self.loss_accumulation_steps
 
-        def _update(engine, batch):
+        self.model.train()
+        batch = _prepare_batch(batch, device=self.device, non_blocking=False)
+        y_pred = self._forward(batch)
+        loss = self.loss(input=y_pred, target=batch['y_target'])
 
-            self.model.train()
-            batch = prepare_batch(batch, device=self.device, non_blocking=non_blocking)
+        # Add a regularisation term at train time only
+        if self.regularizer:
+            loss += self.regularizer.compute_penalty(model=self.model)
+
+        loss /= self.loss_accumulation_steps
+
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)
+
+        if engine.state.iteration % self.loss_accumulation_steps == 0:
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
+        return self.output_transform(y_pred, batch['y_target'], loss.item())
+
+    def infer_engine(self, engine, batch):
+
+        self.model.eval()
+        with torch.no_grad():
+            batch = _prepare_batch(batch, device=self.device, non_blocking=False)
             y_pred = self._forward(batch)
-            loss = self.loss(input=y_pred, target=batch['y_target'])
-
-            # Add a regularisation term at train time only
-            if self.regularizer:
-                loss += self.regularizer.compute_penalty(model=self.model)
-
-            loss /= accumulation_steps
-
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.gradient_clipping)
-
-            if engine.state.iteration % accumulation_steps == 0:
-                self.optimizer.step()
-                self.optimizer.zero_grad()
-
-            return output_transform(y_pred, batch['y_target'], loss.item())
-
-        engine = Engine(_update)
-        metrics = {}
-        for i, metric in enumerate(self.metrics):
-            if not isinstance(metric, Loss):
-                n = metric.__class__.__name__
-                tm = TrainingMetric(metric)
-                metrics[n] = tm
-                tm.attach(engine, n)
-
-        return engine, metrics
-
-    def create_supervised_evaluator(self, prepare_batch=_prepare_batch, non_blocking=False, output_transform=lambda y, y_pred: (y, y_pred)):
-
-        if self.device:
-            self.model.to(self.device)
-
-        def _inference(engine, batch):
-            self.model.eval()
-            with torch.no_grad():
-                batch = prepare_batch(batch, device=self.device, non_blocking=non_blocking)
-                y_pred = self._forward(batch)
-                return output_transform(y_pred, batch['y_target'])
-
-        engine = Engine(_inference)
-
-        for i, metric in enumerate(self.metrics):
-            metric.attach(engine, f'{str(metric.__class__.__name__)}')
-
-        return engine
-
-    def freeze_and_replace_final_layer(self):
-        """
-        Freeze al layers and replace the last layer with a custom Linear projection on the predicted classes
-        Note: this method assumes that the pre-trained model ends with a `classifier` layer, that we want to learn
-        :return:
-        """
-        # freeze all layers
-        for param in self.model.parameters():
-            param.requires_grad = False
-
-        # Number of input features to the final classification layer
-        number_features = self.model.classifier.in_features
-
-        # If `classifier` has several layers itself, this will only remove the last on, otherwise this does not contain anything
-        features = list(self.model.classifier.children())[:-1]
-        logger.info(f"Keeping layers {list(self.model.classifier.children())[:-1]} from the classifier layer")
-        logger.info(f"Append layer {torch.nn.Linear(number_features, self.model.num_labels)} to the classifier")
-
-        # Create the final linear layer for classification
-        features.append(torch.nn.Linear(number_features, self.model.num_labels))
-        self.model.classifier = torch.nn.Sequential(*features)
-        self.model = self.model.to(self.device)
+            return self.eval_output_transform(y_pred, batch['y_target'])
 
     def train(self):
         """
@@ -367,16 +398,5 @@ class BasicTrainer(TrainerABC):
         and reset the optimizer
         :return:
         """
-        if self.finetune:
-
-            logger.info(f"Fine-tuning the last classification layer to the data")
-            trainer_key = [k for k, v in self.experiment_config.experiment.items() if v is self]
-            if trainer_key:
-                self.optimizer_factory = self.experiment_config.factories['optimizer']
-            else:
-                raise ValueError('this trainer object was not found in config')
-
-            self.freeze_and_replace_final_layer()
-            self.optimizer = self.optimizer_factory.create()
 
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)

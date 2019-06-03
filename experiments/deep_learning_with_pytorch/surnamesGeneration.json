@@ -31,7 +31,7 @@
     "_name": "OutputTransformSequence"
   },
   "trainer": {
-    "_name": "BasicTrainer",
+    "_name": "SingleTaskTrainer",
     "model": "$model",
     "dataset_splits": "$my_dataset_splits",
     "loss": {
