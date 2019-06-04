@@ -213,9 +213,6 @@ class BaseIgniteTrainer(TrainerABC):
             store_metrics(metrics=metrics, mode="test")
             logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
-    def custom_setup(self):
-        raise NotImplementedError
-
     def _forward(self, batch):
         model_inputs = {}
         for p in self.forward_params:
@@ -230,9 +227,11 @@ class BaseIgniteTrainer(TrainerABC):
 
         return self.model(**model_inputs)
 
+    @abstractmethod
     def update_engine(self, engine, batch):
         raise NotImplementedError
 
+    @abstractmethod
     def infer_engine(self, engine, batch):
         raise NotImplementedError
 
