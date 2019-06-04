@@ -25,7 +25,7 @@ setup(
         'annoy>=1.15.0',
         'numpy>=1.16.2',
         'requests>=2.21.0',
-        'torch==1.0.1.post2',
+        'torch>=1.1.0',
         'ipython==6.2.1',
         'feedly-client>=0.20',
         'bs4>=0.0.1',
