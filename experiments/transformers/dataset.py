@@ -1,8 +1,9 @@
+import random
+
+import numpy as np
 import pandas as pd
 import torch
 from pytorch_pretrained_bert import cached_path, BertTokenizer
-import numpy as np
-import random
 
 from transfer_nlp.loaders.loaders import DatasetSplits, DataFrameDataset
 from transfer_nlp.plugins.config import register_plugin
@@ -70,36 +71,26 @@ class BertCLFFinetuningDataset(DatasetSplits):
             datasets[split_name] = [np.array(x + [tokenizer.vocab['[PAD]']] * (padding_length - len(x)))
                                     for x in datasets[split_name]]
 
-            # # Convert to torch.Tensor and gather inputs and labels
-            # tensor = torch.tensor(datasets[split_name], dtype=torch.long)
-            # labels = torch.tensor(datasets[split_name + '_labels'], dtype=torch.long)
-            # datasets[split_name] = TensorDataset(tensor, labels)
-
         valid_size = int(0.1 * len(datasets['train']))
         c = list(zip(datasets['train'], datasets['train_labels']))
         random.shuffle(c)
         datasets['train'], datasets['train_labels'] = zip(*c)
         datasets['train'], datasets['train_labels'] = list(datasets['train']), list(datasets['train_labels'])
-        # np.random.shuffle(datasets['train'])
 
         datasets['valid'], datasets['valid_labels'] = datasets['train'][:valid_size], datasets['train_labels'][:valid_size]
         datasets['train'], datasets['train_labels'] = datasets['train'][valid_size:], datasets['train_labels'][valid_size:]
 
-
         train_df = pd.DataFrame(data={
             "x": datasets['train'],
-            "y_target": datasets['train_labels'],
-            "clf_tokens_mask": [np.array([int(x == tokenizer.vocab['[CLS]']) for x in example]) for example in datasets['train']]
+            "y_target": datasets['train_labels']
         })
         val_df = pd.DataFrame(data={
             "x": datasets['valid'],
-            "y_target": datasets['valid_labels'],
-            "clf_tokens_mask": [np.array([int(x == tokenizer.vocab['[CLS]']) for x in example]) for example in datasets['valid']]
+            "y_target": datasets['valid_labels']
         })
         test_df = pd.DataFrame(data={
             "x": datasets['test'],
-            "y_target": datasets['test_labels'],
-            "clf_tokens_mask": [np.array([int(x == tokenizer.vocab['[CLS]']) for x in example]) for example in datasets['test']]
+            "y_target": datasets['test_labels']
         })
 
         super().__init__(train_set=DataFrameDataset(train_df), train_batch_size=batch_size, val_set=DataFrameDataset(val_df), val_batch_size=batch_size,

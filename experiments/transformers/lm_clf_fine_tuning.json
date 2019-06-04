@@ -43,6 +43,9 @@
         "loss_fn": {
           "_name": "FineTuningLoss"
         }
+      },
+      "accuracy": {
+        "_name": "Accuracy"
       }
     }
   }

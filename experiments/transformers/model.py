@@ -24,9 +24,14 @@ class Transformer(torch.nn.Module):
             self.layer_norms_2.append(torch.nn.LayerNorm(embed_dim, eps=1e-12))
 
         self.attn_mask = None
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-cased', do_lower_case=False)
 
-    def forward(self, x, padding_mask=None):
-        """ x has shape [seq length, batch], padding_mask has shape [batch, seq length] """
+    def forward(self, x):
+        """ x has shape [batch, seq length]"""
+
+        padding_mask = (x == self.tokenizer.vocab['[PAD]'])
+
+        x = x.transpose(0, 1).contiguous()
 
         positions = torch.arange(len(x), device=x.device).unsqueeze(-1)
         h = self.tokens_embeddings(x)
@@ -79,9 +84,9 @@ class TransformerWithLMHead(torch.nn.Module):
         if isinstance(module, (torch.nn.Linear, torch.nn.LayerNorm)) and module.bias is not None:
             module.bias.data.zero_()
 
-    def forward(self, x, padding_mask=None):
-        """ x has shape [seq length, batch], padding_mask has shape [batch, seq length] """
-        hidden_states = self.transformer(x, padding_mask)
+    def forward(self, x):
+        """ x has shape [batch, seq length]"""
+        hidden_states = self.transformer(x)
         logits = self.lm_head(hidden_states)
 
         return logits
@@ -94,6 +99,7 @@ class LMLoss:
         self.causal: bool = causal
 
     def __call__(self, input, target):
+        input = input.transpose(0, 1).contiguous()
         shift_logits = input[:-1] if self.causal else input
         shift_labels = target[1:] if self.causal else target
         loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-1)
@@ -107,8 +113,8 @@ class TransformerWithClfHead(torch.nn.Module):
                  embed_dim: int, hidden_dim: int, num_max_positions: int, num_heads: int, num_layers: int, dropout: float, causal: bool,
                  initializer_range: float, num_classes: int):
         super().__init__()
-        tokenizer = BertTokenizer.from_pretrained('bert-base-cased', do_lower_case=False)
-        num_embeddings = len(tokenizer.vocab)
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-cased', do_lower_case=False)
+        num_embeddings = len(self.tokenizer.vocab)
         self.initializer_range = initializer_range
         self.transformer = Transformer(embed_dim, hidden_dim, num_embeddings,
                                        num_max_positions, num_heads, num_layers,
@@ -124,11 +130,14 @@ class TransformerWithClfHead(torch.nn.Module):
         if isinstance(module, (torch.nn.Linear, torch.nn.LayerNorm)) and module.bias is not None:
             module.bias.data.zero_()
 
-    def forward(self, x, clf_tokens_mask, padding_mask=None):
+    def forward(self, x):
 
-        hidden_states = self.transformer(x, padding_mask)
+        # x = x.transpose(0, 1).contiguous().to('cpu')
+        clf_tokens_mask = (x.transpose(0, 1).contiguous().to('cpu') == self.tokenizer.vocab['[CLS]'])
+
+        hidden_states = self.transformer(x)
         msk = clf_tokens_mask.unsqueeze(-1).float()
-        clf_tokens_states = (hidden_states * msk).sum(dim=1)
+        clf_tokens_states = (hidden_states * msk).sum(dim=0)
         clf_logits = self.classification_head(clf_tokens_states)
 
         return clf_logits

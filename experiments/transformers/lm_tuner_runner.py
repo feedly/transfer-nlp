@@ -12,7 +12,7 @@ if __name__ == "__main__":
     home_env = str(Path.home() / 'work/transfer-nlp-data')
 
     # # Train a language model on large dataset
-    # experiment = ExperimentConfig('./lm_tuning.json', HOME=home_env)
+    # experiment = ExperimentConfig('./lm_fine_tuning.json', HOME=home_env)
     # experiment.experiment['trainer'].train()
 
     # Fine-tune the LM on a classification task
