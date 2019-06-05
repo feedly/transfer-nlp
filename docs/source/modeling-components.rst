@@ -24,11 +24,11 @@ parameters yield by the PyTorch batch iterator. For example:
             super(MyClassifier, self).__init__()
 
         def forward(self, input_tensor: torch.tensor):
-            # Do complex transofmrations
+            # Do complex transformations
             return result
 
 In this example, you need to set your data loader to yield batches with the key `"input_tensor"`.
-If the `forward` method has default parameters that do not appear in the batch, they will be used, otherwise tyey will
+If the `forward` method has default parameters that do not appear in the batch, they will be used, otherwise they will
 be replaced by the values from the batch
 
 Optimizers

@@ -143,7 +143,7 @@ you need to do is add the class to the registry using the `@register_plugin` dec
             super(MyClassifier, self).__init__()
 
         def forward(self, input_tensor):
-            # Do complex transofmrations
+            # Do complex transformations
             return result
 
 Finally, to enable the sharing of experiment configuration files, we can use environment variables for paths parameters,
