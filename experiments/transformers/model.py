@@ -1,6 +1,17 @@
+"""
+This file contains models presented in the Transfer Learning for NLP Tutorial at NAACL 2019
+Models are adapted from https://colab.research.google.com/drive/1iDHCYIrWswIKp-n-pOg69xLoZO09MEgf#scrollTo=_FfRT6GTjHhC&forceEdit=true&offline=true&sandboxMode=true
+
+This is a WIP document and work is needed so that we don't have to replicate so many transformer classes
+Ideally we'd like to have flexible transformer classes from which we can easily add
+task-dependent heads and add adapter tools, e.g. freezing the backbone and add
+residual connexion between layers. 
+"""
+
 import torch
-from transfer_nlp.plugins.config import register_plugin
 from pytorch_pretrained_bert import BertTokenizer
+
+from transfer_nlp.plugins.config import register_plugin
 
 
 @register_plugin
@@ -150,3 +161,91 @@ class FineTuningLoss:
         loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-1)
         loss = loss_fct(input.view(-1, input.size(-1)), target.view(-1))
         return loss
+
+
+class TransformerWithAdapters(Transformer):
+    def __init__(self, adapters_dim, embed_dim, hidden_dim, num_embeddings, num_max_positions,
+                 num_heads, num_layers, dropout, causal):
+        """ Transformer with adapters (small bottleneck layers) """
+        super().__init__(embed_dim, hidden_dim, num_embeddings, num_max_positions, num_heads, num_layers,
+                         dropout, causal)
+        self.adapters_1 = torch.nn.ModuleList()
+        self.adapters_2 = torch.nn.ModuleList()
+        for _ in range(num_layers):
+            self.adapters_1.append(torch.nn.Sequential(torch.nn.Linear(embed_dim, adapters_dim),
+                                                       torch.nn.ReLU(),
+                                                       torch.nn.Linear(adapters_dim, embed_dim)))
+
+            self.adapters_2.append(torch.nn.Sequential(torch.nn.Linear(embed_dim, adapters_dim),
+                                                       torch.nn.ReLU(),
+                                                       torch.nn.Linear(adapters_dim, embed_dim)))
+
+    def forward(self, x):
+        """ x has shape [batch, seq length]"""
+
+        padding_mask = (x == self.tokenizer.vocab['[PAD]'])
+
+        x = x.transpose(0, 1).contiguous()
+
+        positions = torch.arange(len(x), device=x.device).unsqueeze(-1)
+        h = self.tokens_embeddings(x)
+        h = h + self.position_embeddings(positions).expand_as(h)
+        h = self.dropout(h)
+
+        attn_mask = None
+        if self.causal:
+            attn_mask = torch.full((len(x), len(x)), -float('Inf'), device=h.device, dtype=h.dtype)
+            attn_mask = torch.triu(attn_mask, diagonal=1)
+
+        for (layer_norm_1, attention, adapter_1, layer_norm_2, feed_forward, adapter_2) \
+                in zip(self.layer_norms_1, self.attentions, self.adapters_1,
+                       self.layer_norms_2, self.feed_forwards, self.adapters_2):
+            h = layer_norm_1(h)
+            x, _ = attention(h, h, h, attn_mask=attn_mask, need_weights=False, key_padding_mask=padding_mask)
+            x = self.dropout(x)
+
+            x = adapter_1(x) + x  # Add an adapter with a skip-connection after attention module
+
+            h = x + h
+
+            h = layer_norm_2(h)
+            x = feed_forward(h)
+            x = self.dropout(x)
+
+            x = adapter_2(x) + x  # Add an adapter with a skip-connection after feed-forward module
+
+            h = x + h
+        return h
+
+
+@register_plugin
+class TransformerWithClfHeadAndAdapters(torch.nn.Module):
+    def __init__(self, adapters_dim: int,
+                 embed_dim: int, hidden_dim: int, num_max_positions: int, num_heads: int, num_layers: int, dropout: float, causal: bool,
+                 initializer_range: float, num_classes: int):
+        """ Transformer with a classification head and adapters. """
+        super().__init__()
+        self.initializer_range: float = initializer_range
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-cased', do_lower_case=False)
+        num_embeddings = len(self.tokenizer.vocab)
+        self.transformer: TransformerWithAdapters = TransformerWithAdapters(adapters_dim, embed_dim, hidden_dim, num_embeddings,
+                                       num_max_positions, num_heads, num_layers,
+                                       dropout, causal=causal)
+
+        self.classification_head = torch.nn.Linear(embed_dim, num_classes)
+        self.apply(self.init_weights)
+
+    def init_weights(self, module):
+        if isinstance(module, (torch.nn.Linear, torch.nn.Embedding, torch.nn.LayerNorm)):
+            module.weight.data.normal_(mean=0.0, std=self.initializer_range)
+        if isinstance(module, (torch.nn.Linear, torch.nn.LayerNorm)) and module.bias is not None:
+            module.bias.data.zero_()
+
+    def forward(self, x):
+
+        clf_tokens_mask = (x.transpose(0, 1).contiguous().to('cpu') == self.tokenizer.vocab['[CLS]'])
+        hidden_states = self.transformer(x)
+        clf_tokens_states = (hidden_states * clf_tokens_mask.unsqueeze(-1).float()).sum(dim=0)
+        clf_logits = self.classification_head(clf_tokens_states)
+
+        return clf_logits

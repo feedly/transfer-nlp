@@ -15,6 +15,10 @@ if __name__ == "__main__":
     # experiment = ExperimentConfig('./lm_fine_tuning.json', HOME=home_env)
     # experiment.experiment['trainer'].train()
 
-    # Fine-tune the LM on a classification task
-    experiment = ExperimentConfig('./lm_clf_fine_tuning.json', HOME=home_env)
+    # # Fine-tune the LM on a classification task
+    # experiment = ExperimentConfig('./lm_clf_fine_tuning.json', HOME=home_env)
+    # experiment.experiment['trainer'].train()
+
+    # Fine-tune the LM on a classification task with an adapted Transformer
+    experiment = ExperimentConfig('./lm_clf_adaptation.json', HOME=home_env)
     experiment.experiment['trainer'].train()
