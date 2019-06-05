@@ -4,9 +4,13 @@ For the training loop, we use the engine logic from pytorch-ignite
 
 Check experiments for examples of experiment json files
 
+Examples using gradual unfreezing and adaptation methods in general are adapted from
+the NAACL 2019 tutorial on TRansfer Learning for NLP https://colab.research.google.com/drive/1iDHCYIrWswIKp-n-pOg69xLoZO09MEgf#scrollTo=GObQkkttljWv&forceEdit=true&offline=true&sandboxMode=true
 """
+
 import inspect
 import logging
+import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Dict, List, Any
@@ -398,4 +402,148 @@ class SingleTaskTrainer(BaseIgniteTrainer):
         :return:
         """
 
+        self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
+
+
+@register_plugin
+class SingleTaskFineTuner(SingleTaskTrainer):
+
+    def __init__(self,
+                 model: nn.Module,
+                 dataset_splits: DatasetSplits,
+                 loss: nn.Module,
+                 optimizer: optim.Optimizer,
+                 metrics: Dict[str, Metric],
+                 experiment_config: ExperimentConfig,
+                 device: str = None,
+                 num_epochs: int = 1,
+                 seed: int = None,
+                 cuda: bool = None,
+                 loss_accumulation_steps: int = 4,
+                 scheduler: Any = None,
+                 regularizer: RegularizerABC = None,
+                 gradient_clipping: float = 1.0,
+                 output_transform=None,
+                 tensorboard_logs: str = None,
+                 optional_tensorboard_features: bool = False,
+                 embeddings_name: str = None,
+                 adaptation: str = 'hard-freezing',
+                 decreasing_factor: int = 2.6):
+        super().__init__(
+            model=model,
+            dataset_splits=dataset_splits,
+            loss=loss,
+            optimizer=optimizer,
+            metrics=metrics,
+            experiment_config=experiment_config,
+            device=device,
+            num_epochs=num_epochs,
+            seed=seed,
+            cuda=cuda,
+            loss_accumulation_steps=loss_accumulation_steps,
+            scheduler=scheduler,
+            regularizer=regularizer,
+            gradient_clipping=gradient_clipping,
+            output_transform=output_transform,
+            tensorboard_logs=tensorboard_logs,
+            optional_tensorboard_features=optional_tensorboard_features,
+            embeddings_name=embeddings_name
+        )
+        self.adaptation: str = adaptation
+        self.decreasing_factor: int = decreasing_factor
+
+    def freeze_params(self):
+
+        for name, param in self.model.named_parameters():
+            if 'embeddings' not in name and 'classification' not in name and 'adapters_1' not in name and 'adapters_2' not in name:
+                param.detach_()
+                param.requires_grad = False
+
+            else:
+                param.requires_grad = True
+
+        full_parameters = sum(p.numel() for p in self.model.parameters())
+        trained_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+
+        logger.info(f"We will train {trained_parameters:3e} parameters out of {full_parameters:3e},"
+                    f" i.e. {100 * trained_parameters/full_parameters:.2f}%")
+
+    def gradual_unfreezing(self):
+
+        for name, param in self.model.named_parameters():
+            if 'embeddings' not in name and 'classification' not in name:
+                param.detach_()
+                param.requires_grad = False
+
+            else:
+                param.requires_grad = True
+
+        full_parameters = sum(p.numel() for p in self.model.parameters())
+        trained_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+
+        logger.info(f"We will start by training {trained_parameters:3e} parameters out of {full_parameters:3e},"
+                    f" i.e. {100 * trained_parameters/full_parameters:.2f}%")
+
+        # We will unfreeze blocks regularly along the training: one block every `unfreezing_interval` step
+        unfreezing_interval = int(len(self.dataset_splits.train_data_loader()) * self.num_epochs / (self.model.num_layers + 1))
+
+        @self.trainer.on(Events.ITERATION_COMPLETED)
+        def unfreeze_layer_if_needed(engine):
+            if engine.state.iteration % unfreezing_interval == 0:
+                # Which layer should we unfreeze now
+                unfreezing_index = self.model.num_layers - (engine.state.iteration // unfreezing_interval)
+
+                # Let's unfreeze it
+                unfreezed = []
+                for name, param in self.model.named_parameters():
+                    if re.match(r"transformer\.[^\.]*\." + str(unfreezing_index) + r"\.", name):
+                        unfreezed.append(name)
+                        param.require_grad = True
+                logger.info(f"Unfreezing block {unfreezing_index} with {unfreezed}")
+
+    def discriminative_learning(self):
+
+        logger.info("Using discriminative learning as adaptation strategy")
+        # Build parameters groups by layer, numbered from the top ['1', '2', ..., '15']
+        parameter_groups = []
+        for i in range(self.model.num_layers):
+            name_pattern = r"transformer\.[^\.]*\." + str(i) + r"\."
+            group = {
+                'name': str(self.model.num_layers - i),
+                'params': [p for n, p in self.model.named_parameters() if re.match(name_pattern, n)]}
+            parameter_groups.append(group)
+
+        # Add the rest of the parameters (embeddings and classification layer) in a group labeled '0'
+        name_pattern = r"transformer\.[^\.]*\.\d*\."
+        group = {
+            'name': '0',
+            'params': [p for n, p in self.model.named_parameters() if not re.match(name_pattern, n)]}
+        parameter_groups.append(group)
+
+        # Sanity check that we still have the same number of parameters
+        assert sum(p.numel() for g in parameter_groups for p in g['params']) \
+               == sum(p.numel() for p in self.model.parameters())
+
+        @self.trainer.on(Events.ITERATION_STARTED)
+        def update_layer_learning_rates(engine):
+            for param_group in self.optimizer.param_groups:
+                layer_index = int(param_group["name"])
+                param_group["lr"] = param_group["lr"] / (self.decreasing_factor ** layer_index)
+
+        return parameter_groups
+
+    def train(self):
+
+        if self.adaptation == 'hard-freezing':
+            self.freeze_params()
+        elif self.adaptation == 'gradual-unfreezing':
+            self.gradual_unfreezing()
+        elif self.adaptation == 'discriminative-learning':
+            parameter_groups = self.discriminative_learning()
+            self.experiment_config.factories['optimizer'].kwargs['params'] = parameter_groups
+            self.experiment_config.factories['optimizer'].param2config_key['params'] = parameter_groups
+        else:
+            raise ValueError("Transfer NLP supports only hard freezing, gradual unfreezing and discriminative learning")
+
+        self.optimizer = self.experiment_config.factories['optimizer'].create()
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)

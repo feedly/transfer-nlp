@@ -228,6 +228,7 @@ class TransformerWithClfHeadAndAdapters(torch.nn.Module):
         self.initializer_range: float = initializer_range
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-cased', do_lower_case=False)
         num_embeddings = len(self.tokenizer.vocab)
+        self.num_layers = num_layers
         self.transformer: TransformerWithAdapters = TransformerWithAdapters(adapters_dim, embed_dim, hidden_dim, num_embeddings,
                                        num_max_positions, num_heads, num_layers,
                                        dropout, causal=causal)

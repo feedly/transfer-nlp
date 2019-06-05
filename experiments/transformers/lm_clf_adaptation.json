@@ -25,7 +25,7 @@
     }
   },
   "trainer": {
-    "_name": "SingleTaskTrainer",
+    "_name": "SingleTaskFineTuner",
     "model": "$model",
     "dataset_splits": "$dataset",
     "loss": {
@@ -48,6 +48,8 @@
       "accuracy": {
         "_name": "Accuracy"
       }
-    }
+    },
+    "adaptation": "discriminative-learning",
+    "decreasing_factor": 2.6
   }
 }
