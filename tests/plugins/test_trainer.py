@@ -6,7 +6,7 @@ import ignite
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.regularizers import L1
-from transfer_nlp.plugins.trainers import BasicTrainer
+from transfer_nlp.plugins.trainers import SingleTaskTrainer
 from .trainer_utils import *
 
 EXPERIMENT = {
@@ -38,7 +38,7 @@ EXPERIMENT = {
         "factor": 0.5
     },
     "trainer": {
-        "_name": "BasicTrainer",
+        "_name": "SingleTaskTrainer",
         "model": "$model",
         "dataset_splits": "$my_dataset_splits",
         "loss": {
@@ -61,8 +61,7 @@ EXPERIMENT = {
                     "_name": "CrossEntropyLoss"
                 }
             }
-        },
-        "finetune": False
+        }
     }
 
 }
@@ -87,7 +86,6 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(trainer.num_epochs, 5)
         self.assertIsInstance(trainer.regularizer, L1)
         self.assertEqual(trainer.gradient_clipping, 0.25)
-        self.assertEqual(trainer.finetune, False)
         self.assertEqual(trainer.embeddings_name, None)
         self.assertEqual(trainer.forward_params, ['x_in', 'apply_softmax'])
         # trainer.train()
@@ -97,7 +95,7 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(optimizer, torch.optim.Adam)
 
         trainer = trainer.experiment_config.factories['trainer'].create()
-        self.assertIsInstance(trainer, BasicTrainer)
+        self.assertIsInstance(trainer, SingleTaskTrainer)
 
     def test_setup(self):
         e = copy.deepcopy(EXPERIMENT)

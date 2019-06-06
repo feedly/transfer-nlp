@@ -34,7 +34,7 @@
     "optimizer": "$my_optimizer"
   },
   "trainer": {
-    "_name": "BasicTrainer",
+    "_name": "SingleTaskTrainer",
     "model": "$my_model",
     "dataset_splits": "$my_dataset_splits",
     "loss": {
