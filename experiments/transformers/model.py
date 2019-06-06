@@ -250,3 +250,62 @@ class TransformerWithClfHeadAndAdapters(torch.nn.Module):
         clf_logits = self.classification_head(clf_tokens_states)
 
         return clf_logits
+
+
+@register_plugin
+class TransformerWithClfHeadAndLMHead(torch.nn.Module):
+    def __init__(self, embed_dim: int, hidden_dim: int, num_max_positions: int, num_heads: int, num_layers: int, dropout: float, causal: bool,
+                 initializer_range: float, num_classes: int):
+        super().__init__()
+        self.initializer_range: float = initializer_range
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-cased', do_lower_case=False)
+        num_embeddings = len(self.tokenizer.vocab)
+        self.num_layers = num_layers
+        self.transformer = Transformer(embed_dim, hidden_dim, num_embeddings,
+                                       num_max_positions, num_heads, num_layers,
+                                       dropout, causal=causal)
+
+        self.lm_head = torch.nn.Linear(embed_dim, num_embeddings, bias=False)
+        self.classification_head = torch.nn.Linear(embed_dim, num_classes)
+
+        self.apply(self.init_weights)
+        self.tie_weights()
+
+    def tie_weights(self):
+        self.lm_head.weight = self.transformer.tokens_embeddings.weight
+
+    def init_weights(self, module):
+        if isinstance(module, (torch.nn.Linear, torch.nn.Embedding, torch.nn.LayerNorm)):
+            module.weight.data.normal_(mean=0.0, std=self.initializer_range)
+        if isinstance(module, (torch.nn.Linear, torch.nn.LayerNorm)) and module.bias is not None:
+            module.bias.data.zero_()
+
+    def forward(self, x):
+        """ x and clf_tokens_mask have shape [seq length, batch] padding_mask has shape [batch, seq length] """
+        clf_tokens_mask = (x.transpose(0, 1).contiguous().to('cpu') == self.tokenizer.vocab['[CLS]'])
+        hidden_states = self.transformer(x)
+
+        lm_logits = self.lm_head(hidden_states)
+        clf_tokens_states = (hidden_states * clf_tokens_mask.unsqueeze(-1).float()).sum(dim=0)
+        clf_logits = self.classification_head(clf_tokens_states)
+
+        return lm_logits, clf_logits
+    
+@register_plugin
+class MultiTaskLoss:
+    
+    def __init__(self, causal: bool):
+        self.causal: bool = causal
+
+    def __call__(self, lm_logits, clf_logits, lm_labels, clf_labels):
+        lm_logits = lm_logits.transpose(0, 1).contiguous()
+
+        loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-1)
+        loss_clf = loss_fct(clf_logits.view(-1, clf_logits.size(-1)), clf_labels.view(-1))
+
+        shift_logits = lm_logits[:-1] if self.causal else lm_logits
+        shift_labels = lm_labels[1:] if self.causal else lm_labels
+        loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-1)
+        loss_lm = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+        return loss_lm, loss_clf
