@@ -36,6 +36,8 @@
       "_name": "ReduceLROnPlateau",
       "optimizer": "$optimizer"
     },
+    "clf_loss_coef": 0.1,
+    "lm_loss_coef": 0.9,
     "num_epochs": 5,
     "seed": 1337,
     "metrics": {

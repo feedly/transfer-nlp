@@ -24,7 +24,7 @@ from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, Output
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.engine import Events
 from ignite.engine.engine import Engine
-from ignite.metrics import Loss, Metric, RunningAverage
+from ignite.metrics import Loss, Metric, RunningAverage, Accuracy
 from ignite.utils import convert_tensor
 from tensorboardX import SummaryWriter
 
@@ -185,7 +185,7 @@ class BaseIgniteTrainer(TrainerABC):
             name = f'r{k}'
             names.append(name)
             RunningAverage(v).attach(self.trainer, name)
-        RunningAverage(None, output_transform=lambda x: x[-1] * self.loss_accumulation_steps).attach(self.trainer, 'rloss')
+        RunningAverage(None, output_transform=lambda x: x[-1]).attach(self.trainer, 'rloss')
 
         names.append('rloss')
         pbar.attach(self.trainer, names)
@@ -208,8 +208,10 @@ class BaseIgniteTrainer(TrainerABC):
             store_metrics(metrics=metrics, mode="validation")
             logger.info(f"Validation Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
+            metrics = self.trainer.state.metrics
             if self.scheduler:
-                self.scheduler.step(metrics[self.loss_metric.__class__.__name__])
+                self.scheduler.step(metrics["rloss"])
+                # self.scheduler.step(metrics[self.loss_metric.__class__.__name__])
 
         @self.trainer.on(Events.COMPLETED)
         def log_test_results(trainer):
@@ -550,9 +552,9 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
 
 
-from ignite.metrics import Accuracy
+
 @register_plugin
-class MultiTaskTrainer(TrainerABC):
+class MultiTaskTrainer(BaseIgniteTrainer):
 
     def __init__(self,
                  model: nn.Module,
@@ -571,92 +573,30 @@ class MultiTaskTrainer(TrainerABC):
                  gradient_clipping: float = 1.0,
                  output_transform=None,
                  tensorboard_logs: str = None,
-                 optional_tensorboard_features: bool = False,
-                 embeddings_name: str = None,
                  clf_loss_coef: float=0.1,
-                 lm_loss_coef: float=0.9):
-        self.model: nn.Module = model
+                 lm_loss_coef: float=0.9
+                 ):
 
-        self.forward_param_defaults = {}
-
-        model_spec = inspect.getfullargspec(model.forward)
-        self.forward_params: List[str] = model_spec.args[1:]
-        for fparam, pdefault in zip(reversed(model_spec.args[1:]), reversed(model_spec.defaults if model_spec.defaults else [])):
-            self.forward_param_defaults[fparam] = pdefault
-
-        self.dataset_splits: DatasetSplits = dataset_splits
-        self.loss: nn.Module = loss
-        self.optimizer: optim.Optimizer = optimizer
-        self.metrics: Dict[str, Metric] = metrics
-        self.metrics: List[Metric] = [metric for _, metric in self.metrics.items()]
-        self.experiment_config: ExperimentConfig = experiment_config
-        self.device: str = device
-        self.num_epochs: int = num_epochs
-        self.scheduler: Any = scheduler
-        self.seed: int = seed
-        self.cuda: bool = cuda
-        if self.cuda is None:  # If cuda not specified, just check if the cuda is available and use accordingly
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.loss_accumulation_steps: int = loss_accumulation_steps
-        self.regularizer: RegularizerABC = regularizer
-        self.gradient_clipping: float = gradient_clipping
-        self.output_transform = output_transform
-        self.tensorboard_logs: str = tensorboard_logs
-        if self.tensorboard_logs:
-            self.writer = SummaryWriter(log_dir=self.tensorboard_logs)
-
-        if not self.output_transform:
-            self.output_transform = lambda y_pred, y_target, loss: (y_pred, y_target, loss)
-
-        self.eval_output_transform = lambda y, y_pred: (y, y_pred)
-
-        self.trainer, self.training_metrics = self.create_supervised_trainer()
-        self.evaluator = self.create_supervised_evaluator()
-
-        self.optimizer_factory: PluginFactory = None
+        super().__init__(
+            model=model,
+            dataset_splits=dataset_splits,
+            loss=loss,
+            optimizer=optimizer,
+            metrics=metrics,
+            experiment_config=experiment_config,
+            device=device,
+            num_epochs=num_epochs,
+            seed=seed,
+            cuda=cuda,
+            loss_accumulation_steps=loss_accumulation_steps,
+            scheduler=scheduler,
+            regularizer=regularizer,
+            gradient_clipping=gradient_clipping,
+            output_transform=output_transform,
+            tensorboard_logs=tensorboard_logs)
         self.clf_loss_coef = clf_loss_coef
         self.lm_loss_coef = lm_loss_coef
-
-        loss_metrics = [m for m in self.metrics if isinstance(m, Loss)]
-
-        if self.scheduler:
-            if not loss_metrics:
-                raise ValueError('A loss metric must be configured')
-            elif len(loss_metrics) > 1:
-                logging.warning('multiple loss metrics detected, using %s for LR scheduling', loss_metrics[0])
-            self.loss_metric = loss_metrics[0]
-
-        self.metrics_history = {
-            "training": defaultdict(list),
-            "validation": defaultdict(list),
-            "test": defaultdict(list)}
-
-        if self.seed:
-            set_seed_everywhere(self.seed, self.cuda)
-
-        Accuracy().attach(self.evaluator, "accuracy")
-
-        @self.trainer.on(Events.EPOCH_COMPLETED)
-        def log_validation_results(engine):
-            self.evaluator.run(self.dataset_splits.val_data_loader())
-            logger.info(f"Validation Epoch: {engine.state.epoch} Error rate: {100*(1 - self.evaluator.state.metrics['accuracy'])}")
-
-        RunningAverage(output_transform=lambda x: x).attach(self.trainer, "loss")
-        ProgressBar(persist=True).attach(self.trainer, metric_names=['loss'])
-
-    def _forward(self, batch):
-        model_inputs = {}
-        for p in self.forward_params:
-            val = batch.get(p)
-            if val is None:
-                if p in self.forward_param_defaults:
-                    val = self.forward_param_defaults[p]
-                else:
-                    raise ValueError(f'missing model parameter "{p}"')
-
-            model_inputs[p] = val
-
-        return self.model(**model_inputs)
+        RunningAverage(Accuracy(output_transform=lambda x: (x[0], x[1]))).attach(self.trainer, 'acc')
 
     def update_engine(self, engine, batch):
         self.model.train()
@@ -673,7 +613,7 @@ class MultiTaskTrainer(TrainerABC):
             self.optimizer.step()
             self.optimizer.zero_grad()
 
-        return loss.item()
+        return clf_logits, batch['y_target'], loss.item()
 
     def infer_engine(self, engine, batch):
 
@@ -683,22 +623,6 @@ class MultiTaskTrainer(TrainerABC):
             lm_logits, clf_logits = self._forward(batch)
             return clf_logits, batch['y_target']
 
-    def create_supervised_trainer(self):
-
-        if self.device:
-            self.model.to(self.device)
-
-        engine = Engine(self.update_engine)
-        metrics = {}
-        for i, metric in enumerate(self.metrics):
-            if not isinstance(metric, Loss):
-                n = metric.__class__.__name__
-                tm = TrainingMetric(metric)
-                metrics[n] = tm
-                tm.attach(engine, n)
-
-        return engine, metrics
-
     def create_supervised_evaluator(self):
 
         if self.device:
@@ -706,14 +630,10 @@ class MultiTaskTrainer(TrainerABC):
 
         engine = Engine(self.infer_engine)
 
+        Accuracy().attach(engine, "accuracy")
+
         return engine
 
     def train(self):
-        """
-        Launch the ignite training pipeline
-        If fine-tuning mode is granted in the config file, freeze all layers, replace classification layer by a Linear layer
-        and reset the optimizer
-        :return:
-        """
-
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
+
