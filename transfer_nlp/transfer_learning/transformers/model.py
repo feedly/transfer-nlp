@@ -143,8 +143,7 @@ class TransformerWithClfHead(torch.nn.Module):
 
     def forward(self, x):
 
-        # x = x.transpose(0, 1).contiguous().to('cpu')
-        clf_tokens_mask = (x.transpose(0, 1).contiguous().to('cpu') == self.tokenizer.vocab['[CLS]'])
+        clf_tokens_mask = (x.transpose(0, 1).contiguous() == self.tokenizer.vocab['[CLS]'])
 
         hidden_states = self.transformer(x)
         msk = clf_tokens_mask.unsqueeze(-1).float()
@@ -244,7 +243,7 @@ class TransformerWithClfHeadAndAdapters(torch.nn.Module):
 
     def forward(self, x):
 
-        clf_tokens_mask = (x.transpose(0, 1).contiguous().to('cpu') == self.tokenizer.vocab['[CLS]'])
+        clf_tokens_mask = (x.transpose(0, 1).contiguous() == self.tokenizer.vocab['[CLS]'])
         hidden_states = self.transformer(x)
         clf_tokens_states = (hidden_states * clf_tokens_mask.unsqueeze(-1).float()).sum(dim=0)
         clf_logits = self.classification_head(clf_tokens_states)
@@ -282,7 +281,7 @@ class TransformerWithClfHeadAndLMHead(torch.nn.Module):
 
     def forward(self, x):
         """ x and clf_tokens_mask have shape [seq length, batch] padding_mask has shape [batch, seq length] """
-        clf_tokens_mask = (x.transpose(0, 1).contiguous().to('cpu') == self.tokenizer.vocab['[CLS]'])
+        clf_tokens_mask = (x.transpose(0, 1).contiguous() == self.tokenizer.vocab['[CLS]'])
         hidden_states = self.transformer(x)
 
         lm_logits = self.lm_head(hidden_states)
