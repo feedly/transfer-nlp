@@ -1,0 +1,53 @@
+{
+  "dataset": {
+    "_name": "BertCLFFinetuningDataset",
+    "batch_size": 16
+  },
+  "model": {
+    "_name": "TransformerWithClfHeadAndLMHead",
+    "embed_dim": 20,
+    "hidden_dim": 20,
+    "num_max_positions": 256,
+    "num_heads": 2,
+    "num_layers": 2,
+    "dropout": 0.1,
+    "causal": true,
+    "initializer_range": 0.02,
+    "num_classes": 6
+  },
+  "optimizer": {
+    "_name": "Adam",
+    "lr": 0.01,
+    "params": {
+      "_name": "TrainableParameters",
+      "model": "$model"
+    }
+  },
+  "trainer": {
+    "_name": "MultiTaskTrainer",
+    "model": "$model",
+    "dataset_splits": "$dataset",
+    "loss": {
+      "_name": "MultiTaskLoss",
+      "causal": true
+    },
+    "optimizer": "$optimizer",
+    "scheduler": {
+      "_name": "ReduceLROnPlateau",
+      "optimizer": "$optimizer"
+    },
+    "clf_loss_coef": 0.1,
+    "lm_loss_coef": 0.9,
+    "num_epochs": 5,
+    "seed": 1337,
+    "metrics": {
+      "loss": {
+        "_name": "LossMetric",
+        "loss_fn": {
+          "_name": "MultiTaskLoss",
+          "causal": true
+        }
+      }
+    }
+  }
+}

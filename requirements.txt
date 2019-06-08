@@ -13,5 +13,6 @@ smart_open>=1.8.1
 pytorch-ignite>=0.2.0
 tensorboardX==1.6
 feedly-client>=0.20
-torch==1.0.1.post2
+torch>=1.1.0
 annoy>=1.15.1
+pytorch_pretrained_bert>=0.6.1
