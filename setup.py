@@ -32,7 +32,8 @@ setup(
         'tensorboardX==1.6',
         'knockknock>=0.1',
         'pytorch-ignite>==0.2.0',
-        'smart_open>=1.8.1'
+        'smart_open>=1.8.1',
+        'pytorch_pretrained_bert>=0.6.1'
     ],
     setup_requires=['green'],
     classifiers=[
