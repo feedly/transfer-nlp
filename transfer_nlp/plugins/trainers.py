@@ -27,6 +27,7 @@ from ignite.engine.engine import Engine
 from ignite.metrics import Loss, Metric, RunningAverage, Accuracy
 from ignite.utils import convert_tensor
 from tensorboardX import SummaryWriter
+from pytorch_pretrained_bert import cached_path
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
@@ -431,7 +432,8 @@ class SingleTaskFineTuner(SingleTaskTrainer):
                  optional_tensorboard_features: bool = False,
                  embeddings_name: str = None,
                  adaptation: str = 'hard-freezing',
-                 decreasing_factor: int = 2.6):
+                 decreasing_factor: int = 2.6,
+                 pretrained: bool = False):
         super().__init__(
             model=model,
             dataset_splits=dataset_splits,
@@ -454,6 +456,15 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         )
         self.adaptation: str = adaptation
         self.decreasing_factor: int = decreasing_factor
+        self.pretrained: bool = pretrained
+
+    def load_pretrained_model(self):
+
+        logger.info("Loading pretrained model")
+        state_dict = torch.load(cached_path("https://s3.amazonaws.com/models.huggingface.co/"
+                                            "naacl-2019-tutorial/model_checkpoint.pth"), map_location=self.device)
+        self.model.load_state_dict(state_dict, strict=False)
+        logger.info("Pretrained model loaded!")
 
     def freeze_params(self):
 
@@ -537,6 +548,9 @@ class SingleTaskFineTuner(SingleTaskTrainer):
 
     def train(self):
 
+        if self.pretrained:
+            self.load_pretrained_model()
+
         if self.adaptation == 'hard-freezing':
             self.freeze_params()
         elif self.adaptation == 'gradual-unfreezing':
@@ -550,7 +564,6 @@ class SingleTaskFineTuner(SingleTaskTrainer):
 
         self.optimizer = self.experiment_config.factories['optimizer'].create()
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
-
 
 
 @register_plugin
@@ -573,8 +586,8 @@ class MultiTaskTrainer(BaseIgniteTrainer):
                  gradient_clipping: float = 1.0,
                  output_transform=None,
                  tensorboard_logs: str = None,
-                 clf_loss_coef: float=0.1,
-                 lm_loss_coef: float=0.9
+                 clf_loss_coef: float = 0.1,
+                 lm_loss_coef: float = 0.9
                  ):
 
         super().__init__(
@@ -636,4 +649,3 @@ class MultiTaskTrainer(BaseIgniteTrainer):
 
     def train(self):
         self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
-

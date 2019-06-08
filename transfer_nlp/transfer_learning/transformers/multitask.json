@@ -4,13 +4,12 @@
     "batch_size": 16
   },
   "model": {
-    "_name": "TransformerWithClfHeadAndAdapters",
-    "adapters_dim": 32,
-    "embed_dim": 410,
-    "hidden_dim": 2100,
+    "_name": "TransformerWithClfHeadAndLMHead",
+    "embed_dim": 20,
+    "hidden_dim": 20,
     "num_max_positions": 256,
-    "num_heads": 10,
-    "num_layers": 16,
+    "num_heads": 2,
+    "num_layers": 2,
     "dropout": 0.1,
     "causal": true,
     "initializer_range": 0.02,
@@ -25,33 +24,30 @@
     }
   },
   "trainer": {
-    "_name": "SingleTaskFineTuner",
+    "_name": "MultiTaskTrainer",
     "model": "$model",
     "dataset_splits": "$dataset",
     "loss": {
-      "_name": "FineTuningLoss"
+      "_name": "MultiTaskLoss",
+      "causal": true
     },
     "optimizer": "$optimizer",
     "scheduler": {
       "_name": "ReduceLROnPlateau",
       "optimizer": "$optimizer"
     },
+    "clf_loss_coef": 0.1,
+    "lm_loss_coef": 0.9,
     "num_epochs": 5,
     "seed": 1337,
     "metrics": {
       "loss": {
         "_name": "LossMetric",
         "loss_fn": {
-          "_name": "FineTuningLoss"
+          "_name": "MultiTaskLoss",
+          "causal": true
         }
-      },
-      "accuracy": {
-        "_name": "Accuracy"
       }
-    },
-    "adaptation": "hard-freezing",
-    "decreasing_factor": 2.6,
-    "tensorboard_logs": "$HOME/transfer-learning/trec",
-    "pretrained": true
+    }
   }
 }

@@ -51,7 +51,7 @@
     },
     "adaptation": "hard-freezing",
     "decreasing_factor": 2.6,
-    "tensorboard_logs": "$HOME/transfer-learning/trec",
+    "tensorboard_logs": "$HOME/transfer-learning/trec"
     "pretrained": true
   }
 }
