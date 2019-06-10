@@ -6,7 +6,7 @@ from different countries is provided and the task is to predict the country.
 
 Vectorizer
 ----------
-The most straigthforward to represent a surname is to get its one-hot character encoding:
+The most straightforward to represent a surname is to get its one-hot character encoding:
 
 
 .. code-block:: python
