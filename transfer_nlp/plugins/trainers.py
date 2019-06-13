@@ -168,7 +168,7 @@ class BaseIgniteTrainer(TrainerABC):
                 if k == 'Accuracy':
                     rv += f'{metric_name(k)}: {metrics[k]:.3}'
                 else:
-                    rv += f'{metric_name(k)}: {metrics[k]:.6}'
+                    rv += f'{metric_name(k)}: {metrics[k]}'
             return rv
 
         def store_metrics(metrics: Dict, mode: str):
@@ -202,7 +202,7 @@ class BaseIgniteTrainer(TrainerABC):
             self.evaluator.run(self.dataset_splits.train_data_loader())
             metrics = self.evaluator.state.metrics
             store_metrics(metrics=metrics, mode="training")
-            logger.info(f"Training Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
+            # logger.info(f"Training Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
             self.evaluator.run(self.dataset_splits.val_data_loader())
             metrics = self.evaluator.state.metrics
