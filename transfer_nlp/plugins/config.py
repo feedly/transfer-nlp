@@ -160,23 +160,28 @@ def _replace_env_variables(dico: Dict, env: Dict) -> None:
 
         return v_upd
 
-    def recursive_replace(dico: Dict):
+    def recursive_replace(my_item: Union[Dict, List, str]):
 
-        for k, v in dico.items():
-            if not isinstance(v, dict) and not isinstance(v, list):
-                v = do_env_subs(v)
-                dico[k] = v
-            elif isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
-                upd = []
-                for vv in v:
-                    upd.append(do_env_subs(vv))
-                    dico[k] = upd
-            elif isinstance(v, dict):
-                recursive_replace(dico[k])
-            else:
-                pass
+        if isinstance(my_item, dict):
+            for k, v in my_item.items():
+                if not isinstance(v, dict) and not isinstance(v, list):
+                    v = do_env_subs(v)
+                    my_item[k] = v
 
-    recursive_replace(dico=dico)
+                elif isinstance(v, dict):
+                    recursive_replace(my_item[k])
+                elif isinstance(v, list):
+                    recursive_replace(my_item[k])
+                else:
+                    pass
+        elif isinstance(my_item, list):
+            for i, item in enumerate(my_item):
+                if not isinstance(item, list) and not isinstance(item, dict):
+                    my_item[i] = do_env_subs(item)
+                else:
+                    recursive_replace(item)
+
+    recursive_replace(my_item=dico)
 
 
 class ExperimentConfig:
