@@ -41,6 +41,23 @@ class DemoDefaults:
 
 
 @register_plugin
+class DemoDefaultsList:
+
+    def __init__(self, strval: str, intval1: int = 5, intval2: int = None, param_list: List = [0]):
+        self.strval = strval
+        self.intval1 = intval1
+        self.intval2 = intval2
+        self.param_list = param_list
+
+
+@register_plugin
+class DemoIsAvailable:
+
+    def __init__(self, is_available: bool = False):
+        self.is_available = is_available
+
+
+@register_plugin
 class DemoComplexDefaults:
 
     def __init__(self, strval: str, obj: DemoDefaults = None):  # use different param and property names as additonal check
@@ -210,6 +227,31 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['data2'].strval, 'foo')
         self.assertEqual(e['data2'].intval1, 7)
         self.assertIsNone(e['data2'].intval2)
+
+        experiment = {
+            'path': "$HOME/foo/bar",
+            'path2': "$HOMEPATH/foo/bar",
+            'data': {
+                '_name': "DemoWithStr",
+                'strval': "$HOME/foo/bar/bis"
+            },
+            'data2': {
+                '_name': "DemoDefaultsList",
+                'strval': "foo",
+                'intval1': "$SVAL",
+                'param_list': [
+                    {
+                        "_name": "DemoIsAvailable",
+                        "is_available": "$HOME"},
+                    {
+                        "_name": "DemoIsAvailable",
+                        "is_available": "$HOMEPATH"}
+                ]
+            }
+        }
+        e = ExperimentConfig(experiment, HOME='/tmp', HOMEPATH=Path('/tmp2'), SVAL=7)
+        self.assertEqual(e['data2'].param_list[0].is_available, '/tmp')
+        self.assertEqual(e['data2'].param_list[1].is_available, '/tmp2')
 
     def test_literal_injection(self):
         experiment = {
