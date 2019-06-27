@@ -245,13 +245,16 @@ class RegistryTest(unittest.TestCase):
                         "is_available": "$HOME"},
                     {
                         "_name": "DemoIsAvailable",
-                        "is_available": "$HOMEPATH"}
+                        "is_available": "$HOMEPATH"},
+                    "$HOME"
                 ]
             }
         }
         e = ExperimentConfig(experiment, HOME='/tmp', HOMEPATH=Path('/tmp2'), SVAL=7)
         self.assertEqual(e['data2'].param_list[0].is_available, '/tmp')
         self.assertEqual(e['data2'].param_list[1].is_available, '/tmp2')
+        self.assertEqual(e['data2'].param_list[2], '/tmp')
+
 
     def test_literal_injection(self):
         experiment = {
