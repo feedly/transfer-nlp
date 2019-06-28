@@ -19,7 +19,7 @@ from smart_open import open
 
 logger = logging.getLogger(__name__)
 
-CLASSES = {
+REGISTRY = {
     'CrossEntropyLoss': nn.CrossEntropyLoss,
     'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
     "Adam": optim.Adam,
@@ -62,18 +62,35 @@ CLASSES = {
 }
 
 
-def register_plugin(clazz):
-    if clazz.__name__ in CLASSES:
-        raise ValueError(f"{clazz.__name__} is already registered to class {CLASSES[clazz.__name__]}. Please select another name")
+def register_plugin(registrable: Any, alias: str = None):
+    """
+    Register a class, a function or a method to REGISTRY
+    Args:
+        registrable: 
+        alias: 
+
+    Returns:
+
+    """
+    if not alias:
+        if registrable.__name__ in REGISTRY:
+            raise ValueError(f"{registrable.__name__} is already registered to registrable {REGISTRY[registrable.__name__]}. Please select another name")
+        else:
+            REGISTRY[registrable.__name__] = registrable
+            return registrable
     else:
-        CLASSES[clazz.__name__] = clazz
-        return clazz
+        if alias in REGISTRY:
+            raise ValueError(f"{alias} is already registered to registrable {REGISTRY[alias]}. Please select another name")
+        else:
+            REGISTRY[alias] = registrable
+            return registrable
+
 
 
 class UnknownPluginException(Exception):
-    def __init__(self, clazz: str):
-        super().__init__(f'Class {clazz} is not registered. See transfer_nlp.config.register_plugin for more information.')
-        self.clazz: str = clazz
+    def __init__(self, registrable: str):
+        super().__init__(f'Registrable object {registrable} is not registered. See transfer_nlp.config.register_plugin for more information.')
+        self.registrable: str = registrable
 
 
 class UnconfiguredItemsException(Exception):
@@ -83,10 +100,10 @@ class UnconfiguredItemsException(Exception):
 
 
 class BadParameter(Exception):
-    def __init__(self, clazz, param):
-        super().__init__(f"Parameter naming error: '{param}' is not a parameter of class '{clazz}'")
+    def __init__(self, registrable, param):
+        super().__init__(f"Parameter naming error: '{param}' is not a parameter of registrable '{registrable}'")
         self.param = param
-        self.clazz = clazz
+        self.registrable = registrable
 
 
 class ConfigFactoryABC(ABC):
@@ -286,25 +303,25 @@ class ExperimentConfig:
         logger.info(f"Configuring {object_key}")
 
         if '_name' not in object_dict:
-            raise ValueError(f"The object {object_key} should have a _name key to access its class")
+            raise ValueError(f"The object {object_key} should have a _name key to access its registrable")
 
-        class_name = object_dict['_name']
-        clazz = CLASSES.get(class_name)
+        registrable_name = object_dict['_name']
+        registrable = REGISTRY.get(registrable_name)
 
-        if not clazz:
+        if not registrable:
             raise UnknownPluginException(object_dict["_name"])
 
-        if inspect.isclass(clazz):
-            spec = inspect.getfullargspec(clazz.__init__)
+        if inspect.isclass(registrable):
+            spec = inspect.getfullargspec(registrable.__init__)
             spec_args = spec.args[1:]
-        elif inspect.isfunction(clazz):
-            spec = inspect.getfullargspec(clazz)
+        elif inspect.isfunction(registrable):
+            spec = inspect.getfullargspec(registrable)
             spec_args = spec.args
-        elif inspect.ismethod(clazz):
-            spec = inspect.getfullargspec(clazz)
+        elif inspect.ismethod(registrable):
+            spec = inspect.getfullargspec(registrable)
             spec_args = spec.args[1:]
         else:
-            raise ValueError(f"{class_name} should be either a class, a function or a method")
+            raise ValueError(f"{registrable_name} should be either a class, a function or a method")
 
         params = {}
         param2config_key = {}
@@ -313,7 +330,7 @@ class ExperimentConfig:
 
         for named_param in named_params:
             if named_param not in spec_args:
-                raise BadParameter(clazz=class_name, param=named_param)
+                raise BadParameter(registrable=registrable_name, param=named_param)
 
         for arg in spec_args:
 
@@ -375,8 +392,8 @@ class ExperimentConfig:
                 param2config_key[arg] = None
 
         if len(params) == len(spec_args):
-            self.factories[parent_level] = PluginFactory(cls=clazz, param2config_key=param2config_key, **params)
-            return clazz(**params)
+            self.factories[parent_level] = PluginFactory(cls=registrable, param2config_key=param2config_key, **params)
+            return registrable(**params)
 
         else:
             unconfigured_params = spec_args - params.keys()
@@ -397,7 +414,7 @@ class ExperimentConfig:
                     configured.add(object_key)
 
                 except BadParameter as b:
-                    raise BadParameter(clazz=b.clazz, param=b.param)
+                    raise BadParameter(registrable=b.registrable, param=b.param)
                 except UnconfiguredItemsException as e:
                     config_errors.update(e.items)
             if configured:

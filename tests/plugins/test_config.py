@@ -123,9 +123,33 @@ class Pipeline:
 
     def __init__(self, steps: List):
         self.steps = steps
+   
+
+class DemoClassMethod:
+    
+    def __init__(self, param: int):
+        
+        self.param = param
+    
+    @classmethod
+    def from_example(cls):
+        return cls(1)
+    
+
+register_plugin(DemoClassMethod.from_example, alias='from_example_alias_name')
 
 
 class RegistryTest(unittest.TestCase):
+    
+    def test_class_method(self):
+        
+        experiment = {
+            "my_object": {
+                "_name": "from_example_alias_name"
+            }
+        }
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['my_object'].param, 1)
 
     def test_recursive_definition(self):
         experiment = {
@@ -514,7 +538,7 @@ class RegistryTest(unittest.TestCase):
             self.fail()
         except BadParameter as b:
             self.assertEqual(b.param, 'bad_param')
-            self.assertEqual(b.clazz, 'DemoWithInt')
+            self.assertEqual(b.registrable, 'DemoWithInt')
 
     def test_bad_plugin(self):
 
@@ -527,7 +551,7 @@ class RegistryTest(unittest.TestCase):
             ExperimentConfig(experiment)
             self.fail()
         except UnknownPluginException as e:
-            self.assertEqual(e.clazz, 'NoConfig')
+            self.assertEqual(e.registrable, 'NoConfig')
 
         experiment = {
             "item": {
@@ -543,7 +567,7 @@ class RegistryTest(unittest.TestCase):
             ExperimentConfig(experiment)
             self.fail()
         except UnknownPluginException as e:
-            self.assertEqual(e.clazz, 'NoConfig')
+            self.assertEqual(e.registrable, 'NoConfig')
 
         experiment = {
             "item": {
@@ -559,7 +583,7 @@ class RegistryTest(unittest.TestCase):
             ExperimentConfig(experiment)
             self.fail()
         except UnknownPluginException as e:
-            self.assertEqual(e.clazz, 'NoConfig')
+            self.assertEqual(e.registrable, 'NoConfig')
 
     def test_recursive_list(self):
         experiment = {

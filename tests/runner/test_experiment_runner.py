@@ -10,6 +10,36 @@ from transfer_nlp.plugins.trainers import TrainerABC
 from transfer_nlp.runner.experiment_runner import ExperimentRunner
 
 
+@register_plugin
+class MockTrainer(TrainerABC):
+    def __init__(self, bool_param, int_param, str_param, float_param, env_param):
+        self.bool_param = bool_param
+        self.int_param = int_param
+        self.str_param = str_param
+        self.float_param = float_param
+        self.env_param = env_param
+        self.trained = False
+
+    def train(self):
+        ExperimentRunnerTest._trainer_calls += 1
+        if self.trained:
+            raise ValueError()
+        self.trained = True
+
+
+@register_plugin
+class MockReporter(ReporterABC):
+    def __init__(self):
+        self.reported = False
+
+    def report(self, name: str, experiment: ExperimentConfig, report_dir: Path):
+        ExperimentRunnerTest._configs[name] = experiment
+        ExperimentRunnerTest._reporter_calls += 1
+        if self.reported:
+            raise ValueError()
+
+        self.reported = True
+
 class ExperimentRunnerTest(TestCase):
     _reporter_calls = 0
     _trainer_calls = 0
@@ -20,36 +50,6 @@ class ExperimentRunnerTest(TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
-
-    @register_plugin
-    class MockTrainer(TrainerABC):
-        def __init__(self, bool_param, int_param, str_param, float_param, env_param):
-            self.bool_param = bool_param
-            self.int_param = int_param
-            self.str_param = str_param
-            self.float_param = float_param
-            self.env_param = env_param
-            self.trained = False
-
-        def train(self):
-            ExperimentRunnerTest._trainer_calls += 1
-            if self.trained:
-                raise ValueError()
-            self.trained = True
-
-    @register_plugin
-    class MockReporter(ReporterABC):
-        def __init__(self):
-            self.reported = False
-
-        def report(self, name: str, experiment: ExperimentConfig, report_dir: Path):
-            ExperimentRunnerTest._configs[name] = experiment
-            ExperimentRunnerTest._reporter_calls += 1
-            if self.reported:
-                raise ValueError()
-
-            self.reported = True
-
 
     def test_run_all(self):
 
