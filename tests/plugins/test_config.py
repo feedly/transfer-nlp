@@ -123,9 +123,33 @@ class Pipeline:
 
     def __init__(self, steps: List):
         self.steps = steps
+   
+
+class DemoClassMethod:
+    
+    def __init__(self, param: int):
+        
+        self.param = param
+    
+    @classmethod
+    def from_example(cls):
+        return cls(1)
+    
+
+register_plugin(DemoClassMethod.from_example)
 
 
 class RegistryTest(unittest.TestCase):
+    
+    def test_class_method(self):
+        
+        experiment = {
+            "my_object": {
+                "_name": "DemoClassMethod.from_example"
+            }
+        }
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['my_object'].param, 1)
 
     def test_recursive_definition(self):
         experiment = {

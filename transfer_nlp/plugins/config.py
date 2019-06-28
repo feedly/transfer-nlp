@@ -63,10 +63,10 @@ CLASSES = {
 
 
 def register_plugin(clazz):
-    if clazz.__name__ in CLASSES:
-        raise ValueError(f"{clazz.__name__} is already registered to class {CLASSES[clazz.__name__]}. Please select another name")
+    if clazz.__qualname__ in CLASSES:
+        raise ValueError(f"{clazz.__qualname__} is already registered to class {CLASSES[clazz.__qualname__]}. Please select another name")
     else:
-        CLASSES[clazz.__name__] = clazz
+        CLASSES[clazz.__qualname__] = clazz
         return clazz
 
 
