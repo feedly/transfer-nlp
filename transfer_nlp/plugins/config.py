@@ -62,12 +62,20 @@ CLASSES = {
 }
 
 
-def register_plugin(clazz):
-    if clazz.__qualname__ in CLASSES:
-        raise ValueError(f"{clazz.__qualname__} is already registered to class {CLASSES[clazz.__qualname__]}. Please select another name")
+def register_plugin(clazz, alias: str=None):
+    if not alias:
+        if clazz.__name__ in CLASSES:
+            raise ValueError(f"{clazz.__name__} is already registered to class {CLASSES[clazz.__name__]}. Please select another name")
+        else:
+            CLASSES[clazz.__name__] = clazz
+            return clazz
     else:
-        CLASSES[clazz.__qualname__] = clazz
-        return clazz
+        if alias in CLASSES:
+            raise ValueError(f"{alias} is already registered to class {CLASSES[alias]}. Please select another name")
+        else:
+            CLASSES[alias] = clazz
+            return clazz
+
 
 
 class UnknownPluginException(Exception):

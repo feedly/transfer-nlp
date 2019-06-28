@@ -136,7 +136,7 @@ class DemoClassMethod:
         return cls(1)
     
 
-register_plugin(DemoClassMethod.from_example)
+register_plugin(DemoClassMethod.from_example, alias='from_example_alias_name')
 
 
 class RegistryTest(unittest.TestCase):
@@ -145,7 +145,7 @@ class RegistryTest(unittest.TestCase):
         
         experiment = {
             "my_object": {
-                "_name": "DemoClassMethod.from_example"
+                "_name": "from_example_alias_name"
             }
         }
         e = ExperimentConfig(experiment)
