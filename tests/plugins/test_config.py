@@ -538,7 +538,7 @@ class RegistryTest(unittest.TestCase):
             self.fail()
         except BadParameter as b:
             self.assertEqual(b.param, 'bad_param')
-            self.assertEqual(b.clazz, 'DemoWithInt')
+            self.assertEqual(b.registrable, 'DemoWithInt')
 
     def test_bad_plugin(self):
 
@@ -551,7 +551,7 @@ class RegistryTest(unittest.TestCase):
             ExperimentConfig(experiment)
             self.fail()
         except UnknownPluginException as e:
-            self.assertEqual(e.clazz, 'NoConfig')
+            self.assertEqual(e.registrable, 'NoConfig')
 
         experiment = {
             "item": {
@@ -567,7 +567,7 @@ class RegistryTest(unittest.TestCase):
             ExperimentConfig(experiment)
             self.fail()
         except UnknownPluginException as e:
-            self.assertEqual(e.clazz, 'NoConfig')
+            self.assertEqual(e.registrable, 'NoConfig')
 
         experiment = {
             "item": {
@@ -583,7 +583,7 @@ class RegistryTest(unittest.TestCase):
             ExperimentConfig(experiment)
             self.fail()
         except UnknownPluginException as e:
-            self.assertEqual(e.clazz, 'NoConfig')
+            self.assertEqual(e.registrable, 'NoConfig')
 
     def test_recursive_list(self):
         experiment = {
