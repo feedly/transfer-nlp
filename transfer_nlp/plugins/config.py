@@ -74,13 +74,13 @@ def register_plugin(registrable: Any, alias: str = None):
     """
     if not alias:
         if registrable.__name__ in REGISTRY:
-            raise ValueError(f"{registrable.__name__} is already registered to class {REGISTRY[registrable.__name__]}. Please select another name")
+            raise ValueError(f"{registrable.__name__} is already registered to registrable {REGISTRY[registrable.__name__]}. Please select another name")
         else:
             REGISTRY[registrable.__name__] = registrable
             return registrable
     else:
         if alias in REGISTRY:
-            raise ValueError(f"{alias} is already registered to class {REGISTRY[alias]}. Please select another name")
+            raise ValueError(f"{alias} is already registered to registrable {REGISTRY[alias]}. Please select another name")
         else:
             REGISTRY[alias] = registrable
             return registrable
@@ -303,10 +303,10 @@ class ExperimentConfig:
         logger.info(f"Configuring {object_key}")
 
         if '_name' not in object_dict:
-            raise ValueError(f"The object {object_key} should have a _name key to access its class")
+            raise ValueError(f"The object {object_key} should have a _name key to access its registrable")
 
-        class_name = object_dict['_name']
-        registrable = REGISTRY.get(class_name)
+        registrable_name = object_dict['_name']
+        registrable = REGISTRY.get(registrable_name)
 
         if not registrable:
             raise UnknownPluginException(object_dict["_name"])
@@ -321,7 +321,7 @@ class ExperimentConfig:
             spec = inspect.getfullargspec(registrable)
             spec_args = spec.args[1:]
         else:
-            raise ValueError(f"{class_name} should be either a class, a function or a method")
+            raise ValueError(f"{registrable_name} should be either a class, a function or a method")
 
         params = {}
         param2config_key = {}
@@ -330,7 +330,7 @@ class ExperimentConfig:
 
         for named_param in named_params:
             if named_param not in spec_args:
-                raise BadParameter(registrable=class_name, param=named_param)
+                raise BadParameter(registrable=registrable_name, param=named_param)
 
         for arg in spec_args:
 
