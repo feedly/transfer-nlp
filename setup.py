@@ -21,10 +21,7 @@ setup(
         'numpy>=1.16.2',
         'torch>=1.1.0',
         'pytorch-ignite>=0.2.0',
-        'smart_open>=1.8.1',
-        'tensorboard>=1.14',  # remaining dependencies will be removed after torch 1.14 remove their need
-        'future>=0.17.1',
-        'pillow>=6.0.0'
+        'smart_open>=1.8.1'
     ],
     setup_requires=['green'],
     classifiers=[
