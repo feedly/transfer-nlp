@@ -50,12 +50,6 @@
       "accuracy": {
         "_name": "Accuracy"
       },
-      "recall": {
-        "_name": "Recall"
-      },
-      "precision": {
-        "_name": "Precision"
-      },
       "loss": {
         "_name": "LossMetric",
         "loss_fn": {
