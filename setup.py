@@ -17,23 +17,14 @@ setup(
     keywords=['NLP', 'transfer learning', 'language models', 'NLU'],
     install_requires=[
         'tqdm>=4.31.1',
-        'matplotlib>=3.0.3',
-        'nltk>=3.4',
         'pandas>=0.24.1',
-        'seaborn>=0.9.0',
-        'scipy>=1.2.1',
-        'annoy>=1.15.0',
         'numpy>=1.16.2',
-        'requests>=2.21.0',
         'torch>=1.1.0',
-        'ipython==6.2.1',
-        'feedly-client>=0.20',
-        'bs4>=0.0.1',
-        'tensorboardX==1.6',
-        'knockknock>=0.1',
         'pytorch-ignite>=0.2.0',
         'smart_open>=1.8.1',
-        'pytorch_pretrained_bert>=0.6.1'
+        'tb_nightly>=1.15.0a20190624',  # remaining dependencies will be removed after torch 1.14 remove their need
+        'future>=0.17.1',
+        'pillow>=6.0.0'
     ],
     setup_requires=['green'],
     classifiers=[

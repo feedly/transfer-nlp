@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
 
-from experiments.transformers.dataset import *
-from experiments.transformers.model import *
+from experiments.transfer_learning.transformers.dataset import *
+from experiments.transfer_learning.transformers.model import *
 from transfer_nlp.plugins.config import ExperimentConfig
 
 logger = logging.getLogger(__name__)

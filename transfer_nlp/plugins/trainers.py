@@ -26,8 +26,7 @@ from ignite.engine import Events
 from ignite.engine.engine import Engine
 from ignite.metrics import Loss, Metric, RunningAverage, Accuracy
 from ignite.utils import convert_tensor
-from tensorboardX import SummaryWriter
-from pytorch_pretrained_bert import cached_path
+from torch.utils.tensorboard import SummaryWriter
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
@@ -459,12 +458,21 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         self.pretrained: bool = pretrained
 
     def load_pretrained_model(self):
+        """
+        This methid is not implemented so that pytorch_pretrained_bert is not a 
+        required dependency. Use these lines to implement the method if using
+        pytorch_pretrained_bert
+        Returns:
 
-        logger.info("Loading pretrained model")
-        state_dict = torch.load(cached_path("https://s3.amazonaws.com/models.huggingface.co/"
-                                            "naacl-2019-tutorial/model_checkpoint.pth"), map_location=self.device)
-        self.model.load_state_dict(state_dict, strict=False)
-        logger.info("Pretrained model loaded!")
+        """
+        # from pytorch_pretrained_bert import cached_path
+        # logger.info("Loading pretrained model")
+        # state_dict = torch.load(cached_path("https://s3.amazonaws.com/models.huggingface.co/"
+        #                                     "naacl-2019-tutorial/model_checkpoint.pth"), map_location=self.device)
+        # self.model.load_state_dict(state_dict, strict=False)
+        # logger.info("Pretrained model loaded!")
+
+        raise NotImplementedError
 
     def freeze_params(self):
 
@@ -480,7 +488,7 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         trained_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
         logger.info(f"We will train {trained_parameters:3e} parameters out of {full_parameters:3e},"
-                    f" i.e. {100 * trained_parameters/full_parameters:.2f}%")
+                    f" i.e. {100 * trained_parameters / full_parameters:.2f}%")
 
     def gradual_unfreezing(self):
 
@@ -496,7 +504,7 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         trained_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
         logger.info(f"We will start by training {trained_parameters:3e} parameters out of {full_parameters:3e},"
-                    f" i.e. {100 * trained_parameters/full_parameters:.2f}%")
+                    f" i.e. {100 * trained_parameters / full_parameters:.2f}%")
 
         # We will unfreeze blocks regularly along the training: one block every `unfreezing_interval` step
         unfreezing_interval = int(len(self.dataset_splits.train_data_loader()) * self.num_epochs / (self.model.num_layers + 1))
