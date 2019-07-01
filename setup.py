@@ -16,7 +16,6 @@ setup(
     download_url='https://github.com/feedly/transfer-nlp/archive/v0.1.5.tar.gz',
     keywords=['NLP', 'transfer learning', 'language models', 'NLU'],
     install_requires=[
-        'tqdm>=4.31.1',
         'pandas>=0.24.1',
         'numpy>=1.16.2',
         'torch>=1.1.0',
