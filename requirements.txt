@@ -5,7 +5,7 @@ smart_open>=1.8.1
 pytorch-ignite>=0.2.0
 torch>=1.1.0
 
-# Temporary deps to get tensorboard work within torch, will be rmeoved with torch 1.14
-tb_nightly>=1.15.0a20190624
+# Tensorboard-related dependencies
+tensorboard>=1.14
 future>=0.17.1
 pillow>=6.0.0
