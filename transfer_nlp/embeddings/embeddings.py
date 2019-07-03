@@ -5,7 +5,6 @@ from typing import Dict, Tuple, Union
 import numpy as np
 import torch
 from smart_open import open
-from tqdm import tqdm
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin
@@ -14,12 +13,21 @@ from transfer_nlp.plugins.helpers import ObjectHyperParams
 logger = logging.getLogger(__name__)
 
 
+TQDM = True
+try:
+    from tqdm import tqdm
+except ImportError:
+    logger.debug("To use tqdm in the embedding loader, pip install tqdm")
+    TQDM = False
+
+
 def load_glove_from_file(glove_filepath: Path) -> Tuple[Dict[str, int], np.array]:
     w2i = {}
     embeddings = []
 
     with open(glove_filepath, "r") as fp:
-        for index, line in tqdm(enumerate(fp), "Embeddings"):
+        iterator = tqdm(enumerate(fp), "Embeddings") if TQDM else enumerate(fp)
+        for index, line in iterator:
             line = line.split(" ")  # each line: word num1 num2 ...
             w2i[line[0]] = index  # word = line[0]
             embedding_i = np.array([float(val) for val in line[1:]])

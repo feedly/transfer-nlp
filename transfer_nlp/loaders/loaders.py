@@ -1,23 +1,4 @@
-"""
-This file contains an abstract CustomDataset class, on which we can build up custom dataset classes.
-
-In your project, you will have to customize your data loader class. To let the framework interact with your class, you
-need to use the decorator @register_dataset, just as in the examples in this file
-"""
-
 from torch.utils.data import Dataset, DataLoader
-
-from transfer_nlp.loaders.vectorizers import Vectorizer
-from transfer_nlp.plugins.config import register_plugin
-from transfer_nlp.plugins.helpers import ObjectHyperParams
-
-
-@register_plugin
-class DatasetHyperParams(ObjectHyperParams):
-
-    def __init__(self, vectorizer: Vectorizer):
-        super().__init__()
-        self.vectorizer = vectorizer
 
 
 class DatasetSplits:
@@ -44,6 +25,7 @@ class DatasetSplits:
         return DataLoader(self.test_set, self.test_batch_size, shuffle=False)
 
 
+# To use this class you will need to manually install pandas
 class DataFrameDataset(Dataset):
 
     def __init__(self, df):

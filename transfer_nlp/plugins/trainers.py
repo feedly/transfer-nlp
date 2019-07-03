@@ -26,14 +26,22 @@ from ignite.engine import Events
 from ignite.engine.engine import Engine
 from ignite.metrics import Loss, Metric, RunningAverage, Accuracy
 from ignite.utils import convert_tensor
-from tensorboardX import SummaryWriter
-from pytorch_pretrained_bert import cached_path
+
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
 from transfer_nlp.plugins.regularizers import RegularizerABC
 
 logger = logging.getLogger(__name__)
+
+
+# Tensorboard is used within PyTorch but is not a dependency, so it should be installed manually by users
+TENSORBOARD = True
+try:
+    from torch.utils.tensorboard import SummaryWriter
+except ImportError:
+    logger.debug("To use torch.utils.tensorboard, please install tensorboard>=1.14, and future")
+    TENSORBOARD = False
 
 
 def set_seed_everywhere(seed: int, cuda: bool):
@@ -124,7 +132,7 @@ class BaseIgniteTrainer(TrainerABC):
         self.gradient_clipping: float = gradient_clipping
         self.output_transform = output_transform
         self.tensorboard_logs: str = tensorboard_logs
-        if self.tensorboard_logs:
+        if self.tensorboard_logs and TENSORBOARD:
             self.writer = SummaryWriter(log_dir=self.tensorboard_logs)
 
         if not self.output_transform:
@@ -358,7 +366,7 @@ class SingleTaskTrainer(BaseIgniteTrainer):
         if self.embeddings_name:
             @self.trainer.on(Events.COMPLETED)
             def log_embeddings(trainer):
-                if hasattr(self.model, self.embeddings_name) and hasattr(self.dataset_splits, "vectorizer"):
+                if hasattr(self.model, self.embeddings_name) and hasattr(self.dataset_splits, "vectorizer") and TENSORBOARD:
                     logger.info(f"Logging embeddings ({self.embeddings_name}) to Tensorboard!")
                     embeddings = getattr(self.model, self.embeddings_name).weight.data
                     metadata = [str(self.dataset_splits.vectorizer.data_vocab._id2token[token_index]).encode('utf-8') for token_index in
@@ -459,12 +467,21 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         self.pretrained: bool = pretrained
 
     def load_pretrained_model(self):
+        """
+        This methid is not implemented so that pytorch_pretrained_bert is not a 
+        required dependency. Use these lines to implement the method if using
+        pytorch_pretrained_bert
+        Returns:
 
-        logger.info("Loading pretrained model")
-        state_dict = torch.load(cached_path("https://s3.amazonaws.com/models.huggingface.co/"
-                                            "naacl-2019-tutorial/model_checkpoint.pth"), map_location=self.device)
-        self.model.load_state_dict(state_dict, strict=False)
-        logger.info("Pretrained model loaded!")
+        """
+        # from pytorch_pretrained_bert import cached_path
+        # logger.info("Loading pretrained model")
+        # state_dict = torch.load(cached_path("https://s3.amazonaws.com/models.huggingface.co/"
+        #                                     "naacl-2019-tutorial/model_checkpoint.pth"), map_location=self.device)
+        # self.model.load_state_dict(state_dict, strict=False)
+        # logger.info("Pretrained model loaded!")
+
+        raise NotImplementedError
 
     def freeze_params(self):
 
@@ -480,7 +497,7 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         trained_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
         logger.info(f"We will train {trained_parameters:3e} parameters out of {full_parameters:3e},"
-                    f" i.e. {100 * trained_parameters/full_parameters:.2f}%")
+                    f" i.e. {100 * trained_parameters / full_parameters:.2f}%")
 
     def gradual_unfreezing(self):
 
@@ -496,7 +513,7 @@ class SingleTaskFineTuner(SingleTaskTrainer):
         trained_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
         logger.info(f"We will start by training {trained_parameters:3e} parameters out of {full_parameters:3e},"
-                    f" i.e. {100 * trained_parameters/full_parameters:.2f}%")
+                    f" i.e. {100 * trained_parameters / full_parameters:.2f}%")
 
         # We will unfreeze blocks regularly along the training: one block every `unfreezing_interval` step
         unfreezing_interval = int(len(self.dataset_splits.train_data_loader()) * self.num_epochs / (self.model.num_layers + 1))
