@@ -1,5 +1,6 @@
 from abc import ABC
 from pathlib import Path
+from typing import Any
 
 from transfer_nlp.plugins.config import ExperimentConfig
 
@@ -10,7 +11,7 @@ class ReporterABC(ABC):
     but can additionally produce reports that are easily machine-parsable.
     """
 
-    def report(self, experiment_name: str, experiment: ExperimentConfig, report_dir: Path) -> float:
+    def report(self, experiment_name: str, experiment: ExperimentConfig, report_dir: Path) -> Any:
         """
         report the results of an experiment
         :param experiment_name: the name of the experiment.

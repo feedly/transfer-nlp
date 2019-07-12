@@ -39,6 +39,7 @@ class MockReporter(ReporterABC):
             raise ValueError()
 
         self.reported = True
+        return ExperimentRunnerTest._reporter_calls
 
 
 class ExperimentRunnerTest(TestCase):
@@ -61,8 +62,8 @@ class ExperimentRunnerTest(TestCase):
                                          trainer_config_name='the_trainer',
                                          reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
                                          experiment_cache=pkg_dir / 'test_read_only.json')
-        self.assertIsInstance(cache, ExperimentConfig)
-        self.assertEqual(cache['another_trainer'].int_param, 1)
+        self.assertIsInstance(cache, dict)
+        self.assertEqual(cache, {"config1": 1, "config2": 2})
 
         self.assertEqual(2, ExperimentRunnerTest._reporter_calls)
         self.assertEqual(2, ExperimentRunnerTest._trainer_calls)
