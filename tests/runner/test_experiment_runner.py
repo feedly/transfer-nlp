@@ -56,14 +56,14 @@ class ExperimentRunnerTest(TestCase):
 
     def test_run_all(self):
         pkg_dir = Path(__file__).parent
-        cache = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
+        aggregate_reports = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
                                          experiment_config=pkg_dir / 'test_experiment.cfg',
                                          report_dir=self.test_dir + '/reports',
                                          trainer_config_name='the_trainer',
                                          reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
                                          experiment_cache=pkg_dir / 'test_read_only.json')
-        self.assertIsInstance(cache, dict)
-        self.assertEqual(cache, {"config1": 1, "config2": 2})
+        self.assertIsInstance(aggregate_reports, dict)
+        self.assertEqual(aggregate_reports, {"config1": 1, "config2": 2})
 
         self.assertEqual(2, ExperimentRunnerTest._reporter_calls)
         self.assertEqual(2, ExperimentRunnerTest._trainer_calls)
