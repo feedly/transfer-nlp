@@ -1,0 +1,10 @@
+{
+  "another_trainer": {
+    "_name": "MockTrainer",
+    "env_param": "ENV_PARAM",
+    "bool_param": true,
+    "int_param": 1,
+    "float_param": 3.0,
+    "str_param": "sparam"
+  }
+}

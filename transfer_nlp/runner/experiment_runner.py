@@ -92,7 +92,7 @@ class ExperimentRunner:
                 trainer_config_name: str = 'trainer',
                 reporter_config_name: str = 'reporter',
                 experiment_cache: Union[str, Path, Dict] = None,
-                **env_vars) -> None:
+                **env_vars) -> Union[ExperimentConfig, Dict]:
         """
         :param experiment: the experiment config
         :param experiment_config: the experiment config file. The cfg file should be defined in `ConfigParser
@@ -102,6 +102,7 @@ class ExperimentRunner:
                can preserve previous reports across code changes. E.g. $HOME/reports/run_2019_02_22.
         :param trainer_config_name: the name of the trainer configuration object. The referenced object should implement `TrainerABC`.
         :param reporter_config_name: the name of the reporter configuration object. The referenced object should implement `ReporterABC`.
+        :param experiment_cache: the config file containing read-only object, used for every experiment
         :param env_vars: any additional environment variables, like file system paths
         :return: None
         """
@@ -141,3 +142,5 @@ class ExperimentRunner:
                 reporter.report(exp_name, experiment_config, exp_report_path)
             finally:
                 ExperimentRunner._stop_log_capture(log_handler)
+                
+        return experiment_config_cache

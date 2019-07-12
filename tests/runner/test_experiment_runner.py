@@ -40,10 +40,12 @@ class MockReporter(ReporterABC):
 
         self.reported = True
 
+
 class ExperimentRunnerTest(TestCase):
     _reporter_calls = 0
     _trainer_calls = 0
     _configs = {}
+
     def setUp(self):
         _reporter_calls = 0
         self.test_dir = tempfile.mkdtemp()
@@ -52,13 +54,15 @@ class ExperimentRunnerTest(TestCase):
         shutil.rmtree(self.test_dir)
 
     def test_run_all(self):
-
         pkg_dir = Path(__file__).parent
-        ExperimentRunner.run_all(experiment=pkg_dir/ 'test_experiment.json',
-                                 experiment_config=pkg_dir / 'test_experiment.cfg',
-                                 report_dir=self.test_dir + '/reports',
-                                 trainer_config_name='the_trainer',
-                                 reporter_config_name='the_reporter', ENV_PARAM='my_env_param')
+        cache = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
+                                         experiment_config=pkg_dir / 'test_experiment.cfg',
+                                         report_dir=self.test_dir + '/reports',
+                                         trainer_config_name='the_trainer',
+                                         reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
+                                         experiment_cache=pkg_dir / 'test_read_only.json')
+        self.assertIsInstance(cache, ExperimentConfig)
+        self.assertEqual(cache['another_trainer'].int_param, 1)
 
         self.assertEqual(2, ExperimentRunnerTest._reporter_calls)
         self.assertEqual(2, ExperimentRunnerTest._trainer_calls)
@@ -66,7 +70,6 @@ class ExperimentRunnerTest(TestCase):
         self.assertEqual(2, len(ExperimentRunnerTest._configs))
 
         for name, bparam, iparam, fparam, sparam in [('config1', True, 1, 1.5, 'hello'), ('config2', False, 2, 2.5, 'world')]:
-
             # assert params where substituted into the experiment properly
             cfg = ExperimentRunnerTest._configs[name]['the_trainer']
             self.assertEqual(bparam, cfg.bool_param)
