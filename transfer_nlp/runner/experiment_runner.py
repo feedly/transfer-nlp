@@ -102,7 +102,7 @@ class ExperimentRunner:
                can preserve previous reports across code changes. E.g. $HOME/reports/run_2019_02_22.
         :param trainer_config_name: the name of the trainer configuration object. The referenced object should implement `TrainerABC`.
         :param reporter_config_name: the name of the reporter configuration object. The referenced object should implement `ReporterABC`.
-        :param experiment_cache: the config file containing read-only object, used for every experiment
+        :param experiment_cache: the experiment config with cached objects
         :param env_vars: any additional environment variables, like file system paths
         :return: None
         """
