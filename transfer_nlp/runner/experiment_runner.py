@@ -92,7 +92,7 @@ class ExperimentRunner:
                 trainer_config_name: str = 'trainer',
                 reporter_config_name: str = 'reporter',
                 experiment_cache: Union[str, Path, Dict] = None,
-                **env_vars) -> None:
+                **env_vars) -> Dict[str, Any]:
         """
         :param experiment: the experiment config
         :param experiment_config: the experiment config file. The cfg file should be defined in `ConfigParser
@@ -102,8 +102,9 @@ class ExperimentRunner:
                can preserve previous reports across code changes. E.g. $HOME/reports/run_2019_02_22.
         :param trainer_config_name: the name of the trainer configuration object. The referenced object should implement `TrainerABC`.
         :param reporter_config_name: the name of the reporter configuration object. The referenced object should implement `ReporterABC`.
+        :param experiment_cache: the experiment config with cached objects
         :param env_vars: any additional environment variables, like file system paths
-        :return: None
+        :return: a dictionary containing report objects for every experiment config
         """
 
         envs: Dict[str, ConfigEnv] = load_config(Path(experiment_config))
@@ -117,6 +118,7 @@ class ExperimentRunner:
             experiment_config_cache = ExperimentConfig(experiment_cache, **env_vars)
             logging.info("#" * 5 + f"Read-only objects are built and cached for use in different experiment settings" + "#" * 5)
 
+        aggregate_reports = {}
         for exp_name, env in envs.items():
             exp_report_path = report_path / exp_name
             exp_report_path.mkdir()
@@ -138,6 +140,9 @@ class ExperimentRunner:
                 exp_json = ExperimentConfig.load_experiment_json(experiment)
                 exp_cache_json = ExperimentConfig.load_experiment_json(experiment_cache) if experiment_cache else None
                 ExperimentRunner._write_config(exp_name, exp_json, all_vars, exp_report_path, exp_cache_json)
-                reporter.report(exp_name, experiment_config, exp_report_path)
+                report = reporter.report(exp_name, experiment_config, exp_report_path)
+                aggregate_reports[exp_name] = report
             finally:
                 ExperimentRunner._stop_log_capture(log_handler)
+
+        return aggregate_reports
