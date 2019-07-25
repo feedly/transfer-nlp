@@ -4,7 +4,6 @@ This file contains all necessary plugins classes that the framework will use to 
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
 import inspect
-import json
 import logging
 import os
 from abc import abstractmethod, ABC
@@ -256,7 +255,8 @@ class ExperimentConfig:
                         self.factories[factory_key] = self.factories[keyval]
                         return self.experiment[keyval]
                     else:
-                        raise UnconfiguredItemsException({factory_key: {val}})
+                        raise UnconfiguredItemsException({
+                                                             factory_key: {val}})
 
             return val
 
@@ -279,9 +279,9 @@ class ExperimentConfig:
                         for key in element:
                             if isinstance(element[key], dict):
                                 element[key] = self._do_recursive_build(object_key=key, object_dict=element[key],
-                                                                       default_params_mode=default_params_mode,
-                                                                       unconfigured_keys=unconfigured_keys,
-                                                                       parent_level=f'{parent_level}.{arg}.{i}.{key}')
+                                                                        default_params_mode=default_params_mode,
+                                                                        unconfigured_keys=unconfigured_keys,
+                                                                        parent_level=f'{parent_level}.{arg}.{i}.{key}')
 
                             elif isinstance(element[key], list):
                                 element[key] = do_recursive_build_list(list_object=element[key], arg_name=f"{arg_name}.{i}.{key}")
@@ -397,7 +397,8 @@ class ExperimentConfig:
 
         else:
             unconfigured_params = spec_args - params.keys()
-            raise UnconfiguredItemsException({parent_level: unconfigured_params})
+            raise UnconfiguredItemsException({
+                                                 parent_level: unconfigured_params})
 
     def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):
 
