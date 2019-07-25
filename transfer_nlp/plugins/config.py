@@ -15,6 +15,7 @@ from typing import Dict, Union, Any, Optional, AbstractSet, Set, List
 import ignite.metrics as metrics
 import torch.nn as nn
 import torch.optim as optim
+import yaml
 from smart_open import open
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,6 @@ def register_plugin(registrable: Any, alias: str = None):
         else:
             REGISTRY[alias] = registrable
             return registrable
-
 
 
 class UnknownPluginException(Exception):
@@ -204,12 +204,12 @@ def _replace_env_variables(dico: Dict, env: Dict) -> None:
 class ExperimentConfig:
 
     @staticmethod
-    def load_experiment_json(experiment: Union[str, Path, Dict]) -> Dict:
+    def load_experiment_dict(experiment: Union[str, Path, Dict]) -> Dict:
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
             with open(experiment) as f:
-                config = json.load(f)
+                config = yaml.safe_load(f)
         return config
 
     def __init__(self, experiment: Union[str, Path, Dict], **env):
@@ -221,7 +221,7 @@ class ExperimentConfig:
         self.factories: Dict[str, ConfigFactoryABC] = {}
         self.experiment: Dict[str, Any] = {}
 
-        config = ExperimentConfig.load_experiment_json(experiment)
+        config = ExperimentConfig.load_experiment_dict(experiment)
         _replace_env_variables(dico=config, env=env)
 
         # extract simple parameters

@@ -19,7 +19,8 @@ setup(
         'numpy>=1.16.2',
         'torch>=1.1.0',
         'pytorch-ignite>=0.2.0',
-        'smart_open>=1.8.1'
+        'smart_open>=1.8.1',
+        'pyaml>=19.4.1'
     ],
     setup_requires=['green'],
     classifiers=[

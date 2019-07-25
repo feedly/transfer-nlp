@@ -130,15 +130,15 @@ class ExperimentRunner:
 
                 exp = deepcopy(experiment)
                 if experiment_cache:
-                    exp = ExperimentConfig.load_experiment_json(exp)
+                    exp = ExperimentConfig.load_experiment_dict(exp)
                     exp.update(experiment_config_cache)
 
                 experiment_config = ExperimentConfig(exp, **all_vars)
                 trainer: TrainerABC = experiment_config[trainer_config_name]
                 reporter: ReporterABC = experiment_config[reporter_config_name]
                 trainer.train()
-                exp_json = ExperimentConfig.load_experiment_json(experiment)
-                exp_cache_json = ExperimentConfig.load_experiment_json(experiment_cache) if experiment_cache else None
+                exp_json = ExperimentConfig.load_experiment_dict(experiment)
+                exp_cache_json = ExperimentConfig.load_experiment_dict(experiment_cache) if experiment_cache else None
                 ExperimentRunner._write_config(exp_name, exp_json, all_vars, exp_report_path, exp_cache_json)
                 report = reporter.report(exp_name, experiment_config, exp_report_path)
                 aggregate_reports[exp_name] = report
