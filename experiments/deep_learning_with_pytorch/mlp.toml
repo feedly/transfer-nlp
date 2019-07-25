@@ -1,0 +1,56 @@
+[my_dataset_splits]
+  _name = "SurnamesDatasetMLP"
+  data_file = "$HOME/surnames/surnames_with_splits.csv"
+  batch_size = 128
+
+  [my_dataset_splits.vectorizer]
+   _name = "SurnamesVectorizerMLP"
+   data_file = "$HOME/surnames/surnames_with_splits.csv"
+
+[model]
+  _name = "MultiLayerPerceptron"
+  hidden_dim = 100
+  data = "$my_dataset_splits"
+
+[optimizer]
+  _name = "Adam"
+  lr = 0.01
+
+  [optimizer.params]
+  _name = "TrainableParameters"
+
+[scheduler]
+  _name = "ReduceLROnPlateau"
+  patience = 1
+  mode = "min"
+  factor = 0.5
+
+[trainer]
+  _name = "SingleTaskTrainer"
+  model = "$model"
+  dataset_splits = "$my_dataset_splits"
+  optimizer = "$optimizer"
+  gradient_clipping = 0.25
+  num_epochs = 5
+  seed = 1337
+  tensorboard_logs = "$HOME/surnames/tensorboard/mlp"
+
+  [trainer.loss]
+  _name = "CrossEntropyLoss"
+
+  [trainer.regularizer]
+  _name = "L1"
+
+  [trainer.metrics]
+    [trainer.metrics.accuracy]
+    _name = "Accuracy"
+
+    [trainer.metrics.loss]
+    _name = "LossMetric"
+    [trainer.metrics.loss.loss_fn]
+        _name = "CrossEntropyLoss"
+
+[predictor]
+  _name = "MLPPredictor"
+  data = "$my_dataset_splits"
+  model = "$model"

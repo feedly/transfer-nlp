@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Union, Any, Optional, AbstractSet, Set, List
 
 import ignite.metrics as metrics
+import toml
 import torch.nn as nn
 import torch.optim as optim
 import yaml
@@ -204,11 +205,17 @@ class ExperimentConfig:
 
     @staticmethod
     def load_experiment_dict(experiment: Union[str, Path, Dict]) -> Dict:
+        config = {}
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
             with open(experiment) as f:
-                config = yaml.safe_load(f)
+                if str(experiment).endswith(".json") or str(experiment).endswith(".yaml") or str(experiment).endswith(".yml"):
+                    config = yaml.safe_load(f)
+                elif str(experiment).endswith(".toml"):
+                    config = toml.load(f)
+                else:
+                    raise ValueError("Only Dict, json, yaml and toml experiment files are supported")
         return config
 
     def __init__(self, experiment: Union[str, Path, Dict], **env):
@@ -256,7 +263,7 @@ class ExperimentConfig:
                         return self.experiment[keyval]
                     else:
                         raise UnconfiguredItemsException({
-                                                             factory_key: {val}})
+                            factory_key: {val}})
 
             return val
 
@@ -398,7 +405,7 @@ class ExperimentConfig:
         else:
             unconfigured_params = spec_args - params.keys()
             raise UnconfiguredItemsException({
-                                                 parent_level: unconfigured_params})
+                parent_level: unconfigured_params})
 
     def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):
 
