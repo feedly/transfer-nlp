@@ -4,7 +4,6 @@ This file contains all necessary plugins classes that the framework will use to 
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
 import inspect
-import json
 import logging
 import os
 from abc import abstractmethod, ABC
@@ -13,8 +12,10 @@ from pathlib import Path
 from typing import Dict, Union, Any, Optional, AbstractSet, Set, List
 
 import ignite.metrics as metrics
+import toml
 import torch.nn as nn
 import torch.optim as optim
+import yaml
 from smart_open import open
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,6 @@ def register_plugin(registrable: Any, alias: str = None):
         else:
             REGISTRY[alias] = registrable
             return registrable
-
 
 
 class UnknownPluginException(Exception):
@@ -204,12 +204,19 @@ def _replace_env_variables(dico: Dict, env: Dict) -> None:
 class ExperimentConfig:
 
     @staticmethod
-    def load_experiment_json(experiment: Union[str, Path, Dict]) -> Dict:
+    def load_experiment_config(experiment: Union[str, Path, Dict]) -> Dict:
+        config = {}
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
-            with open(experiment) as f:
-                config = json.load(f)
+            experiment_path = Path(str(experiment)).expanduser()
+            with experiment_path.open() as f:
+                if experiment_path.suffix in {'.json', '.yaml', '.yml'}:
+                    config = yaml.safe_load(f)
+                elif experiment_path.suffix in {'.toml'}:
+                    config = toml.load(f)
+                else:
+                    raise ValueError("Only Dict, json, yaml and toml experiment files are supported")
         return config
 
     def __init__(self, experiment: Union[str, Path, Dict], **env):
@@ -221,7 +228,7 @@ class ExperimentConfig:
         self.factories: Dict[str, ConfigFactoryABC] = {}
         self.experiment: Dict[str, Any] = {}
 
-        config = ExperimentConfig.load_experiment_json(experiment)
+        config = ExperimentConfig.load_experiment_config(experiment)
         _replace_env_variables(dico=config, env=env)
 
         # extract simple parameters
@@ -279,9 +286,9 @@ class ExperimentConfig:
                         for key in element:
                             if isinstance(element[key], dict):
                                 element[key] = self._do_recursive_build(object_key=key, object_dict=element[key],
-                                                                       default_params_mode=default_params_mode,
-                                                                       unconfigured_keys=unconfigured_keys,
-                                                                       parent_level=f'{parent_level}.{arg}.{i}.{key}')
+                                                                        default_params_mode=default_params_mode,
+                                                                        unconfigured_keys=unconfigured_keys,
+                                                                        parent_level=f'{parent_level}.{arg}.{i}.{key}')
 
                             elif isinstance(element[key], list):
                                 element[key] = do_recursive_build_list(list_object=element[key], arg_name=f"{arg_name}.{i}.{key}")
@@ -397,7 +404,8 @@ class ExperimentConfig:
 
         else:
             unconfigured_params = spec_args - params.keys()
-            raise UnconfiguredItemsException({parent_level: unconfigured_params})
+            raise UnconfiguredItemsException({
+                parent_level: unconfigured_params})
 
     def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):
 

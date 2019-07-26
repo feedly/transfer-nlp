@@ -89,5 +89,5 @@ class ExperimentRunnerTest(TestCase):
             self.assertEqual(sparam, cp.get(name, 'sparam'))
             self.assertEqual('my_env_param', cp.get(name, 'ENV_PARAM'))
 
-            self.assertEqual(ExperimentConfig.load_experiment_json(pkg_dir / 'test_experiment.json'),
-                             ExperimentConfig.load_experiment_json(f'{self.test_dir}/reports/{name}/experiment.json'))
+            self.assertEqual(ExperimentConfig.load_experiment_config(pkg_dir / 'test_experiment.json'),
+                             ExperimentConfig.load_experiment_config(f'{self.test_dir}/reports/{name}/experiment.json'))
