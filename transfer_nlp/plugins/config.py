@@ -204,15 +204,16 @@ def _replace_env_variables(dico: Dict, env: Dict) -> None:
 class ExperimentConfig:
 
     @staticmethod
-    def load_experiment_dict(experiment: Union[str, Path, Dict]) -> Dict:
+    def load_experiment_config(experiment: Union[str, Path, Dict]) -> Dict:
         config = {}
         if isinstance(experiment, dict):
             config = dict(experiment)
         else:
-            with open(experiment) as f:
-                if str(experiment).endswith(".json") or str(experiment).endswith(".yaml") or str(experiment).endswith(".yml"):
+            experiment_path = Path(str(experiment)).expanduser()
+            with experiment_path.open() as f:
+                if experiment_path.suffix in {'.json', '.yaml', '.yml'}:
                     config = yaml.safe_load(f)
-                elif str(experiment).endswith(".toml"):
+                elif experiment_path.suffix in {'.toml'}:
                     config = toml.load(f)
                 else:
                     raise ValueError("Only Dict, json, yaml and toml experiment files are supported")
@@ -227,7 +228,7 @@ class ExperimentConfig:
         self.factories: Dict[str, ConfigFactoryABC] = {}
         self.experiment: Dict[str, Any] = {}
 
-        config = ExperimentConfig.load_experiment_dict(experiment)
+        config = ExperimentConfig.load_experiment_config(experiment)
         _replace_env_variables(dico=config, env=env)
 
         # extract simple parameters
@@ -262,8 +263,7 @@ class ExperimentConfig:
                         self.factories[factory_key] = self.factories[keyval]
                         return self.experiment[keyval]
                     else:
-                        raise UnconfiguredItemsException({
-                            factory_key: {val}})
+                        raise UnconfiguredItemsException({factory_key: {val}})
 
             return val
 
