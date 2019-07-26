@@ -1,6 +1,6 @@
 <img src="https://github.com/feedly/transfer-nlp/blob/v0.1/data/images/TransferNLP_Logo.jpg" width="1000">
 
-Welcome to the Transfer NLP library, a framework built on top of PyTorch whose goal is to progressively achieve 2 kinds of Transfer:
+Welcome to the Transfer NLP library, a framework built on top of PyTorch which goal is to achieve 2 kinds of Transfer:
 
 - **easy transfer of code**: the framework should be modular enough so that you don't have to re-write everything each time you experiment with a new architecture / a new kind of task
 - **easy transfer learning**: the framework should be able to easily interact with pre-trained models and manipulate them in order to fine-tune some of their parts.
@@ -21,11 +21,23 @@ cd transfer-nlp
 pip install -r requirements.txt
 ```
 
-- create a virtual environment: `mkvirtualenv YourEnvName` (with mkvirtualenv or your choice of virtual env manager)
-- clone the repository: `git clone https://github.com/feedly/transfer-nlp.git`
-- Install requirements: `pip install -r requirements.txt`
+To use Transfer NLP as a library:
 
-The library is available on [Pypi](https://pypi.org/project/transfer-nlp/) but ```pip install transfer-nlp``` is not recommended yet.
+```
+pip install transfernlp
+```
+or 
+```
+pip install git+https://github.com/feedly/transfer-nlp.git
+```
+to get the latest state before new releases.
+
+To use Transfer NLP with associated examples:
+
+```
+git clone https://github.com/feedly/transfer-nlp.git
+pip install -r requirements.txt
+```
 
 # Documentation
 API documentation and an overview of the library can be found [here](https://transfer-nlp.readthedocs.io/en/latest/)
@@ -40,7 +52,7 @@ The core of the library is made of an experiment builder: you define the differe
 from transfer_nlp.plugins.config import ExperimentConfig
 
 # Launch an experiment
-config_file  = {...}  # Dictionary config file, or str/Path to a json config file
+config_file  = {...}  # Dictionary config file, or str/Path to a json/yaml/toml config file
 experiment = ExperimentConfig(experiment=config_file)
 
 # Interaact with the experiment's objects, e.g. launch a training job of a `trainer` object
@@ -53,37 +65,83 @@ output_json = experiment['predictor'].json_to_json(input_json=input_json)
 
 # How to experiment with the library?
 For reproducible research and easy ablation studies, the library enforces the use of configuration files for experiments.
+As people have different tastes for what constitutes a good experiment file, the library allows for experiments defined in several formats:
+
+- Python Dictionary
+- JSON
+- YAML
+- TOML
 
 In Transfer-NLP, an experiment config file contains all the necessary information to define entirely the experiment.
-This is where you will insert names of the different components your experiment will use.
-Transfer-NLP makes use of the Inversion of Control pattern, which allows you to define any kind of classes you could need, and the `ExperimentConfig.from_json` method will create a dictionnary and instatiate your objects accordingly.
+This is where you will insert names of the different components your experiment will use, along with the hyperparameters you want to use.
+Transfer-NLP makes use of the Inversion of Control pattern, which allows you to define any class / method / function you could need, the `ExperimentConfig` class will create a dictionnary and instatiate your objects accordingly.
 
 To use your own classes inside Transfer-NLP, you need to register them using the `@register_plugin` decorator. Instead of using a different registry for each kind of component (Models, Data loaders, Vectorizers, Optimizers, ...), only a single registry is used here, in order to enforce total customization.
 
-Currently, the config file logic has 3 kinds of components:
+If you use Transfer NLP as a dev dependency only, you might want to use it declaratively only, and call `register_plugin()` on objects you want to use at experiment running time. 
 
-- simple parameters: those are parameters which you know the value in advance: 
+Here is an example of how you can define an experiment in a YAML file:
+
 ```
-{"initial_learning_rate": 0.01,
-"embedding_dim": 100,...}
+data_loader:
+  _name: MyDataLoader
+  data_parameter: foo
+  data_vectorizer:
+    _name: MyVectorizer
+    vectorizer_parameter: bar
+
+model:
+  _name: MyModel
+  model_hyper_param: 100
+  data: $data_loader
+
+trainer:
+  _name: MyTrainer
+  model: $model
+  data: $data_loader
+  loss:
+    _name: PyTorchLoss
+  tensorboard_logs: $HOME/path/to/tensorboard/logs
+  metrics:
+    accuracy:
+      _name: Accuracy
 ```
-- simple lists: similar to simple parameters, but as a list:
-```
-{"layers_dropout": [0.1, 0.2, 0.3], ...}
-```
-- Complex config: this is where the library instantiates your objects: every object needs to have its `_name` specified (the name of a class that you have register through the `@register_plugin` decorator), and its parameters defined. If your class has default parameters and your config file doesn't contain them, objects will be instantiated as default. Otherwise the parameters have to be present in the config file. Sometimes, initialization parameters are not available before launching the experiment. E.g., suppose your Model object needs a Vocabulary size as init input. The config file logic here makes it easy to deal with this while keeping the library code very general. 
+
+Any object can be defined through a class, method or function, given a `_name` parameters followed by its own parameters.
+Experiments are then loaded and instantiated using `ExperimentConfig(experiment=experiment_path_or_dict)`
+
+Some considerations:
+
+- Defaults parameters can be skipped in the experiment file.
+
+- If an object is used in different places, you can refer to it using the `$` symbol, for example here the `trainer` object uses the `data_loader` instantiated elsewhere. No ordering of objects is required.
+
+- For paths, you might want to use environment variables so that other machines can also run your experiments.
+In the previous example, you would run e.g. `ExperimentConfig(experiment=yaml_path, HOME=Path.home())` to instantiate the experiment and replace `$HOME` by your machine home path.
+
+- The config instantiation allows for any complex settings with nested dict / list
 
 You can have a look at the [tests](https://github.com/feedly/transfer-nlp/blob/master/tests/plugins/test_config.py) for examples of experiment settings the config loader can build.
 Additionally we provide runnable experiments in [`experiments/`](https://github.com/feedly/transfer-nlp/tree/master/experiments).
 
-# Usage Pipeline
-The goal of the config file is to load different objects and run your experiment from it. 
-
-A very common object to use is trainer, which you will run during your experiment. We provide a `BasicTrainer` in [`transfer_nlp.plugins.trainers.py`](https://github.com/feedly/transfer-nlp/blob/master/transfer_nlp/plugins/trainers.py).
+# PyTorch Trainers
+For deep learning experiments, we provide a `BaseIgniteTrainer` in [`transfer_nlp.plugins.trainers.py`](https://github.com/feedly/transfer-nlp/blob/master/transfer_nlp/plugins/trainers.py).
 This basic trainer will take a model and some data as input, and run a whole training pipeline. We make use of the [PyTorch-Ignite](https://github.com/pytorch/ignite) library to monitor events during training (logging some metrics, manipulating learning rates, checkpointing models, etc...). Tensorboard logs are also included as an option, you will have to specify a `tensorboard_logs` simple parameters path in the config file. Then just run `tensorboard --logdir=path/to/logs` in a terminal and you can monitor your experiment while it's training!
 Tensorboard comes with very nice utilities to keep track of the norms of your model weights, histograms, distributions, visualizing embeddings, etc so we really recommend using it.
 
 <img src="https://github.com/feedly/transfer-nlp/blob/v0.1/data/images/tensorboard.png" width="1000">
+
+We provide a `SingleTaskTrainer` class which you can use for any supervised setting dealing with one task.
+We are working on a `MultiTaskTrainer` class to deal with multi task settings, and a `SingleTaskFineTuner` for large models finetuning settings.
+
+# Use cases
+Here are a few use cases for Transfer NLP:
+
+- You have all your classes / methods / functions ready. Transfer NLP allows for a clean way to centralize loading and executing your experiments
+- You have all your classes but you would like to benchmark multiple configuration settings: the `ExperimentRunner` class allows for sequentially running your sets of experiments, and generates personalized reporting (you only need to implement your `report` method in a custom `ReporterABC` class)
+- You want to experiment with training deep learning models but you feel overwhelmed bby all the boilerplate code in SOTA models github projects. Transfer NLP encourages separation of important objects so that you can focus on the PyTorch `Module` implementation and let the trainers deal with the training part (while still controlling most of the training parameters through the experiment file)
+- You want to experiment with more advanced training strategies, but you are more interested in the ideas than the implementations details. We are working on improving the advanced trainers so that it will be easier to try new ideas for multi task settings, fine-tuning strategies or model adaptation schemes. 
+
 
 # Slack integration
 While experimenting with your own models / data, the training might take some time. To get notified when your training finishes or crashes, you can use the simple library [knockknock](https://github.com/huggingface/knockknock) by folks at HuggingFace, which add a simple decorator to your running function to notify you via Slack, E-mail, etc.
