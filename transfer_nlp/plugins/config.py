@@ -262,6 +262,8 @@ class ExperimentConfig:
                     if keyval in self.experiment:
                         self.factories[factory_key] = self.factories[keyval]
                         return self.experiment[keyval]
+                    elif keyval in REGISTRY:
+                        return REGISTRY[keyval]
                     else:
                         raise UnconfiguredItemsException({factory_key: {val}})
 
@@ -393,6 +395,9 @@ class ExperimentConfig:
                     if value[1:] in self.experiment:
                         logger.info(f"Using the object {value}, already instantiated")
                         value = self.experiment[value[1:]]
+                    elif value[1:] in REGISTRY:
+                        logger.info(f"Using the object {value} from the registry (not instantiated)")
+                        value = REGISTRY[value[1:]]
                     else:
                         logger.info(f"{value} not configured yet, will be configured in next iteration")
                 else:
