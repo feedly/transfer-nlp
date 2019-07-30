@@ -1,8 +1,11 @@
 import configparser
+import io
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Dict, Any
 from unittest import TestCase
+from unittest.mock import patch
 
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
@@ -40,7 +43,11 @@ class MockReporter(ReporterABC):
 
         self.reported = True
         return ExperimentRunnerTest._reporter_calls
-
+    
+    @staticmethod
+    def report_globally(aggregate_reports: Dict) -> Any:
+        print("global reporting message")
+            
 
 class ExperimentRunnerTest(TestCase):
     _reporter_calls = 0
@@ -54,7 +61,8 @@ class ExperimentRunnerTest(TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    def test_run_all(self):
+    @patch('sys.stdout', new_callable=io.StringIO)
+    def test_run_all(self, mock_stdout):
         pkg_dir = Path(__file__).parent
         aggregate_reports = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
                                          experiment_config=pkg_dir / 'test_experiment.cfg',
@@ -62,6 +70,7 @@ class ExperimentRunnerTest(TestCase):
                                          trainer_config_name='the_trainer',
                                          reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
                                          experiment_cache=pkg_dir / 'test_read_only.json')
+        self.assertEqual(mock_stdout.getvalue(), "global reporting message\n")
         self.assertIsInstance(aggregate_reports, dict)
         self.assertEqual(aggregate_reports, {"config1": 1, "config2": 2})
 

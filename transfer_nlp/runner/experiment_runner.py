@@ -145,4 +145,6 @@ class ExperimentRunner:
             finally:
                 ExperimentRunner._stop_log_capture(log_handler)
 
+        experiment_config[reporter_config_name].__class__.report_globally(aggregate_reports=aggregate_reports)
+
         return aggregate_reports
