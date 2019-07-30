@@ -140,7 +140,6 @@ register_plugin(DemoClassMethod.from_example, alias='from_example_alias_name')
 
 
 class RegistryTest(unittest.TestCase):
-     
     def test_class_method(self):
         
         experiment = {
