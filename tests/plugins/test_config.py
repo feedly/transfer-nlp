@@ -146,8 +146,8 @@ def mock_function():
 @register_plugin
 class ClassWithUnInstantiatedObject:
 
-    def __init__(self, my_object):
-        self.my_object = my_object
+    def __init__(self, my_function):
+        self.my_function = my_function
 
 
 register_plugin(mock_function)
@@ -160,12 +160,12 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             "my_registrable": {
                 "_name": "ClassWithUnInstantiatedObject",
-                "my_object": "$mock_function"
+                "my_function": "$mock_function"
             }
         }
         e = ExperimentConfig(experiment)
-        self.assertEqual(e['my_registrable'].my_object, mock_function)
-        self.assertEqual(e['my_registrable'].my_object(), 5)
+        self.assertEqual(e['my_registrable'].my_function, mock_function)
+        self.assertEqual(e['my_registrable'].my_function(), 5)
 
     def test_class_method(self):
         
