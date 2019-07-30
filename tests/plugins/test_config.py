@@ -135,12 +135,38 @@ class DemoClassMethod:
     def from_example(cls):
         return cls(1)
     
-
+    
 register_plugin(DemoClassMethod.from_example, alias='from_example_alias_name')
 
 
+def mock_function():
+    return 5
+
+
+@register_plugin
+class ClassWithUnInstantiatedObject:
+
+    def __init__(self, my_function):
+        self.my_function = my_function
+
+
+register_plugin(mock_function)
+
+
 class RegistryTest(unittest.TestCase):
-    
+
+    def test_uninstantiated_registrable(self):
+        
+        experiment = {
+            "my_registrable": {
+                "_name": "ClassWithUnInstantiatedObject",
+                "my_function": "$mock_function"
+            }
+        }
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['my_registrable'].my_function, mock_function)
+        self.assertEqual(e['my_registrable'].my_function(), 5)
+
     def test_class_method(self):
         
         experiment = {
