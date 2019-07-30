@@ -252,7 +252,7 @@ class ExperimentConfig:
 
         self._build_items(config)
 
-    def _do_recursive_build(self, object_key: str, object_dict: Dict, default_params_mode: DefaultParamsMode, unconfigured_keys: AbstractSet,
+    def _do_recursive_build(self, object_key: str, registrable_object: Union[Dict, List, int, float], default_params_mode: DefaultParamsMode, unconfigured_keys: AbstractSet,
                             parent_level: str):
 
         def resolve_simple_value(factory_key: str, val: Any) -> Any:
@@ -278,14 +278,14 @@ class ExperimentConfig:
             for i, element in enumerate(list_object):
                 if isinstance(element, dict):
                     if "_name" in element:
-                        element = self._do_recursive_build(object_key=str(i), object_dict=element,
+                        element = self._do_recursive_build(object_key=str(i), registrable_object=element,
                                                            default_params_mode=default_params_mode,
                                                            unconfigured_keys=unconfigured_keys,
                                                            parent_level=f'{parent_level}.{arg_name}.{i}')
                     else:
                         for key in element:
                             if isinstance(element[key], dict):
-                                element[key] = self._do_recursive_build(object_key=key, object_dict=element[key],
+                                element[key] = self._do_recursive_build(object_key=key, registrable_object=element[key],
                                                                         default_params_mode=default_params_mode,
                                                                         unconfigured_keys=unconfigured_keys,
                                                                         parent_level=f'{parent_level}.{arg}.{i}.{key}')
@@ -309,14 +309,34 @@ class ExperimentConfig:
 
         logger.info(f"Configuring {object_key}")
 
-        if '_name' not in object_dict:
+        if isinstance(registrable_object, list):
+            return [self._do_recursive_build(f"{object_key}.{i}", registrable_object[i],
+                                             default_params_mode=default_params_mode,
+                                             unconfigured_keys=unconfigured_keys,
+                                             parent_level=f"{object_key}.{i}") for i in range(len(registrable_object))]
+        elif isinstance(registrable_object, int) or isinstance(registrable_object, float):
+            return registrable_object
+
+        elif isinstance(registrable_object, str):
+            if registrable_object[0] == "$":
+                if registrable_object[1:] in self.experiment:
+                    logger.info(f"Using the object {registrable_object}, already instantiated")
+                    return self.experiment[registrable_object[1:]]
+                elif registrable_object[1:] in REGISTRY:
+                    return REGISTRY[registrable_object[1:]]
+                else:
+                    raise ValueError("Strings referencing objects must be either referenced earlier in the experiment, or belong to the available registrables")
+            else:
+                return registrable_object
+
+        if '_name' not in registrable_object:
             raise ValueError(f"The object {object_key} should have a _name key to access its registrable")
 
-        registrable_name = object_dict['_name']
+        registrable_name = registrable_object['_name']
         registrable = REGISTRY.get(registrable_name)
 
         if not registrable:
-            raise UnknownPluginException(object_dict["_name"])
+            raise UnknownPluginException(registrable_object["_name"])
 
         if inspect.isclass(registrable):
             spec = inspect.getfullargspec(registrable.__init__)
@@ -332,7 +352,7 @@ class ExperimentConfig:
 
         params = {}
         param2config_key = {}
-        named_params = {p: pv for p, pv in object_dict.items() if p != '_name'}
+        named_params = {p: pv for p, pv in registrable_object.items() if p != '_name'}
         default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
 
         for named_param in named_params:
@@ -350,14 +370,14 @@ class ExperimentConfig:
 
                 if isinstance(value, dict):
                     if '_name' in value:
-                        value = self._do_recursive_build(object_key=arg, object_dict=value,
+                        value = self._do_recursive_build(object_key=arg, registrable_object=value,
                                                          default_params_mode=default_params_mode,
                                                          unconfigured_keys=unconfigured_keys,
                                                          parent_level=parent_level + "." + arg)
                     else:
                         for item in value:
                             if isinstance(value[item], dict):
-                                value[item] = self._do_recursive_build(object_key=item, object_dict=value[item],
+                                value[item] = self._do_recursive_build(object_key=item, registrable_object=value[item],
                                                                        default_params_mode=default_params_mode,
                                                                        unconfigured_keys=unconfigured_keys,
                                                                        parent_level=f'{parent_level}.{arg}.{item}')
@@ -412,10 +432,10 @@ class ExperimentConfig:
         while config:
             configured = set()
             config_errors = {}
-            for object_key, object_dict in config.items():
+            for object_key, registrable_object in config.items():
 
                 try:
-                    self.experiment[object_key] = self._do_recursive_build(object_key, object_dict,
+                    self.experiment[object_key] = self._do_recursive_build(object_key, registrable_object,
                                                                            default_params_mode=default_params_mode,
                                                                            unconfigured_keys=config.keys(),
                                                                            parent_level=object_key)
