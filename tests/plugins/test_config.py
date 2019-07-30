@@ -165,6 +165,7 @@ class RegistryTest(unittest.TestCase):
         }
         e = ExperimentConfig(experiment)
         self.assertEqual(e['my_registrable'].my_object, mock_function)
+        self.assertEqual(e['my_registrable'].my_object(), 5)
 
     def test_class_method(self):
         
