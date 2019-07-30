@@ -21,12 +21,13 @@ class ReporterABC(ABC):
         """
 
         pass
-    
+
     @staticmethod
-    def report_globally(aggregate_reports: Dict) -> Any:
+    def report_globally(aggregate_reports: Dict, report_dir: Path) -> Any:
         """
         do a global reporting for multiple experiment configurations
         :param aggregate_reports: the result of report() on each experiment config.
+        :param report_dir: the directory in which to write the report
         :return: a global reporting of the key metric values along different configurations.
         """
         pass

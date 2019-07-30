@@ -43,11 +43,11 @@ class MockReporter(ReporterABC):
 
         self.reported = True
         return ExperimentRunnerTest._reporter_calls
-    
+
     @staticmethod
-    def report_globally(aggregate_reports: Dict) -> Any:
+    def report_globally(aggregate_reports: Dict, report_dir: Path) -> Any:
         print("global reporting message")
-            
+
 
 class ExperimentRunnerTest(TestCase):
     _reporter_calls = 0
@@ -65,14 +65,16 @@ class ExperimentRunnerTest(TestCase):
     def test_run_all(self, mock_stdout):
         pkg_dir = Path(__file__).parent
         aggregate_reports = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
-                                         experiment_config=pkg_dir / 'test_experiment.cfg',
-                                         report_dir=self.test_dir + '/reports',
-                                         trainer_config_name='the_trainer',
-                                         reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
-                                         experiment_cache=pkg_dir / 'test_read_only.json')
+                                                     experiment_config=pkg_dir / 'test_experiment.cfg',
+                                                     report_dir=self.test_dir + '/reports',
+                                                     trainer_config_name='the_trainer',
+                                                     reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
+                                                     experiment_cache=pkg_dir / 'test_read_only.json')
         self.assertEqual(mock_stdout.getvalue(), "global reporting message\n")
         self.assertIsInstance(aggregate_reports, dict)
-        self.assertEqual(aggregate_reports, {"config1": 1, "config2": 2})
+        self.assertEqual(aggregate_reports, {
+            "config1": 1,
+            "config2": 2})
 
         self.assertEqual(2, ExperimentRunnerTest._reporter_calls)
         self.assertEqual(2, ExperimentRunnerTest._trainer_calls)
