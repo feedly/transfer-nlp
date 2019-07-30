@@ -263,7 +263,6 @@ class ExperimentConfig:
                         self.factories[factory_key] = self.factories[keyval]
                         return self.experiment[keyval]
                     elif keyval in REGISTRY:
-                        self.factories[factory_key] = self.factories[keyval]
                         return REGISTRY[keyval]
                     else:
                         raise UnconfiguredItemsException({factory_key: {val}})
