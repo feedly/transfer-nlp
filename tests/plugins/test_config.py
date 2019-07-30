@@ -155,6 +155,48 @@ register_plugin(mock_function)
 
 class RegistryTest(unittest.TestCase):
 
+    def test_list_of_registrables(self):
+        experiment = {
+            "first_object": {
+                "_name": "DemoWithVal",
+                "val": 2
+            },
+            "list_of_objects": [
+                {
+                    "_name": "DemoWithVal",
+                    "val": 1
+                },
+                {
+                    "_name": "DemoWithStr",
+                    "strval": "foo"
+                },
+                4,
+                "$first_object",
+                "feedly"
+            ]
+        }
+
+        e = ExperimentConfig(experiment)
+        self.assertEqual(len(e['list_of_objects']), 5)
+        self.assertEqual(e['list_of_objects'][0].val, 1)
+        self.assertEqual(e['list_of_objects'][1].strval, "foo")
+        self.assertEqual(e['list_of_objects'][2], 4)
+        self.assertIsInstance(e['list_of_objects'][3], DemoWithVal)
+        self.assertEqual(e['list_of_objects'][3].val, 2)
+        self.assertEqual(e['list_of_objects'][4], 'feedly')
+
+    def test_uninstantiated_registrable(self):
+
+        experiment = {
+            "my_registrable": {
+                "_name": "ClassWithUnInstantiatedObject",
+                "my_function": "$mock_function"
+            }
+        }
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['my_registrable'].my_function, mock_function)
+        self.assertEqual(e['my_registrable'].my_function(), 5)
+
     def test_class_method(self):
         
         experiment = {
