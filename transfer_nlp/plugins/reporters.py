@@ -1,6 +1,6 @@
 from abc import ABC
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 from transfer_nlp.plugins.config import ExperimentConfig
 
@@ -20,4 +20,14 @@ class ReporterABC(ABC):
         :return: the key metric value, it's assumed higher is better.
         """
 
+        pass
+
+    @staticmethod
+    def report_globally(aggregate_reports: Dict, report_dir: Path) -> Any:
+        """
+        do a global reporting for multiple experiment configurations
+        :param aggregate_reports: the result of report() on each experiment config.
+        :param report_dir: the directory in which to write the report
+        :return: a global reporting of the key metric values along different configurations.
+        """
         pass

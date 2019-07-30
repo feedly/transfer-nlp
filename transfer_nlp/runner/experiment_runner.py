@@ -4,7 +4,7 @@ import logging
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Type
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
@@ -144,5 +144,9 @@ class ExperimentRunner:
                 aggregate_reports[exp_name] = report
             finally:
                 ExperimentRunner._stop_log_capture(log_handler)
+
+        reporter_class = experiment_config[reporter_config_name].__class__
+        if issubclass(reporter_class, ReporterABC):
+            reporter_class.report_globally(aggregate_reports=aggregate_reports, report_dir=report_path)
 
         return aggregate_reports
