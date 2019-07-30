@@ -139,8 +139,14 @@ class DemoClassMethod:
 register_plugin(DemoClassMethod.from_example, alias='from_example_alias_name')
 
 
+@register_plugin
 def mock_function():
     return 5
+
+
+@register_plugin
+def mock_function2():
+    return 2
 
 
 @register_plugin
@@ -150,7 +156,6 @@ class ClassWithUnInstantiatedObject:
         self.my_function = my_function
 
 
-register_plugin(mock_function)
 
 
 class RegistryTest(unittest.TestCase):
@@ -172,18 +177,41 @@ class RegistryTest(unittest.TestCase):
                 },
                 4,
                 "$first_object",
-                "feedly"
+                "feedly",
+                "$mock_function",
+                "$mock_function2"
             ]
         }
 
         e = ExperimentConfig(experiment)
-        self.assertEqual(len(e['list_of_objects']), 5)
+        self.assertEqual(len(e['list_of_objects']), 7)
         self.assertEqual(e['list_of_objects'][0].val, 1)
         self.assertEqual(e['list_of_objects'][1].strval, "foo")
         self.assertEqual(e['list_of_objects'][2], 4)
         self.assertIsInstance(e['list_of_objects'][3], DemoWithVal)
         self.assertEqual(e['list_of_objects'][3].val, 2)
         self.assertEqual(e['list_of_objects'][4], 'feedly')
+        self.assertEqual(e['list_of_objects'][5](), 5)
+        self.assertEqual(e['list_of_objects'][6](), 2)
+        
+    def test_all_string_with_dollars(self): 
+        
+        experiment = {
+            "first_object": {
+                "_name": "DemoWithVal",
+                "val": 2
+            },
+            "list_of_objects": [
+                "$mock_function",
+                "$mock_function2",
+                "$first_object"
+            ]
+        }
+        e = ExperimentConfig(experiment)
+        self.assertEqual(len(e['list_of_objects']), 3)
+        self.assertEqual(e['list_of_objects'][0](), 5)
+        self.assertEqual(e['list_of_objects'][1](), 2)
+        self.assertEqual(e['list_of_objects'][2].val, 2)
 
     def test_uninstantiated_registrable(self):
 

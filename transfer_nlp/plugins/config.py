@@ -242,7 +242,7 @@ class ExperimentConfig:
         # extract simple lists
         logger.info(f"Initializing simple lists:")
         for k, v in config.items():
-            if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) for vv in v):
+            if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) and not (isinstance(vv, str) and vv[0] == "$") for vv in v):
                 logger.info(f"Parameter {k}: {v}")
                 self.experiment[k] = v
                 self.factories[k] = PluginFactory(list, None, v)
