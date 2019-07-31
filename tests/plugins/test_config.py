@@ -166,7 +166,7 @@ class RegistryTest(unittest.TestCase):
             },
             "dict_of_objects": {
 
-                "first_obbject":
+                "first_object":
                     {
                         "_name": "DemoWithVal",
                         "val": 1
@@ -176,15 +176,17 @@ class RegistryTest(unittest.TestCase):
                         "_name": "DemoWithStr",
                         "strval": "foo"
                     },
-                "simple_object": 1
+                "simple_object": 1,
+                "last_object": "$first_object"
 
             }
         }
 
         e = ExperimentConfig(experiment)
-        self.assertEqual(e['dict_of_objects']['first_obbject'].val, 1)
+        self.assertEqual(e['dict_of_objects']['first_object'].val, 1)
         self.assertEqual(e['dict_of_objects']['second_object'].strval, 'foo')
         self.assertEqual(e['dict_of_objects']['simple_object'], 1)
+        self.assertEqual(e['dict_of_objects']['last_object'].val, 2)
 
     def test_list_of_registrables(self):
         experiment = {
