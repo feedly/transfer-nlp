@@ -16,7 +16,6 @@ import toml
 import torch.nn as nn
 import torch.optim as optim
 import yaml
-from smart_open import open
 
 logger = logging.getLogger(__name__)
 
@@ -252,7 +251,8 @@ class ExperimentConfig:
 
         self._build_items(config)
 
-    def _do_recursive_build(self, object_key: str, registrable_object: Union[Dict, List, int, float], default_params_mode: DefaultParamsMode, unconfigured_keys: AbstractSet,
+    def _do_recursive_build(self, object_key: str, registrable_object: Union[Dict, List, int, float], default_params_mode: DefaultParamsMode,
+                            unconfigured_keys: AbstractSet,
                             parent_level: str):
 
         def resolve_simple_value(factory_key: str, val: Any) -> Any:
@@ -265,7 +265,8 @@ class ExperimentConfig:
                     elif keyval in REGISTRY:
                         return REGISTRY[keyval]
                     else:
-                        raise UnconfiguredItemsException({factory_key: {val}})
+                        raise UnconfiguredItemsException({
+                            factory_key: {val}})
 
             return val
 
@@ -330,6 +331,12 @@ class ExperimentConfig:
                     raise ValueError("Strings referencing objects must be either referenced earlier in the experiment, or belong to the available registrables")
             else:
                 return registrable_object
+
+        elif isinstance(registrable_object, dict) and "_name" not in registrable_object:
+            return {key: self._do_recursive_build(f"{object_key}.{key}", value,
+                                                  default_params_mode=default_params_mode,
+                                                  unconfigured_keys=unconfigured_keys,
+                                                  parent_level=f"{object_key}.{key}") for key, value in registrable_object.items()}
 
         if '_name' not in registrable_object:
             raise ValueError(f"The object {object_key} should have a _name key to access its registrable")
