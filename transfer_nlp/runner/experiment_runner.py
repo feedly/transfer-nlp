@@ -92,7 +92,7 @@ class ExperimentRunner:
                 trainer_config_name: str = 'trainer',
                 reporter_config_name: str = 'reporter',
                 experiment_cache: Union[str, Path, Dict] = None,
-                **env_vars) -> Dict[str, Any]:
+                **env_vars) -> ExperimentConfig:
         """
         :param experiment: the experiment config
         :param experiment_config: the experiment config file. The cfg file should be defined in `ConfigParser
