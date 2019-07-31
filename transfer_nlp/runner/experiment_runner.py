@@ -104,7 +104,7 @@ class ExperimentRunner:
         :param reporter_config_name: the name of the reporter configuration object. The referenced object should implement `ReporterABC`.
         :param experiment_cache: the experiment config with cached objects
         :param env_vars: any additional environment variables, like file system paths
-        :return: a dictionary containing report objects for every experiment config
+        :return: the experiment cache
         """
 
         envs: Dict[str, ConfigEnv] = load_config(Path(experiment_config))
@@ -149,4 +149,4 @@ class ExperimentRunner:
         if issubclass(reporter_class, ReporterABC):
             reporter_class.report_globally(aggregate_reports=aggregate_reports, report_dir=report_path)
 
-        return aggregate_reports
+        return experiment_config_cache
