@@ -70,18 +70,13 @@ def register_plugin(registrable: Any, alias: str = None):
     Returns:
 
     """
-    if not alias:
-        if registrable.__name__ in REGISTRY:
-            raise ValueError(f"{registrable.__name__} is already registered to registrable {REGISTRY[registrable.__name__]}. Please select another name")
-        else:
-            REGISTRY[registrable.__name__] = registrable
-            return registrable
-    else:
-        if alias in REGISTRY:
-            raise ValueError(f"{alias} is already registered to registrable {REGISTRY[alias]}. Please select another name")
-        else:
-            REGISTRY[alias] = registrable
-            return registrable
+    alias = alias or registrable.__name__
+
+    if alias in REGISTRY:
+        raise ValueError(f"{alias} is already registered to registrable {REGISTRY[alias]}. Please select another name")
+
+    REGISTRY[alias] = registrable
+    return registrable
 
 
 class UnknownPluginException(Exception):
@@ -90,10 +85,8 @@ class UnknownPluginException(Exception):
         self.registrable: str = registrable
 
 
-class UnconfiguredItemsException(Exception):
-    def __init__(self, items: Dict[str, Set]):
-        super().__init__(f'There are some unconfigured items, which makes these items not configurable: {items}')
-        self.items: Dict[str, Set] = items
+class CallableError(Exception):
+    pass
 
 
 class InstantiationImpossible(Exception):
@@ -192,7 +185,7 @@ class CallableInstantiator(DictInstantiator):
 
         klass: Union[Type, Callable] = REGISTRY[klass_name]
 
-        logging.info(f'instantiating "{name}" calling {klass}')
+        logging.info(f'instantiating "{name}" calling {klass_name}')
 
         param_instances: Dict[str, Any] = {
             key: self.builder.instantiate(value_config, f'{name}.{key}')
@@ -200,7 +193,12 @@ class CallableInstantiator(DictInstantiator):
             if key != '_name'
         }
 
-        return klass(**param_instances)
+        try:
+            return klass(**param_instances)
+        except (CallableError, UnknownPluginException) as e:
+            raise e
+        except Exception:
+            raise CallableError(f'Error happened while instantiating "{name}", calling {klass_name}')
 
 
 class ExperimentConfig(Mapping[str, Any]):
@@ -324,8 +322,9 @@ exp = ExperimentConfig(
             'c': 5,
         },
         'None': {
-            '_name': 'A.g',
-            'a': 5
+            '_name': 'f',
+            'a': 5,
+            'r': 5
         }
     },
     VAR=5,
