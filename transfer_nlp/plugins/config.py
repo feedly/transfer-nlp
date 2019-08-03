@@ -79,14 +79,14 @@ def register_plugin(registrable: Any, alias: str = None):
     return registrable
 
 
-class UnknownPluginException(Exception):
+class CallableInstantiationError(Exception):
+    pass
+
+
+class UnknownPluginException(CallableInstantiationError):
     def __init__(self, registrable: str):
         super().__init__(f'Registrable object {registrable} is not registered. See transfer_nlp.config.register_plugin for more information.')
         self.registrable: str = registrable
-
-
-class CallableError(Exception):
-    pass
 
 
 class InstantiationImpossible(Exception):
@@ -195,10 +195,10 @@ class CallableInstantiator(DictInstantiator):
 
         try:
             return klass(**param_instances)
-        except (CallableError, UnknownPluginException) as e:
+        except CallableInstantiationError as e:
             raise e
         except Exception:
-            raise CallableError(f'Error happened while instantiating "{name}", calling {klass_name}')
+            raise CallableInstantiationError(f'Error happened while instantiating "{name}", calling {klass_name}')
 
 
 class ExperimentConfig(Mapping[str, Any]):
