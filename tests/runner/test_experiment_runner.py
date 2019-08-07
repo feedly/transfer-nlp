@@ -77,11 +77,11 @@ class ExperimentRunnerTest(TestCase):
         self.assertIsInstance(toml_config["config1"]['lparam'], list)
 
         experiment_cache = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
-                                                     experiment_config=pkg_dir / 'test_experiment.cfg',
-                                                     report_dir=self.test_dir + '/reports',
-                                                     trainer_config_name='the_trainer',
-                                                     reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
-                                                     experiment_cache=pkg_dir / 'test_read_only.json')
+                                                    experiment_config=pkg_dir / 'test_experiment.cfg',
+                                                    report_dir=self.test_dir + '/reports',
+                                                    trainer_config_name='the_trainer',
+                                                    reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
+                                                    experiment_cache=pkg_dir / 'test_read_only.json')
 
         self.assertEqual(mock_stdout.getvalue(), "global reporting message\n")
         self.assertIsInstance(experiment_cache['another_trainer'], MockTrainer)

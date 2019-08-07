@@ -4,7 +4,8 @@ import logging
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Any, Union, Type
+from typing import Dict, Any, Union
+
 import toml
 
 from transfer_nlp.plugins.config import ExperimentConfig
@@ -15,7 +16,6 @@ ConfigEnv = Dict[str, Any]
 
 
 def load_config(p: Path) -> Dict[str, ConfigEnv]:
-
     p = Path(str(p)).expanduser()
     if p.suffix in {'.toml'}:
         with p.open() as f:
