@@ -10,7 +10,7 @@ from unittest.mock import patch
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
 from transfer_nlp.plugins.trainers import TrainerABC
-from transfer_nlp.runner.experiment_runner import ExperimentRunner
+from transfer_nlp.runner.experiment_runner import ExperimentRunner, load_config
 
 
 @register_plugin
@@ -64,13 +64,25 @@ class ExperimentRunnerTest(TestCase):
     @patch('sys.stdout', new_callable=io.StringIO)
     def test_run_all(self, mock_stdout):
         pkg_dir = Path(__file__).parent
+
+        # Test the load_config works for both cfg and toml files
+        cfg_config = load_config(p=pkg_dir / 'test_experiment.cfg')
+        toml_config = load_config(p=pkg_dir / 'test_experiment.toml')
+        self.assertIsInstance(cfg_config, dict)
+        self.assertIsInstance(toml_config, dict)
+
+        # Test that TOML is able to deal with lists, whereas cfg considers lists as a string
+        # This is the main reason to prefere using TOML
+        self.assertIsInstance(cfg_config["config1"]['lparam'], str)
+        self.assertIsInstance(toml_config["config1"]['lparam'], list)
+
         experiment_cache = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
                                                      experiment_config=pkg_dir / 'test_experiment.cfg',
                                                      report_dir=self.test_dir + '/reports',
                                                      trainer_config_name='the_trainer',
                                                      reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
                                                      experiment_cache=pkg_dir / 'test_read_only.json')
-        
+
         self.assertEqual(mock_stdout.getvalue(), "global reporting message\n")
         self.assertIsInstance(experiment_cache['another_trainer'], MockTrainer)
         self.assertEqual(experiment_cache['another_trainer'].int_param, 1)
