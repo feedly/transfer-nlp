@@ -18,11 +18,16 @@ from transfer_nlp.plugins.config import ExperimentConfig
     '--module',
     help='Path to the module tat contains registrables',
 )
+@click.option('--env', '-env', multiple=True)
 @click.option(
     '--debug',
     help='Print Transfer NLP logging for debugging',
 )
-def experiment(exp_file, module, debug):
+def experiment(exp_file, module, env, debug):
+    # Create a dictionary of env variables
+    # THis enables to have flexible number of arguments like *args for env variables
+    env = {e.split("=")[0]: e.split("=")[1] for e in env}
+
     # Set Transfer NLP logs
     if debug:
         click.echo("Using Transfer NLP lgs")
@@ -49,14 +54,13 @@ def experiment(exp_file, module, debug):
 
     # Load the experiment
     # TODO: see if we can have flexible number of arguments like *args for env variables
-    home = str(Path.home() / 'work/transfer-nlp-data')
     if exp_file:
         e = ExperimentConfig(experiment=Path.cwd() / str(exp_file),
-                             HOME=home)
+                             **env)
     else:
         exp_file = click.prompt('Enter a text')
         e = ExperimentConfig(experiment=Path.cwd() / str(exp_file),
-                             HOME=home)
+                             **env)
 
     click.echo("Experiment successfully loaded!")
 
