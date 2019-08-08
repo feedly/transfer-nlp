@@ -23,6 +23,11 @@ setup(
         'pyaml>=19.4.1',
         'toml>=0.10.0'
     ],
+    entry_points={
+        'console_scripts': [
+            'transfernlp=transfer_nlp.cli.experiment.cli:experiment',  # command=package.module:function
+        ],
+    },
     setup_requires=['green'],
     classifiers=[
         'Development Status :: 3 - Alpha',
