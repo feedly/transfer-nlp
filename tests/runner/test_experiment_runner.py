@@ -3,9 +3,7 @@ import io
 import json
 import logging
 import shutil
-import sys
 import tempfile
-from io import StringIO
 from pathlib import Path
 from typing import Dict, Any
 from unittest import TestCase
@@ -23,18 +21,6 @@ log_capture_string = io.StringIO()
 ch = logging.StreamHandler(log_capture_string)
 ch.setLevel(logging.INFO)
 logger.addHandler(ch)
-
-
-class Capturing(list):
-    def __enter__(self):
-        self._stdout = sys.stdout
-        sys.stdout = self._stringio = StringIO()
-        return self
-
-    def __exit__(self, *args):
-        self.extend(self._stringio.getvalue().splitlines())
-        del self._stringio  # free up some memory
-        sys.stdout = self._stdout
 
 
 @register_plugin
