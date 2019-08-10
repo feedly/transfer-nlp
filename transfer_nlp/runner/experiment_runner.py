@@ -17,12 +17,12 @@ ConfigEnv = Dict[str, Any]
 
 def load_config(p: Path) -> Dict[str, ConfigEnv]:
     p = Path(str(p)).expanduser()
-    if p.suffix in {'.toml'}:
-        with p.open() as f:
-            rv = toml.load(p)
+    if p.suffix == '.toml':
+        # with p.open() as f:
+        rv = toml.load(p)
         return rv
 
-    if p.suffix not in {'.cfg'}:
+    if p.suffix != '.cfg':
         raise ValueError("Config files should be either .cfg or .toml files")
 
     def get_val(cfg: configparser.ConfigParser, section: str, key):

@@ -1,16 +1,40 @@
 import configparser
 import io
+import json
+import logging
 import shutil
+import sys
 import tempfile
+from io import StringIO
 from pathlib import Path
 from typing import Dict, Any
 from unittest import TestCase
-from unittest.mock import patch
 
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
 from transfer_nlp.plugins.trainers import TrainerABC
-from transfer_nlp.runner.experiment_runner import ExperimentRunner, load_config
+from transfer_nlp.runner.experiment_runner import ExperimentRunner
+
+logger = logging.getLogger(__name__)
+logger.setLevel(level=logging.INFO)
+
+# Source to keep logs: http://alanwsmith.com/capturing-python-log-output-in-a-variable
+log_capture_string = io.StringIO()
+ch = logging.StreamHandler(log_capture_string)
+ch.setLevel(logging.INFO)
+logger.addHandler(ch)
+
+
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio  # free up some memory
+        sys.stdout = self._stdout
 
 
 @register_plugin
@@ -42,11 +66,12 @@ class MockReporter(ReporterABC):
             raise ValueError()
 
         self.reported = True
-        return ExperimentRunnerTest._reporter_calls
+        logger.info(experiment.experiment)
+        return experiment.experiment  # ExperimentRunnerTest._reporter_calls
 
     @staticmethod
     def report_globally(aggregate_reports: Dict, report_dir: Path) -> Any:
-        print("global reporting message")
+        logger.info("global reporting message")
 
 
 class ExperimentRunnerTest(TestCase):
@@ -61,29 +86,42 @@ class ExperimentRunnerTest(TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    @patch('sys.stdout', new_callable=io.StringIO)
-    def test_run_all(self, mock_stdout):
+    def test_run_all(self):
         pkg_dir = Path(__file__).parent
 
-        # Test the load_config works for both cfg and toml files
-        cfg_config = load_config(p=pkg_dir / 'test_experiment.cfg')
-        toml_config = load_config(p=pkg_dir / 'test_experiment.toml')
-        self.assertIsInstance(cfg_config, dict)
-        self.assertIsInstance(toml_config, dict)
-
-        # Test that TOML is able to deal with lists, whereas cfg considers lists as a string
-        # This is the main reason to prefere using TOML
-        self.assertIsInstance(cfg_config["config1"]['lparam'], str)
-        self.assertIsInstance(toml_config["config1"]['lparam'], list)
-
         experiment_cache = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
-                                                    experiment_config=pkg_dir / 'test_experiment.cfg',
+                                                    experiment_config=pkg_dir / 'test_experiment.toml',
                                                     report_dir=self.test_dir + '/reports',
                                                     trainer_config_name='the_trainer',
                                                     reporter_config_name='the_reporter', ENV_PARAM='my_env_param',
                                                     experiment_cache=pkg_dir / 'test_read_only.json')
+        log_contents = log_capture_string.getvalue()
+        log_capture_string.close()
 
-        self.assertEqual(mock_stdout.getvalue(), "global reporting message\n")
+        exp1_logs = log_contents.split("\n")[0]
+        exp2_logs = log_contents.split("\n")[1]
+        global_reporting_logs = log_contents.split("\n")[2]
+
+        exp1_logs = exp1_logs.replace("<", "\"").replace(">", "\"").replace("\'", "\"")
+        exp1_logs = json.loads(exp1_logs)
+        exp2_logs = exp2_logs.replace("<", "\"").replace(">", "\"").replace("\'", "\"")
+        exp2_logs = json.loads(exp2_logs)
+
+        # Check that the reference values we've put in the config file have been
+        # replaced in the experiment file
+
+        # exp1_logs has only 2 objects in lparams
+        self.assertEqual(len(exp1_logs['lobjects']), 2)
+        self.assertIn('MockTrainer', exp1_logs['lobjects'][0])
+        self.assertIn('MockReporter', exp1_logs['lobjects'][1])
+
+        # exp2_logs has only one object
+        self.assertEqual(len(exp2_logs['lobjects']), 1)
+        self.assertIn('MockTrainer', exp2_logs['lobjects'][0])
+
+        # Check the global reporting
+        self.assertEqual(global_reporting_logs, "global reporting message")
+
         self.assertIsInstance(experiment_cache['another_trainer'], MockTrainer)
         self.assertEqual(experiment_cache['another_trainer'].int_param, 1)
         self.assertEqual(experiment_cache['another_trainer'].bool_param, True)
