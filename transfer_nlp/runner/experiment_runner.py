@@ -18,7 +18,6 @@ ConfigEnv = Dict[str, Any]
 def load_config(p: Path) -> Dict[str, ConfigEnv]:
     p = Path(str(p)).expanduser()
     if p.suffix == '.toml':
-        # with p.open() as f:
         rv = toml.load(p)
         return rv
 
