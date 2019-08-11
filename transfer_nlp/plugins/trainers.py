@@ -7,13 +7,12 @@ Check experiments for examples of experiment json files
 Examples using gradual unfreezing and adaptation methods in general are adapted from
 the NAACL 2019 tutorial on TRansfer Learning for NLP https://colab.research.google.com/drive/1iDHCYIrWswIKp-n-pOg69xLoZO09MEgf#scrollTo=GObQkkttljWv&forceEdit=true&offline=true&sandboxMode=true
 """
-
 import inspect
 import logging
 import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 import numpy as np
 import torch
@@ -27,13 +26,11 @@ from ignite.engine.engine import Engine
 from ignite.metrics import Loss, Metric, RunningAverage, Accuracy
 from ignite.utils import convert_tensor
 
-
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
 from transfer_nlp.plugins.regularizers import RegularizerABC
 
 logger = logging.getLogger(__name__)
-
 
 # Tensorboard is used within PyTorch but is not a dependency, so it should be installed manually by users
 TENSORBOARD = True
@@ -55,6 +52,7 @@ def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
     """Prepare batch for training: pass to a device with options.
 
     """
+
     result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
     return result
 
@@ -89,11 +87,11 @@ class BaseIgniteTrainer(TrainerABC):
 
     def __init__(self,
                  model: nn.Module,
-                 dataset_splits: DatasetSplits,
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
-                 experiment_config: ExperimentConfig,
+                 experiment_config: Optional[ExperimentConfig]=None,
+                 dataset_splits: Optional[DatasetSplits] = None,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -159,7 +157,8 @@ class BaseIgniteTrainer(TrainerABC):
             "validation": defaultdict(list),
             "test": defaultdict(list)}
 
-        self.setup(self.training_metrics)
+        if self.dataset_splits:
+            self.setup(self.training_metrics)
 
     def setup(self, training_metrics: Dict):
         def metric_name(n) -> str:
@@ -222,12 +221,12 @@ class BaseIgniteTrainer(TrainerABC):
                 self.scheduler.step(metrics["rloss"])
                 # self.scheduler.step(metrics[self.loss_metric.__class__.__name__])
 
-        @self.trainer.on(Events.COMPLETED)
-        def log_test_results(trainer):
-            self.evaluator.run(self.dataset_splits.test_data_loader())
-            metrics = self.evaluator.state.metrics
-            store_metrics(metrics=metrics, mode="test")
-            logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
+        # @self.trainer.on(Events.COMPLETED)
+        # def log_test_results(trainer):
+        #     self.evaluator.run(self.dataset_splits.test_data_loader())
+        #     metrics = self.evaluator.state.metrics
+        #     store_metrics(metrics=metrics, mode="test")
+        #     logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
     def _forward(self, batch):
         model_inputs = {}
@@ -279,7 +278,7 @@ class BaseIgniteTrainer(TrainerABC):
 
         return engine
 
-    def train(self):
+    def train(self, dataset_splits: DatasetSplits = None):
         raise NotImplementedError
 
 
@@ -288,11 +287,11 @@ class SingleTaskTrainer(BaseIgniteTrainer):
 
     def __init__(self,
                  model: nn.Module,
-                 dataset_splits: DatasetSplits,
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
-                 experiment_config: ExperimentConfig,
+                 experiment_config: Optional[ExperimentConfig]=None,
+                 dataset_splits: Optional[DatasetSplits] = None,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -395,7 +394,6 @@ class SingleTaskTrainer(BaseIgniteTrainer):
         if engine.state.iteration % self.loss_accumulation_steps == 0:
             self.optimizer.step()
             self.optimizer.zero_grad()
-
         return self.output_transform(y_pred, batch['y_target'], loss.item())
 
     def infer_engine(self, engine, batch):
@@ -406,15 +404,23 @@ class SingleTaskTrainer(BaseIgniteTrainer):
             y_pred = self._forward(batch)
             return self.eval_output_transform(y_pred, batch['y_target'])
 
-    def train(self):
+    def train(self, dataset_splits: DatasetSplits = None):
         """
         Launch the ignite training pipeline
         If fine-tuning mode is granted in the config file, freeze all layers, replace classification layer by a Linear layer
         and reset the optimizer
         :return:
         """
-
-        self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
+        if not dataset_splits:
+            if self.dataset_splits:
+                self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
+            else:
+                raise ValueError("The trainer does not have data. Bring it a DatasetSplits data object either at initialization or at train() time")
+        else:
+            print("Using new data to instantiate a dataset split")
+            self.dataset_splits = dataset_splits
+            self.setup(self.training_metrics)
+            self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
 
 
 @register_plugin
@@ -422,11 +428,11 @@ class SingleTaskFineTuner(SingleTaskTrainer):
 
     def __init__(self,
                  model: nn.Module,
-                 dataset_splits: DatasetSplits,
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
                  experiment_config: ExperimentConfig,
+                 dataset_splits: Optional[DatasetSplits]=None,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -468,7 +474,7 @@ class SingleTaskFineTuner(SingleTaskTrainer):
 
     def load_pretrained_model(self):
         """
-        This methid is not implemented so that pytorch_pretrained_bert is not a 
+        This methid is not implemented so that pytorch_pretrained_bert is not a
         required dependency. Use these lines to implement the method if using
         pytorch_pretrained_bert
         Returns:
@@ -588,11 +594,11 @@ class MultiTaskTrainer(BaseIgniteTrainer):
 
     def __init__(self,
                  model: nn.Module,
-                 dataset_splits: DatasetSplits,
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
                  experiment_config: ExperimentConfig,
+                 dataset_splits: Optional[DatasetSplits] = None,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
