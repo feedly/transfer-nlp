@@ -1,0 +1,14 @@
+[config1]
+bparam=true
+iparam=1
+fparam=1.5
+sparam="hello"
+lparam=[1, 2, 3]
+lobjects=["$the_trainer", "$the_reporter"]
+
+[config2]
+bparam=false
+iparam=2
+fparam=2.5
+sparam="world"
+lobjects=["$the_trainer"]

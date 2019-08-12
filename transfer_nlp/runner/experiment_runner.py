@@ -4,7 +4,9 @@ import logging
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Any, Union, Type
+from typing import Dict, Any, Union
+
+import toml
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
@@ -14,6 +16,14 @@ ConfigEnv = Dict[str, Any]
 
 
 def load_config(p: Path) -> Dict[str, ConfigEnv]:
+    p = Path(str(p)).expanduser()
+    if p.suffix == '.toml':
+        rv = toml.load(p)
+        return rv
+
+    if p.suffix != '.cfg':
+        raise ValueError("Config files should be either .cfg or .toml files")
+
     def get_val(cfg: configparser.ConfigParser, section: str, key):
         try:
             return cfg.getint(section, key)
