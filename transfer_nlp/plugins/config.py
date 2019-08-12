@@ -61,6 +61,22 @@ REGISTRY = {
     "Accuracy": metrics.Accuracy,
 }
 
+import importlib
+
+
+def load_class(full_class_string):
+    """
+    dynamically load a class from a string
+    """
+    try:
+        module_name, object_name = full_class_string.rsplit('.', 1)
+        module = importlib.import_module(module_name)
+        # Finally, we retrieve the Class
+        return getattr(module, object_name)
+    except Exception as e:
+        logger.info(e)
+        print(full_class_string)
+
 
 def register_plugin(registrable: Any, alias: str = None):
     """
@@ -342,7 +358,8 @@ class ExperimentConfig:
             raise ValueError(f"The object {object_key} should have a _name key to access its registrable")
 
         registrable_name = registrable_object['_name']
-        registrable = REGISTRY.get(registrable_name)
+        registrable = load_class(full_class_string=registrable_name)
+        # registrable = REGISTRY.get(registrable_name)
 
         if not registrable:
             raise UnknownPluginException(registrable_object["_name"])
@@ -402,9 +419,9 @@ class ExperimentConfig:
                     if value[1:] in self.experiment:
                         logger.info(f"Using the object {value}, already instantiated")
                         value = self.experiment[value[1:]]
-                    elif value[1:] in REGISTRY:
+                    elif load_class(full_class_string=value[1:]):
                         logger.info(f"Using the object {value} from the registry (not instantiated)")
-                        value = REGISTRY[value[1:]]
+                        value = load_class(full_class_string=value[1:])
                     else:
                         logger.info(f"{value} not configured yet, will be configured in next iteration")
                 else:
@@ -523,3 +540,7 @@ class ExperimentConfig:
 
     def __setitem__(self, key, value):
         raise ValueError("cannot update experiment!")
+
+if __name__ == "__main__":
+    registrable = "experiments.deep_learning_with_pytorch.surnames.SurnameClassifierCNN"
+    model = load_class(registrable)
