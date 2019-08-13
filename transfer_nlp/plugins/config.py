@@ -172,7 +172,7 @@ def _replace_env_variables(dico: Dict, env: Dict) -> None:
                     v_upd = v_upd.replace('$' + env_key, env_val)
 
             if v_upd != v:
-                logger.info('*** updating parameter %s -> %s', v, v_upd)
+                logger.debug('*** updating parameter %s -> %s', v, v_upd)
 
         return v_upd
 
@@ -224,6 +224,7 @@ class ExperimentConfig:
         :param env: substitution variables, e.g. a HOME directory. generally use all caps.
         :return: the experiment
         """
+        logger.info(f"Building experiment config for experiment {experiment}")
         self.factories: Dict[str, ConfigFactoryABC] = {}
         self.experiment: Dict[str, Any] = {}
 
@@ -231,18 +232,18 @@ class ExperimentConfig:
         _replace_env_variables(dico=config, env=env)
 
         # extract simple parameters
-        logger.info(f"Initializing simple parameters:")
+        logger.debug(f"Initializing simple parameters:")
         for k, v in config.items():
             if not isinstance(v, dict) and not isinstance(v, list):
-                logger.info(f"Parameter {k}: {v}")
+                logger.debug(f"Parameter {k}: {v}")
                 self.experiment[k] = v
                 self.factories[k] = ParamFactory(v)
 
         # extract simple lists
-        logger.info(f"Initializing simple lists:")
+        logger.debug(f"Initializing simple lists:")
         for k, v in config.items():
             if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) and not (isinstance(vv, str) and vv[0] == "$") for vv in v):
-                logger.info(f"Parameter {k}: {v}")
+                logger.debug(f"Parameter {k}: {v}")
                 self.experiment[k] = v
                 self.factories[k] = PluginFactory(list, None, v)
 
@@ -310,7 +311,7 @@ class ExperimentConfig:
             self.factories[f'{parent_level}.{arg_name}'] = PluginFactory(list, None, list(copy))
             return result
 
-        logger.info(f"Configuring {object_key}")
+        logger.debug(f"Configuring {object_key}")
 
         if isinstance(registrable_object, list):
             return [self._do_recursive_build(f"{object_key}.{i}", registrable_object[i],
@@ -323,7 +324,7 @@ class ExperimentConfig:
         elif isinstance(registrable_object, str):
             if registrable_object[0] == "$":
                 if registrable_object[1:] in self.experiment:
-                    logger.info(f"Using the object {registrable_object}, already instantiated")
+                    logger.debug(f"Using the object {registrable_object}, already instantiated")
                     return self.experiment[registrable_object[1:]]
                 elif registrable_object[1:] in REGISTRY:
                     return REGISTRY[registrable_object[1:]]
@@ -400,15 +401,15 @@ class ExperimentConfig:
                 elif isinstance(value, str) and value[0] == '$':
 
                     if value[1:] in self.experiment:
-                        logger.info(f"Using the object {value}, already instantiated")
+                        logger.debug(f"Using the object {value}, already instantiated")
                         value = self.experiment[value[1:]]
                     elif value[1:] in REGISTRY:
-                        logger.info(f"Using the object {value} from the registry (not instantiated)")
+                        logger.debug(f"Using the object {value} from the registry (not instantiated)")
                         value = REGISTRY[value[1:]]
                     else:
-                        logger.info(f"{value} not configured yet, will be configured in next iteration")
+                        logger.debug(f"{value} not configured yet, will be configured in next iteration")
                 else:
-                    logger.info(f"Using value {arg} / {named_params[arg]} from the config file")
+                    logger.debug(f"Using value {arg} / {named_params[arg]} from the config file")
 
                 if not (isinstance(value, str) and value[0] == '$'):
                     params[arg] = value
@@ -468,20 +469,20 @@ class ExperimentConfig:
     def _build_items(self, config: Dict[str, Any]):
 
         try:
-            logger.info(f"Initializing complex configurations ignoring default params:")
+            logger.debug(f"Initializing complex configurations ignoring default params:")
             self._build_items_with_default_params_mode(config, DefaultParamsMode.IGNORE_DEFAULTS)
         except UnconfiguredItemsException as e:
             pass
 
         try:
-            logger.info(f"Initializing complex configurations only filling in default params not found in the experiment:")
+            logger.debug(f"Initializing complex configurations only filling in default params not found in the experiment:")
 
             self._build_items_with_default_params_mode(config, DefaultParamsMode.NOT_IN_EXPERIMENT)
         except UnconfiguredItemsException as e:
             pass
 
         try:
-            logger.info(f"Initializing complex configurations filling in all default params:")
+            logger.debug(f"Initializing complex configurations filling in all default params:")
             self._build_items_with_default_params_mode(config, DefaultParamsMode.USE_DEFAULTS)
         except UnconfiguredItemsException as e:
             logging.error('There are unconfigured items in the experiment. Please check your configuration:')

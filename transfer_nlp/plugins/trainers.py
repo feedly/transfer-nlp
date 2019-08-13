@@ -24,16 +24,14 @@ from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, Output
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.engine import Events
 from ignite.engine.engine import Engine
-from ignite.metrics import Loss, Metric, RunningAverage, Accuracy
+from ignite.metrics import Loss, Metric, RunningAverage, MetricsLambda, Accuracy
 from ignite.utils import convert_tensor
-
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
 from transfer_nlp.plugins.regularizers import RegularizerABC
 
 logger = logging.getLogger(__name__)
-
 
 # Tensorboard is used within PyTorch but is not a dependency, so it should be installed manually by users
 TENSORBOARD = True
@@ -80,7 +78,17 @@ class TrainingMetric(Metric):
         self.source_metric.reset()
 
     def update(self, output):
-        self.source_metric.update(output)
+
+        if not isinstance(self.source_metric, MetricsLambda):
+            self.source_metric.update(output)
+            return
+
+        # If a source metric is made of several metrics, e.g. MetricsLambda
+        # metrics, we need to update each sub-metrics separately
+        for source in self.source_metric.args:
+            if isinstance(source, Metric):
+                source.update(output)
+        return
 
     def compute(self):
         return self.source_metric.compute()
