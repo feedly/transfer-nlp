@@ -3,11 +3,25 @@ import unittest
 from pathlib import Path
 
 import ignite
+from ignite.metrics import Precision, Recall, MetricsLambda
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.regularizers import L1
 from transfer_nlp.plugins.trainers import SingleTaskTrainer
 from .trainer_utils import *
+
+
+def fbeta(r, p, beta, average):
+    if average:
+        return (1 + beta ** 2) * p * r / (beta ** 2 * p + r + 1e-20)
+    else:
+        return torch.mean((1 + beta ** 2) * p * r / (beta ** 2 * p + r + 1e-20)).item()
+
+
+@register_plugin
+def create_fbeta():
+    return MetricsLambda(fbeta, Recall(average=True), Precision(average=True), 0.5, True)
+
 
 EXPERIMENT = {
     "my_dataset_splits": {
@@ -55,6 +69,9 @@ EXPERIMENT = {
             "accuracy": {
                 "_name": "Accuracy"
             },
+            "fbeta": {
+                "_name": "create_fbeta"
+            },
             "loss": {
                 "_name": "LossMetric",
                 "loss_fn": {
@@ -78,7 +95,7 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(trainer.dataset_splits, TestDataset)
         self.assertIsInstance(trainer.loss, torch.nn.modules.loss.CrossEntropyLoss)
         self.assertIsInstance(trainer.optimizer, torch.optim.Adam)
-        self.assertEqual(len(trainer.metrics), 2)
+        self.assertEqual(len(trainer.metrics), 3)
         self.assertEqual(trainer.device, torch.device(type='cpu'))
         self.assertEqual(trainer.seed, 1337)
         self.assertEqual(trainer.loss_accumulation_steps, 4)
@@ -103,11 +120,11 @@ class RegistryTest(unittest.TestCase):
         trainer = e.experiment['trainer']
         trainer.setup(training_metrics=trainer.training_metrics)
 
-        self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.EPOCH_COMPLETED]), 5)
-        self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.ITERATION_COMPLETED]), 11)
+        self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.EPOCH_COMPLETED]), 6)
+        self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.ITERATION_COMPLETED]), 16)
         self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.COMPLETED]), 2)
         self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.STARTED]), 0)
-        self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.EPOCH_STARTED]), 5)
+        self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.EPOCH_STARTED]), 8)
         self.assertEqual(len(trainer.trainer._event_handlers[ignite.engine.Events.ITERATION_STARTED]), 0)
 
     def test_forward(self):
