@@ -3,12 +3,15 @@ import logging
 from itertools import zip_longest
 from typing import Dict, List, Any
 
-import torch
-from ignite.utils import convert_tensor
-
 from transfer_nlp.loaders.vectorizers import Vectorizer
 
 logger = logging.getLogger(__name__)
+
+try:
+    import torch
+    from ignite.utils import convert_tensor
+except ImportError:
+    logger.info("You need to install pytorch and pytorch-ignite to use PredictorABC")
 
 
 def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):

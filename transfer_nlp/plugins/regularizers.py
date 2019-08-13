@@ -1,6 +1,13 @@
-import torch
+import logging
 
 from transfer_nlp.plugins.config import register_plugin
+
+logger = logging.getLogger(__name__)
+
+try:
+    import torch
+except ImportError:
+    logger.info("You need to install pytorch to use RegularizerABC")
 
 
 class RegularizerABC:

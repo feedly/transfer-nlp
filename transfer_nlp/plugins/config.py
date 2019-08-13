@@ -11,55 +11,63 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Union, Any, Optional, AbstractSet, Set, List
 
-import ignite.metrics as metrics
 import toml
-import torch.nn as nn
-import torch.optim as optim
 import yaml
 
 logger = logging.getLogger(__name__)
 
-REGISTRY = {
-    'CrossEntropyLoss': nn.CrossEntropyLoss,
-    'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
-    "Adam": optim.Adam,
-    "SGD": optim.SGD,
-    "AdaDelta": optim.Adadelta,
-    "AdaGrad": optim.Adagrad,
-    "SparseAdam": optim.SparseAdam,
-    "AdaMax": optim.Adamax,
-    "ASGD": optim.ASGD,
-    "LBFGS": optim.LBFGS,
-    "RMSPROP": optim.RMSprop,
-    "Rprop": optim.Rprop,
-    "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
-    "MultiStepLR": optim.lr_scheduler.MultiStepLR,
-    "ExponentialLR": optim.lr_scheduler.ExponentialLR,
-    "CosineAnnealingLR": optim.lr_scheduler.CosineAnnealingLR,
-    "LambdaLR": optim.lr_scheduler.LambdaLR,
-    "ReLU": nn.functional.relu,
-    "LeakyReLU": nn.functional.leaky_relu,
-    "Tanh": nn.functional.tanh,
-    "Softsign": nn.functional.softsign,
-    "Softshrink": nn.functional.softshrink,
-    "Softplus": nn.functional.softplus,
-    "Sigmoid": nn.Sigmoid,
-    "CELU": nn.CELU,
-    "SELU": nn.functional.selu,
-    "RReLU": nn.functional.rrelu,
-    "ReLU6": nn.functional.relu6,
-    "PReLU": nn.functional.prelu,
-    "LogSigmoid": nn.functional.logsigmoid,
-    "Hardtanh": nn.functional.hardtanh,
-    "Hardshrink": nn.functional.hardshrink,
-    "ELU": nn.functional.elu,
-    "Softmin": nn.functional.softmin,
-    "Softmax": nn.functional.softmax,
-    "LogSoftmax": nn.functional.log_softmax,
-    "GLU": nn.functional.glu,
-    "TanhShrink": nn.functional.tanhshrink,
-    "Accuracy": metrics.Accuracy,
-}
+REGISTRY = {}
+
+try:
+    import torch.nn as nn
+    import torch.optim as optim
+    import ignite.metrics as metrics
+
+    torch_registrables = {
+        'CrossEntropyLoss': nn.CrossEntropyLoss,
+        'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
+        "Adam": optim.Adam,
+        "SGD": optim.SGD,
+        "AdaDelta": optim.Adadelta,
+        "AdaGrad": optim.Adagrad,
+        "SparseAdam": optim.SparseAdam,
+        "AdaMax": optim.Adamax,
+        "ASGD": optim.ASGD,
+        "LBFGS": optim.LBFGS,
+        "RMSPROP": optim.RMSprop,
+        "Rprop": optim.Rprop,
+        "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
+        "MultiStepLR": optim.lr_scheduler.MultiStepLR,
+        "ExponentialLR": optim.lr_scheduler.ExponentialLR,
+        "CosineAnnealingLR": optim.lr_scheduler.CosineAnnealingLR,
+        "LambdaLR": optim.lr_scheduler.LambdaLR,
+        "ReLU": nn.functional.relu,
+        "LeakyReLU": nn.functional.leaky_relu,
+        "Tanh": nn.functional.tanh,
+        "Softsign": nn.functional.softsign,
+        "Softshrink": nn.functional.softshrink,
+        "Softplus": nn.functional.softplus,
+        "Sigmoid": nn.Sigmoid,
+        "CELU": nn.CELU,
+        "SELU": nn.functional.selu,
+        "RReLU": nn.functional.rrelu,
+        "ReLU6": nn.functional.relu6,
+        "PReLU": nn.functional.prelu,
+        "LogSigmoid": nn.functional.logsigmoid,
+        "Hardtanh": nn.functional.hardtanh,
+        "Hardshrink": nn.functional.hardshrink,
+        "ELU": nn.functional.elu,
+        "Softmin": nn.functional.softmin,
+        "Softmax": nn.functional.softmax,
+        "LogSoftmax": nn.functional.log_softmax,
+        "GLU": nn.functional.glu,
+        "TanhShrink": nn.functional.tanhshrink,
+        "Accuracy": metrics.Accuracy,
+    }
+    REGISTRY.update(torch_registrables)
+except ImportError:
+    logger.info("You need to install torch and pytorch-ignite to use pytorch "
+                "registrables and ignite metrics")
 
 
 def register_plugin(registrable: Any, alias: str = None):

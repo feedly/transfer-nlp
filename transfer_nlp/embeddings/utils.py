@@ -1,6 +1,12 @@
+import logging
 from typing import Dict, List, Tuple
 
-import torch
+logger = logging.getLogger(__name__)
+
+try:
+    import torch
+except ImportError:
+    logger.info("You need to install pytorch to use Transfer NLP get_closest function")
 
 
 def pretty_print(results: List[Tuple[str, torch.Tensor]]):

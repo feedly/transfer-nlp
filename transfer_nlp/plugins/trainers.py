@@ -11,27 +11,32 @@ the NAACL 2019 tutorial on TRansfer Learning for NLP https://colab.research.goog
 import inspect
 import logging
 import re
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections import defaultdict
 from typing import Dict, List, Any, Union, Tuple
 
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
-    GradsScalarHandler
-from ignite.contrib.handlers.tqdm_logger import ProgressBar
-from ignite.engine import Events
-from ignite.engine.engine import Engine
-from ignite.metrics import Loss, Metric, RunningAverage, MetricsLambda, Accuracy
-from ignite.utils import convert_tensor
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
 from transfer_nlp.plugins.regularizers import RegularizerABC
+from transfer_nlp.plugins.trainer_interface import TrainerABC
 
 logger = logging.getLogger(__name__)
+
+try:
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler, WeightsScalarHandler, WeightsHistHandler, \
+        GradsScalarHandler
+    from ignite.contrib.handlers.tqdm_logger import ProgressBar
+    from ignite.engine import Events
+    from ignite.engine.engine import Engine
+    from ignite.metrics import Loss, Metric, RunningAverage, MetricsLambda, Accuracy
+    from ignite.utils import convert_tensor
+except ImportError:
+    logger.info("You need to install pytorch and pytorch-ignite to use Transfer NLP trainers")
 
 # Tensorboard is used within PyTorch but is not a dependency, so it should be installed manually by users
 TENSORBOARD = True
@@ -92,13 +97,6 @@ class TrainingMetric(Metric):
 
     def compute(self):
         return self.source_metric.compute()
-
-
-class TrainerABC(ABC):
-
-    @abstractmethod
-    def train(self):
-        pass
 
 
 @register_plugin

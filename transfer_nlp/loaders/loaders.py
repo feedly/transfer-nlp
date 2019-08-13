@@ -1,4 +1,11 @@
-from torch.utils.data import Dataset, DataLoader
+import logging
+
+logger = logging.getLogger(__name__)
+
+try:
+    from torch.utils.data import Dataset, DataLoader
+except ImportError:
+    logger.info("You need to install pytorch to use Transfer NLP DatasetSplits")
 
 
 class DatasetSplits:

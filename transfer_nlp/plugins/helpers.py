@@ -1,6 +1,13 @@
-import torch.nn as nn
+import logging
 
 from transfer_nlp.plugins.config import register_plugin
+
+logger = logging.getLogger(__name__)
+
+try:
+    import torch.nn as nn
+except ImportError:
+    logger.info("You need to install pytorch to use ObjectHyperParams and TrainableParameters")
 
 
 @register_plugin
