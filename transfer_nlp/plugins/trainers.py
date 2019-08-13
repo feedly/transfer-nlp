@@ -65,7 +65,7 @@ def _prepare_batch(batch: Union[Dict, List, Tuple], device=None, non_blocking: b
         result = [convert_tensor(value, device=device, non_blocking=non_blocking) for value in batch]
         return result
     else:
-        raise ValueError("Only dict tuples and lists are valid for batch")
+        raise ValueError("Only dict, tuples and lists are valid for batch")
 
 
 class TrainingMetric(Metric):
@@ -397,7 +397,7 @@ class SingleTaskTrainer(BaseIgniteTrainer):
             y_pred = self.model.forward(*batch[:-1])
             loss = self.loss(input=y_pred, target=batch[-1])
         else:
-            raise ValueError("Only dict tuples and lists are valid for batch")
+            raise ValueError("Only dict, tuples and lists are valid for batch")
 
         # Add a regularisation term at train time only
         if self.regularizer:
@@ -416,7 +416,7 @@ class SingleTaskTrainer(BaseIgniteTrainer):
         elif isinstance(batch, tuple) or isinstance(batch, list):
             return self.output_transform(y_pred, batch[-1], loss.item())
         else:
-            raise ValueError("Only dict tuples and lists are valid for batch")
+            raise ValueError("Only dict, tuples and lists are valid for batch")
 
     def infer_engine(self, engine, batch):
 
@@ -430,7 +430,7 @@ class SingleTaskTrainer(BaseIgniteTrainer):
                 y_pred = self.model.forward(*batch[:-1])
                 return self.eval_output_transform(y_pred, batch[-1])
             else:
-                raise ValueError("Only dict tuples and lists are valid for batch")
+                raise ValueError("Only dict, tuples and lists are valid for batch")
 
     def train(self):
         """
