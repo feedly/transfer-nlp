@@ -14,48 +14,48 @@ import torch.optim as optim
 import yaml
 
 logger = logging.getLogger(__name__)
-
-REGISTRY = {
-    'CrossEntropyLoss': nn.CrossEntropyLoss,
-    'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
-    "Adam": optim.Adam,
-    "SGD": optim.SGD,
-    "AdaDelta": optim.Adadelta,
-    "AdaGrad": optim.Adagrad,
-    "SparseAdam": optim.SparseAdam,
-    "AdaMax": optim.Adamax,
-    "ASGD": optim.ASGD,
-    "LBFGS": optim.LBFGS,
-    "RMSPROP": optim.RMSprop,
-    "Rprop": optim.Rprop,
-    "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
-    "MultiStepLR": optim.lr_scheduler.MultiStepLR,
-    "ExponentialLR": optim.lr_scheduler.ExponentialLR,
-    "CosineAnnealingLR": optim.lr_scheduler.CosineAnnealingLR,
-    "LambdaLR": optim.lr_scheduler.LambdaLR,
-    "ReLU": nn.functional.relu,
-    "LeakyReLU": nn.functional.leaky_relu,
-    "Tanh": nn.functional.tanh,
-    "Softsign": nn.functional.softsign,
-    "Softshrink": nn.functional.softshrink,
-    "Softplus": nn.functional.softplus,
-    "Sigmoid": nn.Sigmoid,
-    "CELU": nn.CELU,
-    "SELU": nn.functional.selu,
-    "RReLU": nn.functional.rrelu,
-    "ReLU6": nn.functional.relu6,
-    "PReLU": nn.functional.prelu,
-    "LogSigmoid": nn.functional.logsigmoid,
-    "Hardtanh": nn.functional.hardtanh,
-    "Hardshrink": nn.functional.hardshrink,
-    "ELU": nn.functional.elu,
-    "Softmin": nn.functional.softmin,
-    "Softmax": nn.functional.softmax,
-    "LogSoftmax": nn.functional.log_softmax,
-    "GLU": nn.functional.glu,
-    "TanhShrink": nn.functional.tanhshrink,
-    "Accuracy": metrics.Accuracy,
-}
+REGISTRY = {}
+# REGISTRY = {
+#     'CrossEntropyLoss': nn.CrossEntropyLoss,
+#     'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
+#     "Adam": optim.Adam,
+#     "SGD": optim.SGD,
+#     "AdaDelta": optim.Adadelta,
+#     "AdaGrad": optim.Adagrad,
+#     "SparseAdam": optim.SparseAdam,
+#     "AdaMax": optim.Adamax,
+#     "ASGD": optim.ASGD,
+#     "LBFGS": optim.LBFGS,
+#     "RMSPROP": optim.RMSprop,
+#     "Rprop": optim.Rprop,
+#     "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
+#     "MultiStepLR": optim.lr_scheduler.MultiStepLR,
+#     "ExponentialLR": optim.lr_scheduler.ExponentialLR,
+#     "CosineAnnealingLR": optim.lr_scheduler.CosineAnnealingLR,
+#     "LambdaLR": optim.lr_scheduler.LambdaLR,
+#     "ReLU": nn.functional.relu,
+#     "LeakyReLU": nn.functional.leaky_relu,
+#     "Tanh": nn.functional.tanh,
+#     "Softsign": nn.functional.softsign,
+#     "Softshrink": nn.functional.softshrink,
+#     "Softplus": nn.functional.softplus,
+#     "Sigmoid": nn.Sigmoid,
+#     "CELU": nn.CELU,
+#     "SELU": nn.functional.selu,
+#     "RReLU": nn.functional.rrelu,
+#     "ReLU6": nn.functional.relu6,
+#     "PReLU": nn.functional.prelu,
+#     "LogSigmoid": nn.functional.logsigmoid,
+#     "Hardtanh": nn.functional.hardtanh,
+#     "Hardshrink": nn.functional.hardshrink,
+#     "ELU": nn.functional.elu,
+#     "Softmin": nn.functional.softmin,
+#     "Softmax": nn.functional.softmax,
+#     "LogSoftmax": nn.functional.log_softmax,
+#     "GLU": nn.functional.glu,
+#     "TanhShrink": nn.functional.tanhshrink,
+#     "Accuracy": metrics.Accuracy,
+# }
 
 
 def register_plugin(registrable: Any, alias: str = None):
@@ -110,9 +110,9 @@ class ObjectBuilder:
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
 
-        for instanciator in self.instantiators:
+        for instantiator in self.instantiators:
             try:
-                return instanciator.instantiate(config, name)
+                return instantiator.instantiate(config, name)
             except InstantiationImpossible:
                 pass
 
@@ -154,15 +154,30 @@ class FromMappingInstantiator(ObjectInstantiator):
     def __init__(self, env: Mapping[str, Any], mapping_name: str):
         self.env: Mapping[str, Any] = env
         self.mapping_name: str = mapping_name
+        if self.mapping_name == 'Environment':
+            print(self.env)
+            print(self.mapping_name)
+
         super().__init__()
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        # print(f"Env: {self.env}")
+        # print(self.mapping_name)
+        # if self.mapping_name == 'Environment':
+        #     print(f"Config: {config}")
+
+        if self.mapping_name == 'Environment':
+            for key, value in self.env.items():
+                config = config.replace('$' + str(key), str(value))
+
         if not isinstance(config, str) or not config.startswith('$'):
             raise InstantiationImpossible
         try:
+
             instance = self.env[config[1:]]
             logging.info(f'instantiating "{name}" using value {instance} from key {config} in {self.mapping_name}')
-            return instance
+            return config.replace('$' + str(instance), str(instance))
+            # return instance
         except KeyError:
             raise InstantiationImpossible
 
@@ -196,7 +211,7 @@ class CallableInstantiator(DictInstantiator):
             raise CallableInstantiationError(f'Error happened while instantiating "{name}", calling {klass_name}')
 
 
-class ExperimentConfig(Mapping[str, Any]):
+class ExperimentConfig2(Mapping[str, Any]):
 
     @staticmethod
     def load_experiment_config(experiment: Union[str, Path, Dict]) -> Dict:
@@ -221,7 +236,7 @@ class ExperimentConfig(Mapping[str, Any]):
         :return: the experiment
         """
 
-        self.config: Dict[str, Any] = ExperimentConfig.load_experiment_config(experiment)
+        self.config: Dict[str, Any] = ExperimentConfig2.load_experiment_config(experiment)
         self.builds_started: List[str] = []
 
         self.builder: ObjectBuilder = ObjectBuilder([
@@ -299,13 +314,14 @@ register_plugin(A.g, alias='A.g')
 
 
 @register_plugin
-def f(a: int, b: int = 2):
-    return a, b
+def f(a: int, b: int = 2, **kwargs):
+    c = sum([v for k, v in kwargs.items()])
+    return a, b, c
 
 
 logging.basicConfig(level='INFO')
 
-exp = ExperimentConfig(
+exp = ExperimentConfig2(
     {
         'test': 'coucou',
         'third': '$second',
@@ -321,10 +337,28 @@ exp = ExperimentConfig(
         'None': {
             '_name': 'f',
             'a': 5,
-            'r': 5
+            'b': 5,
+            'r': 2,
+            'd': 10
+        },
+        'DictObject': {
+            "first_key": {
+                '_name': 'f',
+                'a': 5,
+                'b': 5,
+                'r': 2,
+                'd': 10
+            },
+            "list_key": [
+                1,
+                2,
+                "$VAR",
+                "$PATH/some/path"
+            ]
         }
     },
-    VAR=5,
+    VAR=10,
+    PATH='/tmp'
 )
 
 print(exp.experiment)
