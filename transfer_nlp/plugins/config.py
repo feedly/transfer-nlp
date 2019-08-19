@@ -1,19 +1,20 @@
 """
 This file contains all necessary plugins classes that the framework will use to let a user interact with custom models, data loaders, etc...
-
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
+import inspect
 import logging
-from abc import ABCMeta, abstractmethod
+import os
+from abc import abstractmethod, ABC
+from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Set, Type, Union
+from typing import Dict, Union, Any, Optional, AbstractSet, Set, List
 
 import ignite.metrics as metrics
 import toml
 import torch.nn as nn
 import torch.optim as optim
 import yaml
-
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +65,9 @@ def register_plugin(registrable: Any, alias: str = None):
     """
     Register a class, a function or a method to REGISTRY
     Args:
-        registrable: 
-        alias: 
-
+        registrable:
+        alias:
     Returns:
-
     """
     if not alias:
         if registrable.__name__ in REGISTRY:
@@ -96,113 +95,106 @@ class UnconfiguredItemsException(Exception):
         self.items: Dict[str, Set] = items
 
 
-class InstantiationImpossible(Exception):
-    pass
+class BadParameter(Exception):
+    def __init__(self, registrable, param):
+        super().__init__(f"Parameter naming error: '{param}' is not a parameter of registrable '{registrable}'")
+        self.param = param
+        self.registrable = registrable
 
 
-class ObjectInstantiator(metaclass=ABCMeta):
-
-    def __init__(self):
-        self.builder: ObjectBuilder = None
-
-    def set_builder(self, builder: "ObjectBuilder"):
-        self.builder: ObjectBuilder = builder
+class ConfigFactoryABC(ABC):
 
     @abstractmethod
-    def instantiate(self, config: Union[Dict, str, List]) -> Any:
-        raise InstantiationImpossible
+    def create(self):
+        pass
 
 
-class ObjectBuilder:
-    def __init__(self, instantiators: List[ObjectInstantiator]):
-        self.instantiators: List[ObjectInstantiator] = instantiators
-        for instantiator in instantiators:
-            instantiator.set_builder(self)
+class ParamFactory(ConfigFactoryABC):
+    """
+    Factory for simple parameters
+    """
 
-    def instantiate(self, config: Union[Dict, str, List]) -> Any:
-        for instanciator in self.instantiators:
-            try:
-                return instanciator.instantiate(config)
-            except InstantiationImpossible:
-                pass
+    def __init__(self, param):
+        self.param = param
 
-        return config
+    def create(self):
+        return self.param
 
 
-class DictInstantiator(ObjectInstantiator):
+class PluginFactory(ConfigFactoryABC):
+    """
+    Factory for complex objects creation
+    """
 
-    def instantiate(self, config: Union[Dict, str, List]) -> Dict:
-        if not isinstance(config, dict):
-            raise InstantiationImpossible()
-        return {
-            key: self.builder.instantiate(value_config)
-            for key, value_config in config.items()
-        }
+    def __init__(self, cls, param2config_key: Optional[Dict[str, str]], *args, **kwargs):
+        self.cls = cls
+        self.param2config_key = param2config_key
+        self.args = args
+        self.kwargs = kwargs
 
-
-class ListInstantiator(ObjectInstantiator):
-
-    def instantiate(self, config: Union[Dict, str, List]) -> List:
-        if not isinstance(config, dict):
-            raise InstantiationImpossible()
-        return [
-            self.builder.instantiate(value_config)
-            for value_config in config
-        ]
+    def create(self):
+        return self.cls(*self.args, **self.kwargs)
 
 
-class ENVInstantiator(ObjectInstantiator):
-
-    def __init__(self, env: Dict[str, Any]):
-        self.env: Dict[str, Any] = env
-        super().__init__()
-
-    def instantiate(self, config: Union[Dict, str, List]) -> Any:
-        if not isinstance(config, str) or not config.startswith('$'):
-            raise InstantiationImpossible
-        try:
-            return self.env[config[1:]]
-        except KeyError:
-            raise InstantiationImpossible
+class DefaultParamsMode(Enum):
+    IGNORE_DEFAULTS = 0,
+    NOT_IN_EXPERIMENT = 1,
+    USE_DEFAULTS = 2
 
 
-class RegistryInstantiator(ObjectInstantiator):
+def _replace_env_variables(dico: Dict, env: Dict) -> None:
+    """
+    Replace all occurrences of environment variable to particular strings
+    :param dico:
+    :param env:
+    :return:
+    """
+    env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
 
-    def instantiate(self, config: Union[Dict, str, List]) -> Any:
-        if not isinstance(config, str) or not config.startswith('$'):
-            raise InstantiationImpossible
-        try:
-            return REGISTRY[config[1:]]
-        except KeyError:
-            raise InstantiationImpossible
+    def do_env_subs(v: Any) -> str:
+        v_upd = v
+        if isinstance(v_upd, str):
+            for env_key in env_keys:
+                env_val = env[env_key]
 
+                if isinstance(env_val, os.PathLike):
+                    env_val = str(env_val)
 
-class MainObjectInstantiator(ObjectInstantiator):
+                if not isinstance(env_val, str):
+                    if v == f'${env_key}':
+                        # allow for non string value replacements
+                        v_upd = env_val
+                        break
+                else:
+                    v_upd = v_upd.replace('$' + env_key, env_val)
 
-    def __init__(self, experiment: "ExperimentConfig"):
-        self.experiment: ExperimentConfig = experiment
-        super().__init__()
+            if v_upd != v:
+                logger.debug('*** updating parameter %s -> %s', v, v_upd)
 
-    def instantiate(self, config: Union[Dict, str, List]) -> Any:
-        if not isinstance(config, str) or not config.startswith('$'):
-            raise InstantiationImpossible
-        try:
-            return self.experiment[config[1:]]
-        except KeyError:
-            raise InstantiationImpossible
+        return v_upd
 
+    def recursive_replace(my_item: Union[Dict, List, str]):
 
-class ClassInstantiator(DictInstantiator):
+        if isinstance(my_item, dict):
+            for k, v in my_item.items():
+                if not isinstance(v, dict) and not isinstance(v, list):
+                    v = do_env_subs(v)
+                    my_item[k] = v
 
-    def instantiate(self, config: Union[Dict, str, List]) -> Any:
-        if not isinstance(config, dict) or not '_name' in config:
-            raise InstantiationImpossible()
+                elif isinstance(v, dict):
+                    recursive_replace(my_item[k])
+                elif isinstance(v, list):
+                    recursive_replace(my_item[k])
+                else:
+                    pass
+        elif isinstance(my_item, list):
+            for i, item in enumerate(my_item):
+                if not isinstance(item, list) and not isinstance(item, dict):
+                    my_item[i] = do_env_subs(item)
+                else:
+                    recursive_replace(item)
 
-        klass: Union[Type, Callable] = REGISTRY[config['_name']]
-
-        param_instances: Dict[str, Any] = super().instantiate({name: c for name, c in config.items() if name != '_name'})
-
-        return klass(**param_instances)
+    recursive_replace(my_item=dico)
 
 
 class ExperimentConfig:
@@ -229,42 +221,283 @@ class ExperimentConfig:
         :param env: substitution variables, e.g. a HOME directory. generally use all caps.
         :return: the experiment
         """
-
-        self.config: Dict[str, Any] = ExperimentConfig.load_experiment_config(experiment)
-        self.builds_started: List[str] = []
-
-        self.builder: ObjectBuilder = ObjectBuilder([
-            ClassInstantiator(),
-            DictInstantiator(),
-            ENVInstantiator(env),
-            RegistryInstantiator(),
-            MainObjectInstantiator(self),
-        ])
-
+        logger.info(f"Building experiment config for experiment {experiment}")
+        self.factories: Dict[str, ConfigFactoryABC] = {}
         self.experiment: Dict[str, Any] = {}
 
-        for key, value_config in self.config.items():
-            if key not in self.experiment:
-                self.build(key)
+        config = ExperimentConfig.load_experiment_config(experiment)
+        _replace_env_variables(dico=config, env=env)
+
+        # extract simple parameters
+        logger.debug(f"Initializing simple parameters:")
+        for k, v in config.items():
+            if not isinstance(v, dict) and not isinstance(v, list):
+                logger.debug(f"Parameter {k}: {v}")
+                self.experiment[k] = v
+                self.factories[k] = ParamFactory(v)
+
+        # extract simple lists
+        logger.debug(f"Initializing simple lists:")
+        for k, v in config.items():
+            if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) and not (isinstance(vv, str) and vv[0] == "$") for vv in v):
+                logger.debug(f"Parameter {k}: {v}")
+                self.experiment[k] = v
+                self.factories[k] = PluginFactory(list, None, v)
+
+        for k in self.experiment:
+            del config[k]
+
+        self._build_items(config)
+
+    def _do_recursive_build(self, object_key: str, registrable_object: Union[Dict, List, int, float], default_params_mode: DefaultParamsMode,
+                            unconfigured_keys: AbstractSet,
+                            parent_level: str):
+
+        def resolve_simple_value(factory_key: str, val: Any) -> Any:
+            if isinstance(val, str):
+                if val[0] == '$':
+                    keyval = val[1:]
+                    if keyval in self.experiment:
+                        self.factories[factory_key] = self.factories[keyval]
+                        return self.experiment[keyval]
+                    elif keyval in REGISTRY:
+                        return REGISTRY[keyval]
+                    else:
+                        raise UnconfiguredItemsException({
+                            factory_key: {val}})
+
+            return val
+
+        def do_recursive_build_list(list_object: List, arg_name: str) -> List:
+            """
+            Function to recursively deal with nested lists
+            :param list_object:
+            :param arg_name:
+            :return:
+            """
+            copy = []
+            for i, element in enumerate(list_object):
+                if isinstance(element, dict):
+                    if "_name" in element:
+                        element = self._do_recursive_build(object_key=str(i), registrable_object=element,
+                                                           default_params_mode=default_params_mode,
+                                                           unconfigured_keys=unconfigured_keys,
+                                                           parent_level=f'{parent_level}.{arg_name}.{i}')
+                    else:
+                        for key in element:
+                            if isinstance(element[key], dict):
+                                element[key] = self._do_recursive_build(object_key=key, registrable_object=element[key],
+                                                                        default_params_mode=default_params_mode,
+                                                                        unconfigured_keys=unconfigured_keys,
+                                                                        parent_level=f'{parent_level}.{arg}.{i}.{key}')
+
+                            elif isinstance(element[key], list):
+                                element[key] = do_recursive_build_list(list_object=element[key], arg_name=f"{arg_name}.{i}.{key}")
+                            else:
+                                element[key] = resolve_simple_value(f'{parent_level}.{arg}.{key}', element[key])
+                        self.factories[f'{parent_level}.{arg}'] = PluginFactory(dict, None, list(element.items()))
+
+                elif isinstance(element, list):
+                    element = do_recursive_build_list(list_object=element, arg_name=f"{arg_name}.{i}")
+
+                else:
+                    element = resolve_simple_value(f'{parent_level}.{arg_name}.{i}', element)
+                copy.append(element)
+
+            result = copy
+            self.factories[f'{parent_level}.{arg_name}'] = PluginFactory(list, None, list(copy))
+            return result
+
+        logger.debug(f"Configuring {object_key}")
+
+        if isinstance(registrable_object, list):
+            return [self._do_recursive_build(f"{object_key}.{i}", registrable_object[i],
+                                             default_params_mode=default_params_mode,
+                                             unconfigured_keys=unconfigured_keys,
+                                             parent_level=f"{object_key}.{i}") for i in range(len(registrable_object))]
+        elif isinstance(registrable_object, int) or isinstance(registrable_object, float):
+            return registrable_object
+
+        elif isinstance(registrable_object, str):
+            if registrable_object[0] == "$":
+                if registrable_object[1:] in self.experiment:
+                    logger.debug(f"Using the object {registrable_object}, already instantiated")
+                    return self.experiment[registrable_object[1:]]
+                elif registrable_object[1:] in REGISTRY:
+                    return REGISTRY[registrable_object[1:]]
+                else:
+                    raise ValueError("Strings referencing objects must be either referenced earlier in the experiment, or belong to the available registrables")
+            else:
+                return registrable_object
+
+        elif isinstance(registrable_object, dict) and "_name" not in registrable_object:
+            return {key: self._do_recursive_build(f"{object_key}.{key}", value,
+                                                  default_params_mode=default_params_mode,
+                                                  unconfigured_keys=unconfigured_keys,
+                                                  parent_level=f"{object_key}.{key}") for key, value in registrable_object.items()}
+
+        if '_name' not in registrable_object:
+            raise ValueError(f"The object {object_key} should have a _name key to access its registrable")
+
+        registrable_name = registrable_object['_name']
+        registrable = REGISTRY.get(registrable_name)
+
+        if not registrable:
+            raise UnknownPluginException(registrable_object["_name"])
+
+        if inspect.isclass(registrable):
+            spec = inspect.getfullargspec(registrable.__init__)
+            spec_args = spec.args[1:]
+        elif inspect.isfunction(registrable):
+            spec = inspect.getfullargspec(registrable)
+            spec_args = spec.args
+        elif inspect.ismethod(registrable):
+            spec = inspect.getfullargspec(registrable)
+            spec_args = spec.args[1:]
+        else:
+            raise ValueError(f"{registrable_name} should be either a class, a function or a method")
+
+        params = {}
+        param2config_key = {}
+        named_params = {p: pv for p, pv in registrable_object.items() if p != '_name'}
+        default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
+
+        for named_param in named_params:
+            if named_param not in spec_args:
+                raise BadParameter(registrable=registrable_name, param=named_param)
+
+        for arg in spec_args:
+
+            if arg == 'experiment_config':
+                params[arg] = self
+                param2config_key[arg] = arg
+
+            elif arg in named_params:
+                value = named_params[arg]
+
+                if isinstance(value, dict):
+                    if '_name' in value:
+                        value = self._do_recursive_build(object_key=arg, registrable_object=value,
+                                                         default_params_mode=default_params_mode,
+                                                         unconfigured_keys=unconfigured_keys,
+                                                         parent_level=parent_level + "." + arg)
+                    else:
+                        for item in value:
+                            if isinstance(value[item], dict):
+                                value[item] = self._do_recursive_build(object_key=item, registrable_object=value[item],
+                                                                       default_params_mode=default_params_mode,
+                                                                       unconfigured_keys=unconfigured_keys,
+                                                                       parent_level=f'{parent_level}.{arg}.{item}')
+                            else:  # value[item] is either an object defined in a dictionary, or it's an already built object
+                                value[item] = resolve_simple_value(f'{parent_level}.{arg}.{item}', value[item])
+                        self.factories[f'{parent_level}.{arg}'] = PluginFactory(dict, None, list(value.items()))
+
+                elif isinstance(value, list):
+                    value = do_recursive_build_list(list_object=value, arg_name=arg)
+
+                elif isinstance(value, str) and value[0] == '$':
+
+                    if value[1:] in self.experiment:
+                        logger.debug(f"Using the object {value}, already instantiated")
+                        value = self.experiment[value[1:]]
+                    elif value[1:] in REGISTRY:
+                        logger.debug(f"Using the object {value} from the registry (not instantiated)")
+                        value = REGISTRY[value[1:]]
+                    else:
+                        logger.debug(f"{value} not configured yet, will be configured in next iteration")
+                else:
+                    logger.debug(f"Using value {arg} / {named_params[arg]} from the config file")
+
+                if not (isinstance(value, str) and value[0] == '$'):
+                    params[arg] = value
+                    param2config_key[arg] = value
+                else:
+                    logger.debug(f"You need to define '{value}' as a '{value[1:]}' object in the config file")
+
+            # For values that are not in named_params, we look first at the experiment dict, then at the defaults parameters
+            elif arg in self.experiment:
+                params[arg] = self.experiment[arg]
+                param2config_key[arg] = arg
+
+            elif default_params_mode == DefaultParamsMode.NOT_IN_EXPERIMENT and \
+                    arg not in self.experiment and arg not in unconfigured_keys and \
+                    arg in default_params:
+                params[arg] = default_params[arg]
+                param2config_key[arg] = None
+            elif default_params_mode == DefaultParamsMode.USE_DEFAULTS and arg in default_params:
+                params[arg] = default_params[arg]
+                param2config_key[arg] = None
+
+        if len(params) == len(spec_args):
+            self.factories[parent_level] = PluginFactory(cls=registrable, param2config_key=param2config_key, **params)
+            return registrable(**params)
+
+        else:
+            unconfigured_params = spec_args - params.keys()
+            raise UnconfiguredItemsException({
+                parent_level: unconfigured_params})
+
+    def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):
+
+        while config:
+            configured = set()
+            config_errors = {}
+            for object_key, registrable_object in config.items():
+
+                try:
+                    self.experiment[object_key] = self._do_recursive_build(object_key, registrable_object,
+                                                                           default_params_mode=default_params_mode,
+                                                                           unconfigured_keys=config.keys(),
+                                                                           parent_level=object_key)
+                    configured.add(object_key)
+
+                except BadParameter as b:
+                    raise BadParameter(registrable=b.registrable, param=b.param)
+                except UnconfiguredItemsException as e:
+                    config_errors.update(e.items)
+            if configured:
+                for k in configured:
+                    del config[k]
+
+            else:
+                if config_errors:
+                    raise UnconfiguredItemsException(config_errors)
+
+    def _build_items(self, config: Dict[str, Any]):
+
+        try:
+            logger.debug(f"Initializing complex configurations ignoring default params:")
+            self._build_items_with_default_params_mode(config, DefaultParamsMode.IGNORE_DEFAULTS)
+        except UnconfiguredItemsException as e:
+            pass
+
+        try:
+            logger.debug(f"Initializing complex configurations only filling in default params not found in the experiment:")
+
+            self._build_items_with_default_params_mode(config, DefaultParamsMode.NOT_IN_EXPERIMENT)
+        except UnconfiguredItemsException as e:
+            pass
+
+        try:
+            logger.debug(f"Initializing complex configurations filling in all default params:")
+            self._build_items_with_default_params_mode(config, DefaultParamsMode.USE_DEFAULTS)
+        except UnconfiguredItemsException as e:
+            logging.error('There are unconfigured items in the experiment. Please check your configuration:')
+            for k, v in e.items.items():
+                logging.error(f'"{k}" missing properties:')
+                for vv in v:
+                    logging.error(f'\t+ {vv}')
+
+            raise e
 
     def _check_init(self):
         if self.experiment is None:
             raise ValueError('experiment config is not setup yet!')
 
-    def build(self, key: str) -> Any:
-        if key in self.builds_started:
-            raise Exception('Loop in config')
-        self.builds_started.append(key)
-        self.experiment[key] = self.builder.instantiate(self.config[key])
-        return self.experiment[key]
-
     # map-like methods
     def __getitem__(self, item):
         self._check_init()
-        try:
-            return self.experiment[item]
-        except KeyError:
-            return self.build(item)
+        return self.experiment[item]
 
     def get(self, item, default=None):
         self._check_init()
@@ -288,25 +521,3 @@ class ExperimentConfig:
 
     def __setitem__(self, key, value):
         raise ValueError("cannot update experiment!")
-
-
-@register_plugin
-class A:
-    def __init__(self, a: int, b: int = 2, c: int = 3):
-        print(a, b, c)
-
-exp = ExperimentConfig(
-    {
-        'test': 'coucou',
-        'third': '$second',
-        'second': '$VAR',
-        'a': {
-            '_name': 'A',
-            'a': 4,
-            'c': 5
-        },
-    },
-    VAR=5,
-)
-
-print(exp.experiment)
