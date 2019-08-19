@@ -9,5 +9,6 @@
   },
   "the_reporter": {
     "_name": "MockReporter"
-  }
+  },
+  "lobjects": "$lobjects"
 }

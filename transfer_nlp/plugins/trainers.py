@@ -13,7 +13,7 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union, Tuple
 
 import numpy as np
 import torch
@@ -24,16 +24,14 @@ from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, Output
 from ignite.contrib.handlers.tqdm_logger import ProgressBar
 from ignite.engine import Events
 from ignite.engine.engine import Engine
-from ignite.metrics import Loss, Metric, RunningAverage, Accuracy
+from ignite.metrics import Loss, Metric, RunningAverage, MetricsLambda, Accuracy
 from ignite.utils import convert_tensor
-
 
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
 from transfer_nlp.plugins.regularizers import RegularizerABC
 
 logger = logging.getLogger(__name__)
-
 
 # Tensorboard is used within PyTorch but is not a dependency, so it should be installed manually by users
 TENSORBOARD = True
@@ -51,12 +49,21 @@ def set_seed_everywhere(seed: int, cuda: bool):
         torch.cuda.manual_seed_all(seed)
 
 
-def _prepare_batch(batch: Dict, device=None, non_blocking: bool = False):
+def _prepare_batch(batch: Union[Dict, List, Tuple], device=None, non_blocking: bool = False):
     """Prepare batch for training: pass to a device with options.
 
     """
-    result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
-    return result
+    if isinstance(batch, dict):
+        result = {key: convert_tensor(value, device=device, non_blocking=non_blocking) for key, value in batch.items()}
+        return result
+    elif isinstance(batch, tuple):
+        result = (convert_tensor(value, device=device, non_blocking=non_blocking) for value in batch)
+        return result
+    elif isinstance(batch, list):
+        result = [convert_tensor(value, device=device, non_blocking=non_blocking) for value in batch]
+        return result
+    else:
+        raise ValueError("Only dict, tuples and lists are valid for batch")
 
 
 class TrainingMetric(Metric):
@@ -71,7 +78,17 @@ class TrainingMetric(Metric):
         self.source_metric.reset()
 
     def update(self, output):
-        self.source_metric.update(output)
+
+        if not isinstance(self.source_metric, MetricsLambda):
+            self.source_metric.update(output)
+            return
+
+        # If a source metric is made of several metrics, e.g. MetricsLambda
+        # metrics, we need to update each sub-metrics separately
+        for source in self.source_metric.args:
+            if isinstance(source, Metric):
+                source.update(output)
+        return
 
     def compute(self):
         return self.source_metric.compute()
@@ -174,9 +191,9 @@ class BaseIgniteTrainer(TrainerABC):
             metric_keys = sorted(k for k in metrics)
             for k in metric_keys:
                 if k == 'Accuracy':
-                    rv += f'{metric_name(k)}: {metrics[k]:.3}'
+                    rv += f'{metric_name(k)}: {metrics[k]:.3} | '
                 else:
-                    rv += f'{metric_name(k)}: {metrics[k]}'
+                    rv += f'{metric_name(k)}: {metrics[k]} | '
             return rv
 
         def store_metrics(metrics: Dict, mode: str):
@@ -210,7 +227,7 @@ class BaseIgniteTrainer(TrainerABC):
             self.evaluator.run(self.dataset_splits.train_data_loader())
             metrics = self.evaluator.state.metrics
             store_metrics(metrics=metrics, mode="training")
-            # logger.info(f"Training Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
+            logger.info(f"Training Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
             self.evaluator.run(self.dataset_splits.val_data_loader())
             metrics = self.evaluator.state.metrics
@@ -224,10 +241,11 @@ class BaseIgniteTrainer(TrainerABC):
 
         @self.trainer.on(Events.COMPLETED)
         def log_test_results(trainer):
-            self.evaluator.run(self.dataset_splits.test_data_loader())
-            metrics = self.evaluator.state.metrics
-            store_metrics(metrics=metrics, mode="test")
-            logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
+            if self.dataset_splits.test_set:
+                self.evaluator.run(self.dataset_splits.test_data_loader())
+                metrics = self.evaluator.state.metrics
+                store_metrics(metrics=metrics, mode="test")
+                logger.info(f"Test Results - Epoch: {trainer.state.epoch} {print_metrics(metrics)}")
 
     def _forward(self, batch):
         model_inputs = {}
@@ -380,8 +398,14 @@ class SingleTaskTrainer(BaseIgniteTrainer):
 
         self.model.train()
         batch = _prepare_batch(batch, device=self.device, non_blocking=False)
-        y_pred = self._forward(batch)
-        loss = self.loss(input=y_pred, target=batch['y_target'])
+        if isinstance(batch, dict):
+            y_pred = self._forward(batch)
+            loss = self.loss(input=y_pred, target=batch['y_target'])
+        elif isinstance(batch, tuple) or isinstance(batch, list):
+            y_pred = self.model.forward(*batch[:-1])
+            loss = self.loss(input=y_pred, target=batch[-1])
+        else:
+            raise ValueError("Only dict, tuples and lists are valid for batch")
 
         # Add a regularisation term at train time only
         if self.regularizer:
@@ -395,16 +419,26 @@ class SingleTaskTrainer(BaseIgniteTrainer):
         if engine.state.iteration % self.loss_accumulation_steps == 0:
             self.optimizer.step()
             self.optimizer.zero_grad()
-
-        return self.output_transform(y_pred, batch['y_target'], loss.item())
+        if isinstance(batch, dict):
+            return self.output_transform(y_pred, batch['y_target'], loss.item())
+        elif isinstance(batch, tuple) or isinstance(batch, list):
+            return self.output_transform(y_pred, batch[-1], loss.item())
+        else:
+            raise ValueError("Only dict, tuples and lists are valid for batch")
 
     def infer_engine(self, engine, batch):
 
         self.model.eval()
         with torch.no_grad():
             batch = _prepare_batch(batch, device=self.device, non_blocking=False)
-            y_pred = self._forward(batch)
-            return self.eval_output_transform(y_pred, batch['y_target'])
+            if isinstance(batch, dict):
+                y_pred = self._forward(batch)
+                return self.eval_output_transform(y_pred, batch['y_target'])
+            elif isinstance(batch, tuple) or isinstance(batch, list):
+                y_pred = self.model.forward(*batch[:-1])
+                return self.eval_output_transform(y_pred, batch[-1])
+            else:
+                raise ValueError("Only dict, tuples and lists are valid for batch")
 
     def train(self):
         """

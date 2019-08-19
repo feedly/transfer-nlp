@@ -6,6 +6,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any, Union
 
+import toml
+
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
 from transfer_nlp.plugins.trainers import TrainerABC
@@ -14,6 +16,14 @@ ConfigEnv = Dict[str, Any]
 
 
 def load_config(p: Path) -> Dict[str, ConfigEnv]:
+    p = Path(str(p)).expanduser()
+    if p.suffix == '.toml':
+        rv = toml.load(p)
+        return rv
+
+    if p.suffix != '.cfg':
+        raise ValueError("Config files should be either .cfg or .toml files")
+
     def get_val(cfg: configparser.ConfigParser, section: str, key):
         try:
             return cfg.getint(section, key)
@@ -92,7 +102,7 @@ class ExperimentRunner:
                 trainer_config_name: str = 'trainer',
                 reporter_config_name: str = 'reporter',
                 experiment_cache: Union[str, Path, Dict] = None,
-                **env_vars) -> Dict[str, Any]:
+                **env_vars) -> ExperimentConfig:
         """
         :param experiment: the experiment config
         :param experiment_config: the experiment config file. The cfg file should be defined in `ConfigParser
@@ -104,7 +114,7 @@ class ExperimentRunner:
         :param reporter_config_name: the name of the reporter configuration object. The referenced object should implement `ReporterABC`.
         :param experiment_cache: the experiment config with cached objects
         :param env_vars: any additional environment variables, like file system paths
-        :return: a dictionary containing report objects for every experiment config
+        :return: the experiment cache
         """
 
         envs: Dict[str, ConfigEnv] = load_config(Path(experiment_config))
@@ -145,6 +155,8 @@ class ExperimentRunner:
             finally:
                 ExperimentRunner._stop_log_capture(log_handler)
 
-        experiment_config[reporter_config_name].__class__.report_globally(aggregate_reports=aggregate_reports, report_dir=report_path)
+        reporter_class = experiment_config[reporter_config_name].__class__
+        if issubclass(reporter_class, ReporterABC):
+            reporter_class.report_globally(aggregate_reports=aggregate_reports, report_dir=report_path)
 
-        return aggregate_reports
+        return experiment_config_cache

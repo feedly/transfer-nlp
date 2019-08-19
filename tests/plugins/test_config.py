@@ -123,19 +123,18 @@ class Pipeline:
 
     def __init__(self, steps: List):
         self.steps = steps
-   
+
 
 class DemoClassMethod:
-    
+
     def __init__(self, param: int):
-        
         self.param = param
-    
+
     @classmethod
     def from_example(cls):
         return cls(1)
-    
-    
+
+
 register_plugin(DemoClassMethod.from_example, alias='from_example_alias_name')
 
 
@@ -156,9 +155,38 @@ class ClassWithUnInstantiatedObject:
         self.my_function = my_function
 
 
-
-
 class RegistryTest(unittest.TestCase):
+
+    def test_dict_of_registrables(self):
+
+        experiment = {
+            "first_object": {
+                "_name": "DemoWithVal",
+                "val": 2
+            },
+            "dict_of_objects": {
+
+                "first_object":
+                    {
+                        "_name": "DemoWithVal",
+                        "val": 1
+                    },
+                "second_object":
+                    {
+                        "_name": "DemoWithStr",
+                        "strval": "foo"
+                    },
+                "simple_object": 1,
+                "last_object": "$first_object"
+
+            }
+        }
+
+        e = ExperimentConfig(experiment)
+        self.assertEqual(e['dict_of_objects']['first_object'].val, 1)
+        self.assertEqual(e['dict_of_objects']['second_object'].strval, 'foo')
+        self.assertEqual(e['dict_of_objects']['simple_object'], 1)
+        self.assertEqual(e['dict_of_objects']['last_object'].val, 2)
 
     def test_list_of_registrables(self):
         experiment = {
@@ -193,9 +221,9 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['list_of_objects'][4], 'feedly')
         self.assertEqual(e['list_of_objects'][5](), 5)
         self.assertEqual(e['list_of_objects'][6](), 2)
-        
-    def test_all_string_with_dollars(self): 
-        
+
+    def test_all_string_with_dollars(self):
+
         experiment = {
             "first_object": {
                 "_name": "DemoWithVal",
@@ -226,7 +254,7 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['my_registrable'].my_function(), 5)
 
     def test_class_method(self):
-        
+
         experiment = {
             "my_object": {
                 "_name": "from_example_alias_name"
@@ -362,7 +390,6 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['data2'].param_list[0].is_available, '/tmp')
         self.assertEqual(e['data2'].param_list[1].is_available, True)
         self.assertEqual(e['data2'].param_list[2], '/tmp2')
-
 
     def test_literal_injection(self):
         experiment = {
