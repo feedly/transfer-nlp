@@ -79,6 +79,13 @@ class CallableInstantiationError(Exception):
     pass
 
 
+class CallableInstantiation(Exception):
+    def __init__(self, name: str, klass_name: str):
+        super().__init__(f'Error happened while instantiating "{name}", calling {klass_name}')
+        self.name: str = name
+        self.klass_name = klass_name
+
+
 class UnknownPluginException(CallableInstantiationError):
     def __init__(self, registrable: str):
         super().__init__(f'Registrable object {registrable} is not registered. See transfer_nlp.config.register_plugin for more information.')
@@ -148,37 +155,26 @@ class ListInstantiator(ObjectInstantiator):
             for i, value_config in enumerate(config)
         ]
 
-
+import os
 class FromMappingInstantiator(ObjectInstantiator):
 
     def __init__(self, env: Mapping[str, Any], mapping_name: str):
         self.env: Mapping[str, Any] = env
         self.mapping_name: str = mapping_name
-        if self.mapping_name == 'Environment':
-            print(self.env)
-            print(self.mapping_name)
 
         super().__init__()
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
-        # print(f"Env: {self.env}")
-        # print(self.mapping_name)
-        # if self.mapping_name == 'Environment':
-        #     print(f"Config: {config}")
-
-        if self.mapping_name == 'Environment':
-            for key, value in self.env.items():
-                config = config.replace('$' + str(key), str(value))
 
         if not isinstance(config, str) or not config.startswith('$'):
             raise InstantiationImpossible
         try:
-
             instance = self.env[config[1:]]
             logging.info(f'instantiating "{name}" using value {instance} from key {config} in {self.mapping_name}')
-            return config.replace('$' + str(instance), str(instance))
-            # return instance
+            return instance
         except KeyError:
+            # if config[1:] == 'bar':
+            #     print('error')
             raise InstantiationImpossible
 
 
@@ -205,13 +201,66 @@ class CallableInstantiator(DictInstantiator):
 
         try:
             return klass(**param_instances)
-        except CallableInstantiationError as e:
-            raise e
         except Exception:
-            raise CallableInstantiationError(f'Error happened while instantiating "{name}", calling {klass_name}')
+            raise CallableInstantiation(name=name, klass_name=klass_name)
 
 
-class ExperimentConfig2(Mapping[str, Any]):
+def _replace_env_variables(dico: Dict, env: Dict) -> None:
+    """
+    Replace all occurrences of environment variable to particular strings
+    :param dico:
+    :param env:
+    :return:
+    """
+    env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
+
+    def do_env_subs(v: Any) -> str:
+        v_upd = v
+        if isinstance(v_upd, str):
+            for env_key in env_keys:
+                env_val = env[env_key]
+
+                if isinstance(env_val, os.PathLike):
+                    env_val = str(env_val)
+
+                if not isinstance(env_val, str):
+                    if v == f'${env_key}':
+                        # allow for non string value replacements
+                        v_upd = env_val
+                        break
+                else:
+                    v_upd = v_upd.replace('$' + env_key, env_val)
+
+            if v_upd != v:
+                logger.debug('*** updating parameter %s -> %s', v, v_upd)
+
+        return v_upd
+
+    def recursive_replace(my_item: Union[Dict, List, str]):
+
+        if isinstance(my_item, dict):
+            for k, v in my_item.items():
+                if not isinstance(v, dict) and not isinstance(v, list):
+                    v = do_env_subs(v)
+                    my_item[k] = v
+
+                elif isinstance(v, dict):
+                    recursive_replace(my_item[k])
+                elif isinstance(v, list):
+                    recursive_replace(my_item[k])
+                else:
+                    pass
+        elif isinstance(my_item, list):
+            for i, item in enumerate(my_item):
+                if not isinstance(item, list) and not isinstance(item, dict):
+                    my_item[i] = do_env_subs(item)
+                else:
+                    recursive_replace(item)
+
+    recursive_replace(my_item=dico)
+
+
+class ExperimentConfig(Mapping[str, Any]):
 
     @staticmethod
     def load_experiment_config(experiment: Union[str, Path, Dict]) -> Dict:
@@ -236,7 +285,8 @@ class ExperimentConfig2(Mapping[str, Any]):
         :return: the experiment
         """
 
-        self.config: Dict[str, Any] = ExperimentConfig2.load_experiment_config(experiment)
+        self.config: Dict[str, Any] = ExperimentConfig.load_experiment_config(experiment)
+        _replace_env_variables(dico=self.config, env=env)
         self.builds_started: List[str] = []
 
         self.builder: ObjectBuilder = ObjectBuilder([
@@ -321,7 +371,7 @@ def f(a: int, b: int = 2, **kwargs):
 
 logging.basicConfig(level='INFO')
 
-exp = ExperimentConfig2(
+exp = ExperimentConfig(
     {
         'test': 'coucou',
         'third': '$second',
@@ -361,4 +411,4 @@ exp = ExperimentConfig2(
     PATH='/tmp'
 )
 
-print(exp.experiment)
+# print(exp.experiment)
