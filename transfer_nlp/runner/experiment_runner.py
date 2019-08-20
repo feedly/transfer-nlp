@@ -1,7 +1,6 @@
 import configparser
-import json
 import logging
-from collections import OrderedDict
+import shutil
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Any, Union
@@ -77,26 +76,7 @@ class ExperimentRunner:
         logger.removeHandler(handler)
 
     @staticmethod
-    def _write_config(cfg_name: str, experiment: Dict, cfg: ConfigEnv, exp_report_path: Path, experiment_cache: Dict = None):
-        """duplicate the config used to run the experiment in the report directory to preserve history"""
-        config = configparser.ConfigParser({}, OrderedDict)
-        config.optionxform = str
-        config.add_section(cfg_name)
-        for k in sorted(cfg.keys()):
-            config.set(cfg_name, k, str(cfg[k]))
-
-        with (exp_report_path / 'experiment.cfg').open('w') as configfile:
-            config.write(configfile)
-
-        with (exp_report_path / 'experiment.json').open('w') as expfile:
-            json.dump(experiment, expfile, indent=4)
-
-        if experiment_cache:
-            with (exp_report_path / 'experiment_cache.json').open('w') as expfile:
-                json.dump(experiment_cache, expfile, indent=4)
-
-    @staticmethod
-    def run_all(experiment: Union[str, Path, Dict],
+    def run_all(experiment: Union[str, Path],
                 experiment_config: Union[str, Path],
                 report_dir: Union[str, Path],
                 trainer_config_name: str = 'trainer',
@@ -121,6 +101,13 @@ class ExperimentRunner:
 
         report_path = Path(report_dir)
         report_path.mkdir(parents=True)
+
+        # Before starting, save the 3 global files: experiment, configs and cache
+        global_report_dir = report_path / 'global-reporting'
+        global_report_dir.mkdir(parents=True)
+        shutil.copy(src=str(experiment), dst=str(global_report_dir / str(Path(experiment).name)))
+        shutil.copy(src=str(experiment), dst=str(global_report_dir / str(Path(experiment_cache).name)))
+        shutil.copy(src=str(experiment_config), dst=str(global_report_dir / str(Path(experiment_config).name)))
 
         experiment_config_cache = {}
         if experiment_cache:
@@ -147,9 +134,15 @@ class ExperimentRunner:
                 trainer: TrainerABC = experiment_config[trainer_config_name]
                 reporter: ReporterABC = experiment_config[reporter_config_name]
                 trainer.train()
-                exp_json = ExperimentConfig.load_experiment_config(experiment)
-                exp_cache_json = ExperimentConfig.load_experiment_config(experiment_cache) if experiment_cache else None
-                ExperimentRunner._write_config(exp_name, exp_json, all_vars, exp_report_path, exp_cache_json)
+
+                # Save the config for this particular experiment
+                exp_config = {
+                    exp_name: all_vars}
+                with (exp_report_path / 'experiment_config.toml').open('w') as expfile:
+                    toml.dump(exp_config, expfile)
+
+                # Get this particular config reporting and store it in the
+                # aggregated reportings
                 report = reporter.report(exp_name, experiment_config, exp_report_path)
                 aggregate_reports[exp_name] = report
             finally:
@@ -157,6 +150,6 @@ class ExperimentRunner:
 
         reporter_class = experiment_config[reporter_config_name].__class__
         if issubclass(reporter_class, ReporterABC):
-            reporter_class.report_globally(aggregate_reports=aggregate_reports, report_dir=report_path)
+            reporter_class.report_globally(aggregate_reports=aggregate_reports, report_dir=global_report_dir)
 
         return experiment_config_cache
