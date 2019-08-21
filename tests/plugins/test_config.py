@@ -396,7 +396,7 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig(experiment, HOME='/tmp', HOMEPATH=Path('/tmp2'), SVAL=7, VAL=True)
         self.assertEqual(e['data2'].param_list[0].is_available, '/tmp')
         self.assertEqual(e['data2'].param_list[1].is_available, True)
-        self.assertEqual(e['data2'].param_list[2], '/tmp2')
+        self.assertEqual(e['data2'].param_list[2], Path('/tmp2'))
 
     def test_literal_injection(self):
         experiment = {
