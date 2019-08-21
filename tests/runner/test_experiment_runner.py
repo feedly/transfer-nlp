@@ -1,4 +1,3 @@
-import configparser
 import io
 import json
 import logging
@@ -7,6 +6,8 @@ import tempfile
 from pathlib import Path
 from typing import Dict, Any
 from unittest import TestCase
+
+import toml
 
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
@@ -75,7 +76,7 @@ class ExperimentRunnerTest(TestCase):
     def test_run_all(self):
         pkg_dir = Path(__file__).parent
 
-        experiment_cache = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.json',
+        experiment_cache = ExperimentRunner.run_all(experiment=pkg_dir / 'test_experiment.yml',
                                                     experiment_config=pkg_dir / 'test_experiment.toml',
                                                     report_dir=self.test_dir + '/reports',
                                                     trainer_config_name='the_trainer',
@@ -127,14 +128,13 @@ class ExperimentRunnerTest(TestCase):
             self.assertEqual('my_env_param', cfg.env_param)
 
             # assert params were recorded in the reports directory
-            cp = configparser.ConfigParser()
-            cp.read(f'{self.test_dir}/reports/{name}/experiment.cfg')
-            self.assertEqual(1, len(cp.sections()))
-            self.assertEqual(bparam, cp.getboolean(name, 'bparam'))
-            self.assertEqual(iparam, cp.getint(name, 'iparam'))
-            self.assertEqual(fparam, cp.getfloat(name, 'fparam'))
-            self.assertEqual(sparam, cp.get(name, 'sparam'))
-            self.assertEqual('my_env_param', cp.get(name, 'ENV_PARAM'))
+            config = toml.load(f'{self.test_dir}/reports/{name}/experiment_config.toml')
+            self.assertEqual(1, len(config))
+            self.assertEqual(bparam, config[name]['bparam'])
+            self.assertEqual(iparam, config[name]['iparam'])
+            self.assertEqual(fparam, config[name]['fparam'])
+            self.assertEqual(sparam, config[name]['sparam'])
+            self.assertEqual('my_env_param', config[name]['ENV_PARAM'])
 
-            self.assertEqual(ExperimentConfig.load_experiment_config(pkg_dir / 'test_experiment.json'),
-                             ExperimentConfig.load_experiment_config(f'{self.test_dir}/reports/{name}/experiment.json'))
+            self.assertEqual(ExperimentConfig.load_experiment_config(pkg_dir / 'test_experiment.yml'),
+                             ExperimentConfig.load_experiment_config(f'{self.test_dir}/reports/global-reporting/test_experiment.yml'))
