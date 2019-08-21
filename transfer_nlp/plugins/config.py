@@ -117,8 +117,6 @@ class ObjectBuilder:
             instantiator.set_builder(self)
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
-        # if name == 'feedly':
-        #     print(config)
 
         for instantiator in self.instantiators:
             try:
@@ -176,8 +174,6 @@ class FromMappingInstantiator(ObjectInstantiator):
             logging.info(f'instantiating "{name}" using value {instance} from key {config} in {self.mapping_name}')
             return instance
         except KeyError:
-            # if config[1:] == 'bar':
-            #     print('error')
             raise InstantiationImpossible
 
 

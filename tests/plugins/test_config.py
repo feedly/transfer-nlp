@@ -572,20 +572,20 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig(experiment)
         self.assertEqual(e['item'].strval, 'foo')
 
-        # experiment = {
-        #     "item": {
-        #         "_name": "DemoWithStr",
-        #         "strval": "$bar"
-        #     }
-        # }
-        # try:
-        #     e = ExperimentConfig(experiment)
-        #     print(e['item'].strval)
-        #     # self.fail()
-        # except InstantiationImpossible as e:
-        #     print(e)
-        #     # self.assertEqual(len(e.items), 1)
-        #     # self.assertEqual({'strval'}, e.items['item'])
+        experiment = {
+            "item": {
+                "_name": "DemoWithStr",
+                "strval": "$bar"
+            }
+        }
+        try:
+            e = ExperimentConfig(experiment)
+            print(e['item'].strval)
+            # self.fail()
+        except InstantiationImpossible as e:
+            print(e)
+            # self.assertEqual(len(e.items), 1)
+            # self.assertEqual({'strval'}, e.items['item'])
 
         # experiment = {
         #     'demo': {
