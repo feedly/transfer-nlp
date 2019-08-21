@@ -28,7 +28,7 @@ from ignite.metrics import Loss, Metric, RunningAverage, MetricsLambda, Accuracy
 from ignite.utils import convert_tensor
 
 from transfer_nlp.loaders.loaders import DatasetSplits
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, PluginFactory
+from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.regularizers import RegularizerABC
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,6 @@ class BaseIgniteTrainer(TrainerABC):
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
-                 experiment_config: ExperimentConfig,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -136,7 +135,6 @@ class BaseIgniteTrainer(TrainerABC):
         self.optimizer: optim.Optimizer = optimizer
         self.metrics: Dict[str, Metric] = metrics
         self.metrics: List[Metric] = [metric for _, metric in self.metrics.items()]
-        self.experiment_config: ExperimentConfig = experiment_config
         self.device: str = device
         self.num_epochs: int = num_epochs
         self.scheduler: Any = scheduler
@@ -159,8 +157,6 @@ class BaseIgniteTrainer(TrainerABC):
 
         self.trainer, self.training_metrics = self.create_supervised_trainer()
         self.evaluator = self.create_supervised_evaluator()
-
-        self.optimizer_factory: PluginFactory = None
 
         loss_metrics = [m for m in self.metrics if isinstance(m, Loss)]
 
@@ -310,7 +306,6 @@ class SingleTaskTrainer(BaseIgniteTrainer):
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
-                 experiment_config: ExperimentConfig,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -330,7 +325,6 @@ class SingleTaskTrainer(BaseIgniteTrainer):
             loss=loss,
             optimizer=optimizer,
             metrics=metrics,
-            experiment_config=experiment_config,
             device=device,
             num_epochs=num_epochs,
             seed=seed,
@@ -460,7 +454,6 @@ class SingleTaskFineTuner(SingleTaskTrainer):
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
-                 experiment_config: ExperimentConfig,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -482,7 +475,6 @@ class SingleTaskFineTuner(SingleTaskTrainer):
             loss=loss,
             optimizer=optimizer,
             metrics=metrics,
-            experiment_config=experiment_config,
             device=device,
             num_epochs=num_epochs,
             seed=seed,
@@ -599,22 +591,23 @@ class SingleTaskFineTuner(SingleTaskTrainer):
 
     def train(self):
 
-        if self.pretrained:
-            self.load_pretrained_model()
-
-        if self.adaptation == 'hard-freezing':
-            self.freeze_params()
-        elif self.adaptation == 'gradual-unfreezing':
-            self.gradual_unfreezing()
-        elif self.adaptation == 'discriminative-learning':
-            parameter_groups = self.discriminative_learning()
-            self.experiment_config.factories['optimizer'].kwargs['params'] = parameter_groups
-            self.experiment_config.factories['optimizer'].param2config_key['params'] = parameter_groups
-        else:
-            raise ValueError("Transfer NLP supports only hard freezing, gradual unfreezing and discriminative learning")
-
-        self.optimizer = self.experiment_config.factories['optimizer'].create()
-        self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
+        # if self.pretrained:
+        #     self.load_pretrained_model()
+        #
+        # if self.adaptation == 'hard-freezing':
+        #     self.freeze_params()
+        # elif self.adaptation == 'gradual-unfreezing':
+        #     self.gradual_unfreezing()
+        # elif self.adaptation == 'discriminative-learning':
+        #     parameter_groups = self.discriminative_learning()
+        #     self.experiment_config.factories['optimizer'].kwargs['params'] = parameter_groups
+        #     self.experiment_config.factories['optimizer'].param2config_key['params'] = parameter_groups
+        # else:
+        #     raise ValueError("Transfer NLP supports only hard freezing, gradual unfreezing and discriminative learning")
+        #
+        # self.optimizer = self.experiment_config.factories['optimizer'].create()
+        # self.trainer.run(self.dataset_splits.train_data_loader(), max_epochs=self.num_epochs)
+        raise NotImplementedError
 
 
 @register_plugin
@@ -626,7 +619,6 @@ class MultiTaskTrainer(BaseIgniteTrainer):
                  loss: nn.Module,
                  optimizer: optim.Optimizer,
                  metrics: Dict[str, Metric],
-                 experiment_config: ExperimentConfig,
                  device: str = None,
                  num_epochs: int = 1,
                  seed: int = None,
@@ -647,7 +639,6 @@ class MultiTaskTrainer(BaseIgniteTrainer):
             loss=loss,
             optimizer=optimizer,
             metrics=metrics,
-            experiment_config=experiment_config,
             device=device,
             num_epochs=num_epochs,
             seed=seed,

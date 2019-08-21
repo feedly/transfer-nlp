@@ -4,7 +4,8 @@ from typing import List, Any, Dict
 
 # from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter, UnknownPluginException
 
-from transfer_nlp.plugins.config2 import register_plugin, ExperimentConfig, CallableInstantiationError, CallableInstantiation, InstantiationImpossible
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, CallableInstantiationError, CallableInstantiation, InstantiationImpossible
+
 
 @register_plugin
 class DemoWithVal:
@@ -80,7 +81,6 @@ class DemoWithConfig:
     def __init__(self, demo2, intval: int):
         self.demo2 = demo2
         self.intval = intval
-        # self.experiment_config = experiment_config
 
 
 @register_plugin
@@ -283,7 +283,6 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(e.experiment['demo'].demo3, DemoWithInt)
         self.assertEqual(e.experiment['demo'].demo2.strval, 'foo')
         self.assertEqual(e.experiment['demo'].demo3.intval, 2)
-        # self.assertEqual(e.factories.keys(), {'demo.demo2', 'demo.demo3', 'demo'})
 
     def test_child_injection(self):
         experiment = {
@@ -516,37 +515,6 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['demo'].complex.intval1, 20)
         self.assertEqual(e['demo'].complex.intval2, None)
 
-    def test_with_config(self):
-        experiment = {
-            'demo2': {
-                '_name': 'DemoWithInt',
-                'intval': '$intval'
-            },
-            'with_config': {
-                '_name': 'DemoWithConfig',
-                'intval': 10,
-                'demo2': '$demo2',
-
-
-            },
-            'intval': 5
-        }
-
-        e = ExperimentConfig(experiment)
-
-        d = e['with_config']
-        self.assertEqual(10, d.intval)
-        self.assertEqual(5, d.demo2.intval)
-        # self.assertTrue(d.experiment_config is e)
-
-        # self.assertEqual({'demo2', 'with_config', 'intval'}, e.factories.keys())
-        # self.assertEqual(5, e.factories['intval'].create())
-        #
-        # d = e.factories['with_config'].create()
-        # self.assertEqual(10, d.intval)
-        # self.assertEqual(5, d.demo2.intval)
-        # self.assertTrue(d.experiment_config is e)
-
     def test_unordered_nested_config(self):
         experiment = {
             'democ': {
@@ -742,23 +710,6 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(demo.children[1], DemoWithInt)
         self.assertEqual(demo.children[1].intval, 2)
 
-        # self.assertEqual(e.factories.keys(), {'demo', 'demo3', 'demo.children', 'demo.children.0', 'demo.children.1'})
-
-        # copy = e.factories['demo.children'].create()
-        # self.assertIsInstance(copy[0], DemoWithStr)
-        # self.assertEqual(copy[0].strval, 'foo')
-        #
-        # self.assertIsInstance(copy[1], DemoWithInt)
-        # self.assertEqual(copy[1].intval, 2)
-        #
-        # copy = e.factories['demo.children.0'].create()
-        # self.assertIsInstance(copy, DemoWithStr)
-        # self.assertEqual(copy.strval, 'foo')
-        #
-        # copy = e.factories['demo.children.1'].create()
-        # self.assertIsInstance(copy, DemoWithInt)
-        # self.assertEqual(copy.intval, 2)
-
     def test_recursive_dict(self):
         experiment = {
             'demo': {
@@ -788,23 +739,6 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(demo.children['child1'], DemoWithInt)
         self.assertEqual(demo.children['child1'].intval, 2)
 
-        # self.assertEqual(e.factories.keys(), {'demo', 'demo3', 'demo.children', 'demo.children.child0', 'demo.children.child1'})
-        #
-        # copy = e.factories['demo.children'].create()
-        # self.assertIsInstance(copy['child0'], DemoWithStr)
-        # self.assertEqual(copy['child0'].strval, 'foo')
-        #
-        # self.assertIsInstance(copy['child1'], DemoWithInt)
-        # self.assertEqual(copy['child1'].intval, 2)
-        #
-        # copy = e.factories['demo.children.child0'].create()
-        # self.assertIsInstance(copy, DemoWithStr)
-        # self.assertEqual(copy.strval, 'foo')
-        #
-        # copy = e.factories['demo.children.child1'].create()
-        # self.assertIsInstance(copy, DemoWithInt)
-        # self.assertEqual(copy.intval, 2)
-
     def test_method_config(self):
         experiment = {
             'demo': {
@@ -821,11 +755,6 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig(experiment)
         self.assertIsInstance(e['object_from_method'], DemoWithStr)
         self.assertEqual(e['object_from_method'].strval, 5)
-
-        # # Test that we can reconfigure the object from the factory
-        # object_from_method = e.factories['object_from_method'].create()
-        # self.assertIsInstance(object_from_method, DemoWithStr)
-        # self.assertEqual(object_from_method.strval, 5)
 
     def test_nested_lists_dicts(self):
 
@@ -877,39 +806,9 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(e['pipeline'].steps[1][1], DemoWithInt)
         self.assertEqual(e['pipeline'].steps[1][0], 'second')
 
-        # # # Test tha factory creation works as expected
-        # a = e.factories['pipeline.steps.0.0.1'].create()
-        # self.assertIsInstance(a, DemoWithInt)
-        # a = e.factories['pipeline.steps.0.1'].create()
-        # self.assertIsInstance(a, DemoWithInt)
-        # a = e.factories['pipeline.steps.1.1'].create()
-        # self.assertIsInstance(a, DemoWithInt)
-        #
-        # a = e.factories['pipeline.steps.1'].create()
-        # self.assertIsInstance(a, list)
-        # self.assertIsInstance(a[1], DemoWithInt)
-        # self.assertEqual(a[0], 'second')
-        #
-        # a = e.factories['pipeline.steps'].create()
-        # self.assertIsInstance(a, list)
-        # self.assertIsInstance(a[1], list)
-        # self.assertIsInstance(a[0], list)
-        # self.assertIsInstance(a[1][1], DemoWithInt)
-        # self.assertIsInstance(a[0][0][1], DemoWithInt)
-
         self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[0], DemoWithInt)
         self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[1], DemoWithInt)
         self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[2]['k2'], DemoWithInt)
         self.assertEqual(e['pipeline_list_of_dict_objects'].steps[3], {
             "k1": 1,
             "k2": 2})
-
-        # a = e.factories['pipeline_list_of_dict_objects.steps'].create()
-        # self.assertIsInstance(a, list)
-        # a = e.factories['pipeline_list_of_dict_objects.steps.0'].create()
-        # self.assertIsInstance(a, DemoWithInt)
-        # a = e.factories['pipeline_list_of_dict_objects.steps.2.k2'].create()
-        # self.assertIsInstance(a, DemoWithInt)
-        # a = e.factories['pipeline_list_of_dict_objects.steps.2.k3.1'].create()
-        # self.assertIsInstance(a, DemoWithInt)
-        # self.assertEqual(e['pipeline_list_of_dict_objects'].steps[4], [1, 2, 3])

@@ -7,7 +7,6 @@ from ignite.metrics import Precision, Recall, MetricsLambda
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.regularizers import L1
-from transfer_nlp.plugins.trainers import SingleTaskTrainer
 from .trainer_utils import *
 
 
@@ -42,14 +41,16 @@ EXPERIMENT = {
         "_name": "Adam",
         "lr": 0.01,
         "params": {
-            "_name": "TrainableParameters"
+            "_name": "TrainableParameters",
+            "model": "$model"
         }
     },
     "scheduler": {
         "_name": "ReduceLROnPlateau",
         "patience": 1,
         "mode": "min",
-        "factor": 0.5
+        "factor": 0.5,
+        "optimizer": "$optimizer"
     },
     "trainer": {
         "_name": "SingleTaskTrainer",
@@ -62,6 +63,7 @@ EXPERIMENT = {
         "gradient_clipping": 0.25,
         "num_epochs": 5,
         "seed": 1337,
+        "scheduler": "$scheduler",
         "regularizer": {
             "_name": "L1"
         },
@@ -105,14 +107,6 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(trainer.gradient_clipping, 0.25)
         self.assertEqual(trainer.embeddings_name, None)
         self.assertEqual(trainer.forward_params, ['x_in', 'apply_softmax'])
-        # trainer.train()
-
-        # Test factories
-        optimizer = trainer.experiment_config.factories['optimizer'].create()
-        self.assertIsInstance(optimizer, torch.optim.Adam)
-
-        trainer = trainer.experiment_config.factories['trainer'].create()
-        self.assertIsInstance(trainer, SingleTaskTrainer)
 
     def test_setup(self):
         e = copy.deepcopy(EXPERIMENT)
