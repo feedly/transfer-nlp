@@ -9,4 +9,4 @@ the_trainer:
 the_reporter:
   _name: MockReporter
 
-lobjects: $lobjects
+lobjects: $listobjects
