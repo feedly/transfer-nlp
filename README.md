@@ -1,12 +1,9 @@
 <img src="https://github.com/feedly/transfer-nlp/blob/v0.1/data/images/TransferNLP_Logo.jpg" width="1000">
 
-Welcome to the Transfer NLP library, a framework built on top of PyTorch which goal is to achieve 2 kinds of Transfer:
-
-- **easy transfer of code**: the framework should be modular enough so that you don't have to re-write everything each time you experiment with a new architecture / a new kind of task
-- **easy transfer learning**: the framework should be able to easily interact with pre-trained models and manipulate them in order to fine-tune some of their parts.
+Welcome to the Transfer NLP library, a framework built on top of PyTorch to promote reproducible experimentation and Transfer Learning in NLP
 
 You can have an overview of the high-level API on this [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=Xzu3HPdGrnza), which shows how to use the framework on several examples.
-All examples on these notebooks embed in-cell Tensorboard training monitoring!
+All DL-based examples on these notebooks embed in-cell Tensorboard training monitoring!
 
 For an example of pre-trained model finetuning, we provide a short executable tutorial on BertClassifier finetuning on this [Colab Notebook](https://colab.research.google.com/drive/10Toyi0V4fp0Sn33RSPCkoPrtf5FVpm3q#scrollTo=PXJFfulWkEl6)
 
@@ -42,7 +39,7 @@ pip install -r requirements.txt
 # Documentation
 API documentation and an overview of the library can be found [here](https://transfer-nlp.readthedocs.io/en/latest/)
 
-# High-Level usage of the library
+# High-Level usage of the library: Reproducible Experiment Manager
 
 You can have a look at the [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=IuBcpSdZtcmo) to get a simple sense of the library usage.
 
@@ -124,7 +121,7 @@ In the previous example, you would run e.g. `ExperimentConfig(experiment=yaml_pa
 You can have a look at the [tests](https://github.com/feedly/transfer-nlp/blob/master/tests/plugins/test_config.py) for examples of experiment settings the config loader can build.
 Additionally we provide runnable experiments in [`experiments/`](https://github.com/feedly/transfer-nlp/tree/master/experiments).
 
-# PyTorch Trainers
+# Transfer Learning in NLP: flexible PyTorch Trainers
 For deep learning experiments, we provide a `BaseIgniteTrainer` in [`transfer_nlp.plugins.trainers.py`](https://github.com/feedly/transfer-nlp/blob/master/transfer_nlp/plugins/trainers.py).
 This basic trainer will take a model and some data as input, and run a whole training pipeline. We make use of the [PyTorch-Ignite](https://github.com/pytorch/ignite) library to monitor events during training (logging some metrics, manipulating learning rates, checkpointing models, etc...). Tensorboard logs are also included as an option, you will have to specify a `tensorboard_logs` simple parameters path in the config file. Then just run `tensorboard --logdir=path/to/logs` in a terminal and you can monitor your experiment while it's training!
 Tensorboard comes with very nice utilities to keep track of the norms of your model weights, histograms, distributions, visualizing embeddings, etc so we really recommend using it.
