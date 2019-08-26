@@ -39,29 +39,8 @@ pip install -r requirements.txt
 # Documentation
 API documentation and an overview of the library can be found [here](https://transfer-nlp.readthedocs.io/en/latest/)
 
-# High-Level usage of the library: Reproducible Experiment Manager
-
-You can have a look at the [Colab Notebook](https://colab.research.google.com/drive/1DtC31eUejz1T0DsaEfHq_DOxEfanmrG1#scrollTo=IuBcpSdZtcmo) to get a simple sense of the library usage.
-
-The core of the library is made of an experiment builder: you define the different objects that your experiment needs, and the configuration loader builds them in a nice way:
-
-```
-from transfer_nlp.plugins.config import ExperimentConfig
-
-# Launch an experiment
-config_file  = {...}  # Dictionary config file, or str/Path to a json/yaml/toml config file
-experiment = ExperimentConfig(experiment=config_file)
-
-# Interaact with the experiment's objects, e.g. launch a training job of a `trainer` object
-experiment['trainer'].train()
-
-# Another use of experiment object: use the `predictor` object for inference
-input_json = {"inputs": [Some Examples]}
-output_json = experiment['predictor'].json_to_json(input_json=input_json)
-```
-
-# How to experiment with the library?
-For reproducible research and easy ablation studies, the library enforces the use of configuration files for experiments.
+# Reproducible Experiment Manager
+The core of the library is made of an experiment builder: you define the different objects that your experiment needs, and the configuration loader builds them in a nice way. For reproducible research and easy ablation studies, the library then enforces the use of configuration files for experiments.
 As people have different tastes for what constitutes a good experiment file, the library allows for experiments defined in several formats:
 
 - Python Dictionary
