@@ -5,7 +5,12 @@ from experiments.deep_learning_with_pytorch.cbow import *
 from experiments.deep_learning_with_pytorch.news import *
 from transfer_nlp.plugins.config import ExperimentConfig
 
+from ..utils import PLUGINS
+
 logger = logging.getLogger(__name__)
+
+for plugin_name, plugin in PLUGINS.items():
+    register_plugin(registrable=plugin, alias=plugin_name)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

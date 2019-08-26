@@ -3,11 +3,58 @@ import unittest
 from pathlib import Path
 
 import ignite
+import ignite.metrics as metrics
+import torch.nn as nn
+import torch.optim as optim
 from ignite.metrics import Precision, Recall, MetricsLambda
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.regularizers import L1
 from .trainer_utils import *
+
+PLUGINS = {
+    'CrossEntropyLoss': nn.CrossEntropyLoss,
+    'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
+    "Adam": optim.Adam,
+    "SGD": optim.SGD,
+    "AdaDelta": optim.Adadelta,
+    "AdaGrad": optim.Adagrad,
+    "SparseAdam": optim.SparseAdam,
+    "AdaMax": optim.Adamax,
+    "ASGD": optim.ASGD,
+    "LBFGS": optim.LBFGS,
+    "RMSPROP": optim.RMSprop,
+    "Rprop": optim.Rprop,
+    "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
+    "MultiStepLR": optim.lr_scheduler.MultiStepLR,
+    "ExponentialLR": optim.lr_scheduler.ExponentialLR,
+    "CosineAnnealingLR": optim.lr_scheduler.CosineAnnealingLR,
+    "LambdaLR": optim.lr_scheduler.LambdaLR,
+    "ReLU": nn.functional.relu,
+    "LeakyReLU": nn.functional.leaky_relu,
+    "Tanh": nn.functional.tanh,
+    "Softsign": nn.functional.softsign,
+    "Softshrink": nn.functional.softshrink,
+    "Softplus": nn.functional.softplus,
+    "Sigmoid": nn.Sigmoid,
+    "CELU": nn.CELU,
+    "SELU": nn.functional.selu,
+    "RReLU": nn.functional.rrelu,
+    "ReLU6": nn.functional.relu6,
+    "PReLU": nn.functional.prelu,
+    "LogSigmoid": nn.functional.logsigmoid,
+    "Hardtanh": nn.functional.hardtanh,
+    "Hardshrink": nn.functional.hardshrink,
+    "ELU": nn.functional.elu,
+    "Softmin": nn.functional.softmin,
+    "Softmax": nn.functional.softmax,
+    "LogSoftmax": nn.functional.log_softmax,
+    "GLU": nn.functional.glu,
+    "TanhShrink": nn.functional.tanhshrink,
+    "Accuracy": metrics.Accuracy,
+}
+for plugin_name, plugin in PLUGINS.items():
+    register_plugin(registrable=plugin, alias=plugin_name)
 
 
 def fbeta(r, p, beta, average):
