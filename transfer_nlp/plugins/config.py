@@ -32,7 +32,15 @@ def register_plugin(registrable: Any, alias: str = None):
     return registrable
 
 
-class CallableInstantiationError(Exception):
+class InstantiationError(Exception):
+    pass
+
+
+class CallableInstantiationError(InstantiationError):
+    pass
+
+
+class LoopInConfigError(InstantiationError):
     pass
 
 
@@ -241,7 +249,7 @@ class ExperimentConfig(Mapping[str, Any]):
         if key not in self.config:
             raise KeyError()
         if key in self.builds_started:
-            raise Exception(f'Loop in config, key `{key}` reference itself')
+            raise LoopInConfigError(f'Loop in config, key `{key}` reference itself')
         self.builds_started.append(key)
         self.experiment[key] = self.builder.instantiate(self.config[key], name=key)
         return self.experiment[key]

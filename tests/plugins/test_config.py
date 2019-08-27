@@ -4,7 +4,7 @@ from typing import List, Any, Dict
 
 # from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter, UnknownPluginException
 
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, CallableInstantiationError, CallableInstantiation, InstantiationImpossible
+from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, CallableInstantiationError, CallableInstantiation, InstantiationImpossible, LoopInConfigError
 
 
 @register_plugin
@@ -812,3 +812,30 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['pipeline_list_of_dict_objects'].steps[3], {
             "k1": 1,
             "k2": 2})
+
+    def test_loop_in_config(self):
+
+        experiment1 = {
+            'item1': {
+                'item': '$item2'
+            },
+            'item2': {
+                'item': '$item3'
+            },
+            'item3': {
+                'item': '$item1',
+            },
+        }
+
+        experiment2 = {
+            'item': {
+                'key': [
+                    {
+                        'key': '$item'
+                    }
+                ]
+            }
+        }
+
+        self.assertRaises(LoopInConfigError, lambda: ExperimentConfig(experiment1))
+        self.assertRaises(LoopInConfigError, lambda: ExperimentConfig(experiment2))
