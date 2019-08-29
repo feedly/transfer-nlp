@@ -5,7 +5,7 @@ from experiments.deep_learning_with_pytorch.cbow import *
 from experiments.deep_learning_with_pytorch.news import *
 from transfer_nlp.plugins.config import ExperimentConfig
 
-from ..utils import PLUGINS
+from experiments.utils import PLUGINS
 
 logger = logging.getLogger(__name__)
 
