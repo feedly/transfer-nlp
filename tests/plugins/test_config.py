@@ -1,10 +1,8 @@
 import unittest
 from pathlib import Path
-from typing import List, Any, Dict
+from typing import Any, Dict, List
 
-# from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter, UnknownPluginException
-
-from transfer_nlp.plugins.config import register_plugin, ExperimentConfig, CallableInstantiationError, CallableInstantiation, InstantiationImpossible, LoopInConfigError
+from transfer_nlp.plugins.config import CallableInstantiationError, ExperimentConfig, LoopInConfigError, UnknownPluginException, UnknownReferenceError, register_plugin
 
 
 @register_plugin
@@ -430,12 +428,12 @@ class RegistryTest(unittest.TestCase):
             }
         }
 
-        try:
+        with self.assertRaises(CallableInstantiationError) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except CallableInstantiation as e:
-            self.assertEqual(e.name, 'demo')
-            self.assertEqual(e.klass_name, 'Demo')
+
+        self.assertEqual(cm.exception.obj_name, 'demo')
+        self.assertEqual(cm.exception.callable_name, 'Demo')
+        self.assertListEqual(cm.exception.arg_names, [])
 
     def test_defaults(self):
         experiment = {
@@ -572,117 +570,125 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig(experiment)
         self.assertEqual(e['item'].strval, 'foo')
 
+        #########
+
         experiment = {
             "item": {
                 "_name": "DemoWithStr",
                 "strval": "$bar"
             }
         }
-        try:
-            e = ExperimentConfig(experiment)
-            print(e['item'].strval)
-            # self.fail()
-        except InstantiationImpossible as e:
-            print(e)
-            # self.assertEqual(len(e.items), 1)
-            # self.assertEqual({'strval'}, e.items['item'])
 
-        # experiment = {
-        #     'demo': {
-        #         '_name': 'DemoWithDict',
-        #         'simple_int': 22,
-        #         'children': {
-        #             'child0': "$demo3"
-        #         }
-        #     }
-        # }
-        #
-        # try:
-        #     ExperimentConfig(experiment)
-        #     # self.fail()
-        # except InstantiationImpossible as e:
-        #     print(e)
-        #     # self.assertEqual(len(e.items), 1)
-        #     # self.assertEqual({'$demo3'}, e.items['demo.children.child0'])
-        #
-        # experiment = {
-        #     'demo': {
-        #         '_name': 'DemoWithList',
-        #         'simple_int': 22,
-        #         'children': ["$demo3"]
-        #     }
-        # }
-        #
-        # try:
-        #     ExperimentConfig(experiment)
-        #     # self.fail()
-        # except InstantiationImpossible as e:
-        #     print(e)
-        # #     self.assertEqual(len(e.items), 1)
-        # #     self.assertEqual({'$demo3'}, e.items['demo.children.0'])
+        with self.assertRaises(UnknownReferenceError) as cm:
+            ExperimentConfig(experiment)
 
-    # def test_additional_params(self):
-    #
-    #     experiment = {
-    #         "bar": 5,
-    #         "item": {
-    #             "_name": "DemoWithInt",
-    #             "intval": "$bar",
-    #             "bad_param": 2
-    #         }
-    #     }
-    #     try:
-    #         ExperimentConfig(experiment)
-    #         self.fail()
-    #     except BadParameter as b:
-    #         self.assertEqual(b.param, 'bad_param')
-    #         self.assertEqual(b.registrable, 'DemoWithInt')
-    #
-    # def test_bad_plugin(self):
-    #
-    #     experiment = {
-    #         "item": {
-    #             "_name": "NoConfig",
-    #         }
-    #     }
-    #     try:
-    #         ExperimentConfig(experiment)
-    #         self.fail()
-    #     except UnknownPluginException as e:
-    #         self.assertEqual(e.registrable, 'NoConfig')
-    #
-    #     experiment = {
-    #         "item": {
-    #             "_name": "DemoWithDict",
-    #             'children': {
-    #                 'child': {
-    #                     "_name": "NoConfig"
-    #                 }
-    #             }
-    #         }
-    #     }
-    #     try:
-    #         ExperimentConfig(experiment)
-    #         self.fail()
-    #     except UnknownPluginException as e:
-    #         self.assertEqual(e.registrable, 'NoConfig')
-    #
-    #     experiment = {
-    #         "item": {
-    #             "_name": "DemoWithList",
-    #             'children': [
-    #                 {
-    #                     "_name": "NoConfig"
-    #                 }
-    #             ]
-    #         }
-    #     }
-    #     try:
-    #         ExperimentConfig(experiment)
-    #         self.fail()
-    #     except UnknownPluginException as e:
-    #         self.assertEqual(e.registrable, 'NoConfig')
-    #
+        self.assertEqual("item.strval", cm.exception.obj_name)
+        self.assertEqual('$bar', cm.exception.reference_name)
+
+        #########
+
+        experiment = {
+            'demo': {
+                '_name': 'DemoWithDict',
+                'simple_int': 22,
+                'children': {
+                    'child0': "$demo3"
+                }
+            }
+        }
+
+        with self.assertRaises(UnknownReferenceError) as cm:
+            ExperimentConfig(experiment)
+
+        self.assertEqual('demo.children.child0', cm.exception.obj_name)
+        self.assertEqual('$demo3', cm.exception.reference_name)
+
+        #########
+
+        experiment = {
+            'demo': {
+                '_name': 'DemoWithList',
+                'simple_int': 22,
+                'children': ["$demo3"]
+            }
+        }
+
+        with self.assertRaises(UnknownReferenceError) as cm:
+            ExperimentConfig(experiment)
+
+        self.assertEqual('demo.children.0', cm.exception.obj_name)
+        self.assertEqual('$demo3', cm.exception.reference_name)
+
+    def test_additional_params(self):
+
+        experiment = {
+            "bar": 5,
+            "item": {
+                "_name": "DemoWithInt",
+                "intval": "$bar",
+                "bad_param": 2
+            }
+        }
+
+        with self.assertRaises(CallableInstantiationError) as cm:
+            ExperimentConfig(experiment)
+
+        self.assertEqual('item', cm.exception.obj_name)
+        self.assertEqual('DemoWithInt', cm.exception.callable_name)
+        self.assertListEqual(['intval', 'bad_param'], cm.exception.arg_names)
+
+    def test_bad_plugin(self):
+
+        experiment = {
+            "item": {
+                "_name": "NoConfig",
+            }
+        }
+
+        with self.assertRaises(UnknownPluginException) as cm:
+            ExperimentConfig(experiment)
+
+        self.assertEqual('NoConfig', cm.exception.registrable)
+        self.assertEqual('item', cm.exception.obj_name)
+
+        #########
+
+        experiment = {
+            "item": {
+                "_name": "DemoWithDict",
+                'children': {
+                    'child': {
+                        "_name": "NoConfig"
+                    }
+                }
+            }
+        }
+
+        with self.assertRaises(UnknownPluginException) as cm:
+            ExperimentConfig(experiment)
+
+        self.assertEqual('NoConfig', cm.exception.registrable)
+        self.assertEqual('item.children.child', cm.exception.obj_name)
+
+        #########
+
+        experiment = {
+            "item": {
+                "_name": "DemoWithList",
+                'children': [
+                    {
+                        "_name": "NoConfig"
+                    }
+                ]
+            }
+        }
+
+        with self.assertRaises(UnknownPluginException) as cm:
+            ExperimentConfig(experiment)
+
+        self.assertEqual('NoConfig', cm.exception.registrable)
+        self.assertEqual('item.children.0', cm.exception.obj_name)
+
     def test_recursive_list(self):
         experiment = {
             'demo': {

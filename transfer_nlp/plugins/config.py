@@ -4,6 +4,7 @@ The Registry pattern used here is inspired from this post: https://realpython.co
 """
 import logging
 import os
+import traceback
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Type, Union
@@ -33,28 +34,70 @@ def register_plugin(registrable: Any, alias: str = None):
 
 
 class InstantiationError(Exception):
-    pass
+    """
+    An error happened while instantiating an experiment
+    """
+
+    def __init__(self, obj_name: str):
+        """
+        :param obj_name: The name of the object that couldn't be instantiated
+        """
+        self.obj_name: str = obj_name
+
+    def __str__(self) -> str:
+        return f"Failed to instantiate `{self.obj_name}`"
 
 
 class CallableInstantiationError(InstantiationError):
-    pass
+    """
+    An error happened while instantiating a callable
+    """
+
+    def __init__(self, obj_name: str, callable_name: str, arg_names: List[str]):
+        """
+        :param obj_name: The name of the object that couldn't be instantiated 
+        :param callable_name: The callable's name that failed when called
+        :param arg_names: The names of the arguments that were passed to the callable
+        """
+        super().__init__(obj_name)
+        self.callable_name: str = callable_name
+        self.arg_names: List[str] = arg_names
+
+    def __str__(self) -> str:
+        return f"{super().__str__()} calling `{self.callable_name}` using the arguments " + ', '.join(self.arg_names) + '; see exception raised above'
 
 
 class LoopInConfigError(InstantiationError):
-    pass
+    """
+    An object refers to itself
+    """
+
+    def __str__(self) -> str:
+        return f"{super().__str__()} because it refers to itself"
 
 
-class CallableInstantiation(Exception):
-    def __init__(self, name: str, klass_name: str):
-        super().__init__(f'Error happened while instantiating "{name}", calling {klass_name}')
-        self.name: str = name
-        self.klass_name = klass_name
-
-
-class UnknownPluginException(CallableInstantiationError):
-    def __init__(self, registrable: str):
-        super().__init__(f'Registrable object {registrable} is not registered. See transfer_nlp.config.register_plugin for more information.')
+class UnknownPluginException(InstantiationError):
+    """
+    A registrable has not been registred
+    """
+    def __init__(self, object_name: str, registrable: str):
+        super().__init__(object_name)
         self.registrable: str = registrable
+
+    def __str__(self) -> str:
+        return f"{super().__str__()} because registrable `{self.registrable}` isn't registred"
+
+
+class UnknownReferenceError(InstantiationError):
+    """
+    An object that is referenced does not exist
+    """
+    def __init__(self, object_name: str, reference_name: str):
+        super().__init__(object_name)
+        self.reference_name: str = reference_name
+
+    def __str__(self) -> str:
+        return f"{super().__str__()} because it reference to `{self.reference_name}` that doesn't exist"
 
 
 class InstantiationImpossible(Exception):
@@ -164,6 +207,9 @@ class FromEnvironmentVariableInstantiator(FromMappingInstantiator):
             for key in self.strings_to_replace:
                 v_upd = v_upd.replace(f'${key}', str(self.env[key]))
 
+            if v_upd.startswith('$'):
+                raise UnknownReferenceError(name, config) from None
+
             logging.info(f'instantiating "{name}" using value {v_upd}')
 
             return v_upd
@@ -178,7 +224,7 @@ class CallableInstantiator(DictInstantiator):
         klass_name: str = config['_name']
 
         if klass_name not in REGISTRY:
-            raise UnknownPluginException(klass_name)
+            raise UnknownPluginException(object_name=name, registrable=klass_name)
 
         klass: Union[Type, Callable] = REGISTRY[klass_name]
 
@@ -193,7 +239,7 @@ class CallableInstantiator(DictInstantiator):
         try:
             return klass(**param_instances)
         except Exception:
-            raise CallableInstantiation(name=name, klass_name=klass_name)
+            raise CallableInstantiationError(obj_name=name, callable_name=klass_name, arg_names=list(param_instances.keys()))
 
 
 class ExperimentConfig(Mapping[str, Any]):
@@ -249,7 +295,7 @@ class ExperimentConfig(Mapping[str, Any]):
         if key not in self.config:
             raise KeyError()
         if key in self.builds_started:
-            raise LoopInConfigError(f'Loop in config, key `{key}` reference itself')
+            raise LoopInConfigError(key)
         self.builds_started.append(key)
         self.experiment[key] = self.builder.instantiate(self.config[key], name=key)
         return self.experiment[key]
@@ -257,10 +303,9 @@ class ExperimentConfig(Mapping[str, Any]):
     # map-like methods
     def __getitem__(self, item):
         self._check_init()
-        try:
+        if item in self.experiment:
             return self.experiment[item]
-        except KeyError:
-            return self.build(item)
+        return self.build(item)
 
     def get(self, item, default=None):
         self._check_init()
