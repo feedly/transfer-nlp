@@ -5,7 +5,7 @@ from experiments.transfer_learning.transformers.dataset import *
 from experiments.transfer_learning.transformers.model import *
 from transfer_nlp.plugins.config import ExperimentConfig
 
-from ...utils import PLUGINS
+from experiments.utils import PLUGINS
 
 logger = logging.getLogger(__name__)
 
