@@ -105,25 +105,52 @@ class InstantiationImpossible(Exception):
 
 
 class ObjectInstantiator(metaclass=ABCMeta):
+    """
+    An instantiator that knows how to instantiate 1 kind of object
+    """
 
     def __init__(self):
         self.builder: ObjectBuilder = None
 
-    def set_builder(self, builder: "ObjectBuilder"):
+    def set_builder(self, builder: "ObjectBuilder") -> None:
+        """
+        Set the builder, for recursive puposes
+
+        :param builder: The main builder to use when recursivity is needed
+        :return: None
+        """
         self.builder: ObjectBuilder = builder
 
     @abstractmethod
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config from which we want to instantiate the object
+        :param name: The full name of the object to instantiate
+        :return: The instantiated object
+        """
         raise InstantiationImpossible
 
 
 class ObjectBuilder:
+    """
+    The main builder class
+    """
     def __init__(self, instantiators: List[ObjectInstantiator]):
+        """
+        :param instantiators: The ordered list of instantiators that can be used to instantiate the objects
+        """
         self.instantiators: List[ObjectInstantiator] = instantiators
         for instantiator in instantiators:
             instantiator.set_builder(self)
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        build the object trying to use all the instantiators in a row, until one works
+
+        :param config: The config of the object to instantiate
+        :param name: The full name of this object
+        :return: The instantiated object
+        """
 
         for instantiator in self.instantiators:
             try:
@@ -137,8 +164,17 @@ class ObjectBuilder:
 
 
 class DictInstantiator(ObjectInstantiator):
+    """
+    Instantiate a dictionary
+    """
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Dict:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        """
         if not isinstance(config, dict):
             raise InstantiationImpossible()
 
@@ -151,8 +187,17 @@ class DictInstantiator(ObjectInstantiator):
 
 
 class ListInstantiator(ObjectInstantiator):
+    """
+    Instantiate a list
+    """
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> List:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        """
         if not isinstance(config, list):
             raise InstantiationImpossible()
 
@@ -165,14 +210,27 @@ class ListInstantiator(ObjectInstantiator):
 
 
 class FromMappingInstantiator(ObjectInstantiator):
+    """
+    Instantiate an object looking for its reference in a Mapping object
+    """
 
-    def __init__(self, env: Mapping[str, Any], mapping_name: str):
-        self.env: Mapping[str, Any] = env
+    def __init__(self, mapping: Mapping[str, Any], mapping_name: str):
+        """
+        :param mapping: The mapping to use to look for references 
+        :param mapping_name: The mapping name, for logs
+        """
+        self.env: Mapping[str, Any] = mapping
         self.mapping_name: str = mapping_name
 
         super().__init__()
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        """
 
         if not isinstance(config, str) or not config.startswith('$'):
             raise InstantiationImpossible
@@ -185,8 +243,14 @@ class FromMappingInstantiator(ObjectInstantiator):
 
 
 class FromEnvironmentVariableInstantiator(FromMappingInstantiator):
+    """
+    Instantiate an object from the environment variables
+    """
 
     def __init__(self, env: Dict[str, Any]):
+        """
+        :param env: The dictionary of the environment variables
+        """
         super().__init__(env, 'Environment')
 
         self.strings_to_replace: List[str, str] = [
@@ -197,6 +261,13 @@ class FromEnvironmentVariableInstantiator(FromMappingInstantiator):
         self.strings_to_replace.sort(key=len, reverse=True)
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        :raise UnknownReferenceError: If the config refers to an unknown object
+        """
         try:
             return self.builder.instantiate(super().instantiate(config, name), f'{name}')
         except InstantiationImpossible:
@@ -216,8 +287,19 @@ class FromEnvironmentVariableInstantiator(FromMappingInstantiator):
 
 
 class CallableInstantiator(DictInstantiator):
+    """
+    Instantiate an object calling a registered callable
+    """
 
     def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The instantiated object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        :raise UnknownPluginException: If the callable is not registered
+        :raise CallableInstantiationError: If an error occurred while calling the callable
+        """
         if not isinstance(config, dict) or not '_name' in config:
             raise InstantiationImpossible()
 
