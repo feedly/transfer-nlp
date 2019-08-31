@@ -12,8 +12,6 @@ from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.regularizers import L1
 from .trainer_utils import *
 
-from transfer_nlp.plugins import regularizers, helpers, trainers, metrics as m
-
 PLUGINS = {
     'CrossEntropyLoss': nn.CrossEntropyLoss,
     'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
