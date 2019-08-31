@@ -11,7 +11,7 @@ the NAACL 2019 tutorial on TRansfer Learning for NLP https://colab.research.goog
 import inspect
 import logging
 import re
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections import defaultdict
 from typing import Dict, List, Any, Union, Tuple
 
@@ -30,6 +30,7 @@ from ignite.utils import convert_tensor
 from transfer_nlp.loaders.loaders import DatasetSplits
 from transfer_nlp.plugins.config import register_plugin
 from transfer_nlp.plugins.regularizers import RegularizerABC
+from transfer_nlp.plugins.trainer_abc import TrainerABC
 
 logger = logging.getLogger(__name__)
 
@@ -92,13 +93,6 @@ class TrainingMetric(Metric):
 
     def compute(self):
         return self.source_metric.compute()
-
-
-class TrainerABC(ABC):
-
-    @abstractmethod
-    def train(self):
-        pass
 
 
 @register_plugin
