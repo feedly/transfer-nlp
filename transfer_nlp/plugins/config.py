@@ -1,206 +1,330 @@
 """
 This file contains all necessary plugins classes that the framework will use to let a user interact with custom models, data loaders, etc...
-
 The Registry pattern used here is inspired from this post: https://realpython.com/primer-on-python-decorators/
 """
-import inspect
 import logging
 import os
-from abc import abstractmethod, ABC
-from enum import Enum
+import traceback
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Dict, Union, Any, Optional, AbstractSet, Set, List
+from typing import Any, Callable, Dict, List, Mapping, Type, Union
 
-import ignite.metrics as metrics
 import toml
-import torch.nn as nn
-import torch.optim as optim
 import yaml
 
 logger = logging.getLogger(__name__)
-
-REGISTRY = {
-    'CrossEntropyLoss': nn.CrossEntropyLoss,
-    'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
-    "Adam": optim.Adam,
-    "SGD": optim.SGD,
-    "AdaDelta": optim.Adadelta,
-    "AdaGrad": optim.Adagrad,
-    "SparseAdam": optim.SparseAdam,
-    "AdaMax": optim.Adamax,
-    "ASGD": optim.ASGD,
-    "LBFGS": optim.LBFGS,
-    "RMSPROP": optim.RMSprop,
-    "Rprop": optim.Rprop,
-    "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
-    "MultiStepLR": optim.lr_scheduler.MultiStepLR,
-    "ExponentialLR": optim.lr_scheduler.ExponentialLR,
-    "CosineAnnealingLR": optim.lr_scheduler.CosineAnnealingLR,
-    "LambdaLR": optim.lr_scheduler.LambdaLR,
-    "ReLU": nn.functional.relu,
-    "LeakyReLU": nn.functional.leaky_relu,
-    "Tanh": nn.functional.tanh,
-    "Softsign": nn.functional.softsign,
-    "Softshrink": nn.functional.softshrink,
-    "Softplus": nn.functional.softplus,
-    "Sigmoid": nn.Sigmoid,
-    "CELU": nn.CELU,
-    "SELU": nn.functional.selu,
-    "RReLU": nn.functional.rrelu,
-    "ReLU6": nn.functional.relu6,
-    "PReLU": nn.functional.prelu,
-    "LogSigmoid": nn.functional.logsigmoid,
-    "Hardtanh": nn.functional.hardtanh,
-    "Hardshrink": nn.functional.hardshrink,
-    "ELU": nn.functional.elu,
-    "Softmin": nn.functional.softmin,
-    "Softmax": nn.functional.softmax,
-    "LogSoftmax": nn.functional.log_softmax,
-    "GLU": nn.functional.glu,
-    "TanhShrink": nn.functional.tanhshrink,
-    "Accuracy": metrics.Accuracy,
-}
+REGISTRY = {}
 
 
 def register_plugin(registrable: Any, alias: str = None):
     """
     Register a class, a function or a method to REGISTRY
     Args:
-        registrable: 
-        alias: 
-
+        registrable:
+        alias:
     Returns:
-
     """
-    if not alias:
-        if registrable.__name__ in REGISTRY:
-            raise ValueError(f"{registrable.__name__} is already registered to registrable {REGISTRY[registrable.__name__]}. Please select another name")
-        else:
-            REGISTRY[registrable.__name__] = registrable
-            return registrable
-    else:
-        if alias in REGISTRY:
-            raise ValueError(f"{alias} is already registered to registrable {REGISTRY[alias]}. Please select another name")
-        else:
-            REGISTRY[alias] = registrable
-            return registrable
+    alias = alias or registrable.__name__
+
+    if alias in REGISTRY:
+        raise ValueError(f"{alias} is already registered to registrable {REGISTRY[alias]}. Please select another name")
+
+    REGISTRY[alias] = registrable
+    return registrable
 
 
-class UnknownPluginException(Exception):
-    def __init__(self, registrable: str):
-        super().__init__(f'Registrable object {registrable} is not registered. See transfer_nlp.config.register_plugin for more information.')
+class InstantiationError(Exception):
+    """
+    An error happened while instantiating an experiment
+    """
+
+    def __init__(self, obj_name: str):
+        """
+        :param obj_name: The name of the object that couldn't be instantiated
+        """
+        self.obj_name: str = obj_name
+
+    def __str__(self) -> str:
+        return f"Failed to instantiate `{self.obj_name}`"
+
+
+class CallableInstantiationError(InstantiationError):
+    """
+    An error happened while instantiating a callable
+    """
+
+    def __init__(self, obj_name: str, callable_name: str, arg_names: List[str]):
+        """
+        :param obj_name: The name of the object that couldn't be instantiated 
+        :param callable_name: The callable's name that failed when called
+        :param arg_names: The names of the arguments that were passed to the callable
+        """
+        super().__init__(obj_name)
+        self.callable_name: str = callable_name
+        self.arg_names: List[str] = arg_names
+
+    def __str__(self) -> str:
+        return f"{super().__str__()} calling `{self.callable_name}` using the arguments " + ', '.join(self.arg_names) + '; see exception raised above'
+
+
+class LoopInConfigError(InstantiationError):
+    """
+    An object refers to itself
+    """
+
+    def __str__(self) -> str:
+        return f"{super().__str__()} because it refers to itself"
+
+
+class UnknownPluginException(InstantiationError):
+    """
+    A registrable has not been registred
+    """
+    def __init__(self, object_name: str, registrable: str):
+        super().__init__(object_name)
         self.registrable: str = registrable
 
-
-class UnconfiguredItemsException(Exception):
-    def __init__(self, items: Dict[str, Set]):
-        super().__init__(f'There are some unconfigured items, which makes these items not configurable: {items}')
-        self.items: Dict[str, Set] = items
+    def __str__(self) -> str:
+        return f"{super().__str__()} because registrable `{self.registrable}` isn't registred"
 
 
-class BadParameter(Exception):
-    def __init__(self, registrable, param):
-        super().__init__(f"Parameter naming error: '{param}' is not a parameter of registrable '{registrable}'")
-        self.param = param
-        self.registrable = registrable
+class UnknownReferenceError(InstantiationError):
+    """
+    An object that is referenced does not exist
+    """
+    def __init__(self, object_name: str, reference_name: str):
+        super().__init__(object_name)
+        self.reference_name: str = reference_name
+
+    def __str__(self) -> str:
+        return f"{super().__str__()} because it reference to `{self.reference_name}` that doesn't exist"
 
 
-class ConfigFactoryABC(ABC):
+class InstantiationImpossible(Exception):
+    pass
+
+
+class ObjectInstantiator(metaclass=ABCMeta):
+    """
+    An instantiator that knows how to instantiate 1 kind of object
+    """
+
+    def __init__(self):
+        self.builder: ObjectBuilder = None
+
+    def set_builder(self, builder: "ObjectBuilder") -> None:
+        """
+        Set the builder, for recursive puposes
+
+        :param builder: The main builder to use when recursivity is needed
+        :return: None
+        """
+        self.builder: ObjectBuilder = builder
 
     @abstractmethod
-    def create(self):
-        pass
+    def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config from which we want to instantiate the object
+        :param name: The full name of the object to instantiate
+        :return: The instantiated object
+        """
+        raise InstantiationImpossible
 
 
-class ParamFactory(ConfigFactoryABC):
+class ObjectBuilder:
     """
-    Factory for simple parameters
+    The main builder class
+    """
+    def __init__(self, instantiators: List[ObjectInstantiator]):
+        """
+        :param instantiators: The ordered list of instantiators that can be used to instantiate the objects
+        """
+        self.instantiators: List[ObjectInstantiator] = instantiators
+        for instantiator in instantiators:
+            instantiator.set_builder(self)
+
+    def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        build the object trying to use all the instantiators in a row, until one works
+
+        :param config: The config of the object to instantiate
+        :param name: The full name of this object
+        :return: The instantiated object
+        """
+
+        for instantiator in self.instantiators:
+            try:
+                return instantiator.instantiate(config, name)
+            except InstantiationImpossible:
+                pass
+
+        logging.info(f'instantiating "{name}" as a simple object, {config}')
+
+        return config
+
+
+class DictInstantiator(ObjectInstantiator):
+    """
+    Instantiate a dictionary
     """
 
-    def __init__(self, param):
-        self.param = param
+    def instantiate(self, config: Union[Dict, str, List], name: str) -> Dict:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        """
+        if not isinstance(config, dict):
+            raise InstantiationImpossible()
 
-    def create(self):
-        return self.param
+        logging.info(f'instantiating "{name}" as a dictionary')
+
+        return {
+            key: self.builder.instantiate(value_config, f'{name}.{key}')
+            for key, value_config in config.items()
+        }
 
 
-class PluginFactory(ConfigFactoryABC):
+class ListInstantiator(ObjectInstantiator):
     """
-    Factory for complex objects creation
+    Instantiate a list
     """
 
-    def __init__(self, cls, param2config_key: Optional[Dict[str, str]], *args, **kwargs):
-        self.cls = cls
-        self.param2config_key = param2config_key
-        self.args = args
-        self.kwargs = kwargs
+    def instantiate(self, config: Union[Dict, str, List], name: str) -> List:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        """
+        if not isinstance(config, list):
+            raise InstantiationImpossible()
 
-    def create(self):
-        return self.cls(*self.args, **self.kwargs)
+        logging.info(f'instantiating "{name}" as a list')
+
+        return [
+            self.builder.instantiate(value_config, f'{name}.{i}')
+            for i, value_config in enumerate(config)
+        ]
 
 
-class DefaultParamsMode(Enum):
-    IGNORE_DEFAULTS = 0,
-    NOT_IN_EXPERIMENT = 1,
-    USE_DEFAULTS = 2
-
-
-def _replace_env_variables(dico: Dict, env: Dict) -> None:
+class FromMappingInstantiator(ObjectInstantiator):
     """
-    Replace all occurrences of environment variable to particular strings
-    :param dico:
-    :param env:
-    :return:
+    Instantiate an object looking for its reference in a Mapping object
     """
-    env_keys = sorted(env.keys(), key=lambda k: len(k), reverse=True)
 
-    def do_env_subs(v: Any) -> str:
-        v_upd = v
-        if isinstance(v_upd, str):
-            for env_key in env_keys:
-                env_val = env[env_key]
+    def __init__(self, mapping: Mapping[str, Any], mapping_name: str):
+        """
+        :param mapping: The mapping to use to look for references 
+        :param mapping_name: The mapping name, for logs
+        """
+        self.env: Mapping[str, Any] = mapping
+        self.mapping_name: str = mapping_name
 
-                if isinstance(env_val, os.PathLike):
-                    env_val = str(env_val)
+        super().__init__()
 
-                if not isinstance(env_val, str):
-                    if v == f'${env_key}':
-                        # allow for non string value replacements
-                        v_upd = env_val
-                        break
-                else:
-                    v_upd = v_upd.replace('$' + env_key, env_val)
+    def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        """
 
-            if v_upd != v:
-                logger.debug('*** updating parameter %s -> %s', v, v_upd)
-
-        return v_upd
-
-    def recursive_replace(my_item: Union[Dict, List, str]):
-
-        if isinstance(my_item, dict):
-            for k, v in my_item.items():
-                if not isinstance(v, dict) and not isinstance(v, list):
-                    v = do_env_subs(v)
-                    my_item[k] = v
-
-                elif isinstance(v, dict):
-                    recursive_replace(my_item[k])
-                elif isinstance(v, list):
-                    recursive_replace(my_item[k])
-                else:
-                    pass
-        elif isinstance(my_item, list):
-            for i, item in enumerate(my_item):
-                if not isinstance(item, list) and not isinstance(item, dict):
-                    my_item[i] = do_env_subs(item)
-                else:
-                    recursive_replace(item)
-
-    recursive_replace(my_item=dico)
+        if not isinstance(config, str) or not config.startswith('$'):
+            raise InstantiationImpossible
+        try:
+            instance = self.env[config[1:]]
+            logging.info(f'instantiating "{name}" using value {instance} from key {config} in {self.mapping_name}')
+            return instance
+        except KeyError:
+            raise InstantiationImpossible
 
 
-class ExperimentConfig:
+class FromEnvironmentVariableInstantiator(FromMappingInstantiator):
+    """
+    Instantiate an object from the environment variables
+    """
+
+    def __init__(self, env: Dict[str, Any]):
+        """
+        :param env: The dictionary of the environment variables
+        """
+        super().__init__(env, 'Environment')
+
+        self.strings_to_replace: List[str, str] = [
+            key
+            for key, value in self.env.items()
+            if isinstance(value, str) or isinstance(value, os.PathLike)
+        ]
+        self.strings_to_replace.sort(key=len, reverse=True)
+
+    def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The resulting object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        :raise UnknownReferenceError: If the config refers to an unknown object
+        """
+        try:
+            return self.builder.instantiate(super().instantiate(config, name), f'{name}')
+        except InstantiationImpossible:
+            if not isinstance(config, str):
+                raise InstantiationImpossible()
+
+            v_upd: str = config
+            for key in self.strings_to_replace:
+                v_upd = v_upd.replace(f'${key}', str(self.env[key]))
+
+            if v_upd.startswith('$'):
+                raise UnknownReferenceError(name, config) from None
+
+            logging.info(f'instantiating "{name}" using value {v_upd}')
+
+            return v_upd
+
+
+class CallableInstantiator(DictInstantiator):
+    """
+    Instantiate an object calling a registered callable
+    """
+
+    def instantiate(self, config: Union[Dict, str, List], name: str) -> Any:
+        """
+        :param config: The config for the object to instantiate
+        :param name: The full name of the object we try to instantiate
+        :return: The instantiated object
+        :raise InstantiationImpossible: If the instantiator cannot handle this config
+        :raise UnknownPluginException: If the callable is not registered
+        :raise CallableInstantiationError: If an error occurred while calling the callable
+        """
+        if not isinstance(config, dict) or not '_name' in config:
+            raise InstantiationImpossible()
+
+        klass_name: str = config['_name']
+
+        if klass_name not in REGISTRY:
+            raise UnknownPluginException(object_name=name, registrable=klass_name)
+
+        klass: Union[Type, Callable] = REGISTRY[klass_name]
+
+        logging.info(f'instantiating "{name}" calling {klass_name}')
+
+        param_instances: Dict[str, Any] = {
+            key: self.builder.instantiate(value_config, f'{name}.{key}')
+            for key, value_config in config.items()
+            if key != '_name'
+        }
+
+        try:
+            return klass(**param_instances)
+        except Exception:
+            raise CallableInstantiationError(obj_name=name, callable_name=klass_name, arg_names=list(param_instances.keys()))
+
+
+class ExperimentConfig(Mapping[str, Any]):
 
     @staticmethod
     def load_experiment_config(experiment: Union[str, Path, Dict]) -> Dict:
@@ -224,283 +348,46 @@ class ExperimentConfig:
         :param env: substitution variables, e.g. a HOME directory. generally use all caps.
         :return: the experiment
         """
-        logger.info(f"Building experiment config for experiment {experiment}")
-        self.factories: Dict[str, ConfigFactoryABC] = {}
+
+        self.config: Dict[str, Any] = ExperimentConfig.load_experiment_config(experiment)
+
+        self.builds_started: List[str] = []
+        self.builders = [
+            CallableInstantiator(),
+            DictInstantiator(),
+            ListInstantiator(),
+            FromMappingInstantiator(REGISTRY, 'Registry'),
+            FromMappingInstantiator(self, 'Experiment objects'),
+            FromEnvironmentVariableInstantiator(env),
+        ]
+
+        self.builder: ObjectBuilder = ObjectBuilder(self.builders)
+
         self.experiment: Dict[str, Any] = {}
 
-        config = ExperimentConfig.load_experiment_config(experiment)
-        _replace_env_variables(dico=config, env=env)
-
-        # extract simple parameters
-        logger.debug(f"Initializing simple parameters:")
-        for k, v in config.items():
-            if not isinstance(v, dict) and not isinstance(v, list):
-                logger.debug(f"Parameter {k}: {v}")
-                self.experiment[k] = v
-                self.factories[k] = ParamFactory(v)
-
-        # extract simple lists
-        logger.debug(f"Initializing simple lists:")
-        for k, v in config.items():
-            if isinstance(v, list) and all(not isinstance(vv, dict) and not isinstance(vv, list) and not (isinstance(vv, str) and vv[0] == "$") for vv in v):
-                logger.debug(f"Parameter {k}: {v}")
-                self.experiment[k] = v
-                self.factories[k] = PluginFactory(list, None, v)
-
-        for k in self.experiment:
-            del config[k]
-
-        self._build_items(config)
-
-    def _do_recursive_build(self, object_key: str, registrable_object: Union[Dict, List, int, float], default_params_mode: DefaultParamsMode,
-                            unconfigured_keys: AbstractSet,
-                            parent_level: str):
-
-        def resolve_simple_value(factory_key: str, val: Any) -> Any:
-            if isinstance(val, str):
-                if val[0] == '$':
-                    keyval = val[1:]
-                    if keyval in self.experiment:
-                        self.factories[factory_key] = self.factories[keyval]
-                        return self.experiment[keyval]
-                    elif keyval in REGISTRY:
-                        return REGISTRY[keyval]
-                    else:
-                        raise UnconfiguredItemsException({
-                            factory_key: {val}})
-
-            return val
-
-        def do_recursive_build_list(list_object: List, arg_name: str) -> List:
-            """
-            Function to recursively deal with nested lists
-            :param list_object:
-            :param arg_name:
-            :return:
-            """
-            copy = []
-            for i, element in enumerate(list_object):
-                if isinstance(element, dict):
-                    if "_name" in element:
-                        element = self._do_recursive_build(object_key=str(i), registrable_object=element,
-                                                           default_params_mode=default_params_mode,
-                                                           unconfigured_keys=unconfigured_keys,
-                                                           parent_level=f'{parent_level}.{arg_name}.{i}')
-                    else:
-                        for key in element:
-                            if isinstance(element[key], dict):
-                                element[key] = self._do_recursive_build(object_key=key, registrable_object=element[key],
-                                                                        default_params_mode=default_params_mode,
-                                                                        unconfigured_keys=unconfigured_keys,
-                                                                        parent_level=f'{parent_level}.{arg}.{i}.{key}')
-
-                            elif isinstance(element[key], list):
-                                element[key] = do_recursive_build_list(list_object=element[key], arg_name=f"{arg_name}.{i}.{key}")
-                            else:
-                                element[key] = resolve_simple_value(f'{parent_level}.{arg}.{key}', element[key])
-                        self.factories[f'{parent_level}.{arg}'] = PluginFactory(dict, None, list(element.items()))
-
-                elif isinstance(element, list):
-                    element = do_recursive_build_list(list_object=element, arg_name=f"{arg_name}.{i}")
-
-                else:
-                    element = resolve_simple_value(f'{parent_level}.{arg_name}.{i}', element)
-                copy.append(element)
-
-            result = copy
-            self.factories[f'{parent_level}.{arg_name}'] = PluginFactory(list, None, list(copy))
-            return result
-
-        logger.debug(f"Configuring {object_key}")
-
-        if isinstance(registrable_object, list):
-            return [self._do_recursive_build(f"{object_key}.{i}", registrable_object[i],
-                                             default_params_mode=default_params_mode,
-                                             unconfigured_keys=unconfigured_keys,
-                                             parent_level=f"{object_key}.{i}") for i in range(len(registrable_object))]
-        elif isinstance(registrable_object, int) or isinstance(registrable_object, float):
-            return registrable_object
-
-        elif isinstance(registrable_object, str):
-            if registrable_object[0] == "$":
-                if registrable_object[1:] in self.experiment:
-                    logger.debug(f"Using the object {registrable_object}, already instantiated")
-                    return self.experiment[registrable_object[1:]]
-                elif registrable_object[1:] in REGISTRY:
-                    return REGISTRY[registrable_object[1:]]
-                else:
-                    raise ValueError("Strings referencing objects must be either referenced earlier in the experiment, or belong to the available registrables")
-            else:
-                return registrable_object
-
-        elif isinstance(registrable_object, dict) and "_name" not in registrable_object:
-            return {key: self._do_recursive_build(f"{object_key}.{key}", value,
-                                                  default_params_mode=default_params_mode,
-                                                  unconfigured_keys=unconfigured_keys,
-                                                  parent_level=f"{object_key}.{key}") for key, value in registrable_object.items()}
-
-        if '_name' not in registrable_object:
-            raise ValueError(f"The object {object_key} should have a _name key to access its registrable")
-
-        registrable_name = registrable_object['_name']
-        registrable = REGISTRY.get(registrable_name)
-
-        if not registrable:
-            raise UnknownPluginException(registrable_object["_name"])
-
-        if inspect.isclass(registrable):
-            spec = inspect.getfullargspec(registrable.__init__)
-            spec_args = spec.args[1:]
-        elif inspect.isfunction(registrable):
-            spec = inspect.getfullargspec(registrable)
-            spec_args = spec.args
-        elif inspect.ismethod(registrable):
-            spec = inspect.getfullargspec(registrable)
-            spec_args = spec.args[1:]
-        else:
-            raise ValueError(f"{registrable_name} should be either a class, a function or a method")
-
-        params = {}
-        param2config_key = {}
-        named_params = {p: pv for p, pv in registrable_object.items() if p != '_name'}
-        default_params = {p: pv for p, pv in zip(reversed(spec.args), reversed(spec.defaults))} if spec.defaults else {}
-
-        for named_param in named_params:
-            if named_param not in spec_args:
-                raise BadParameter(registrable=registrable_name, param=named_param)
-
-        for arg in spec_args:
-
-            if arg == 'experiment_config':
-                params[arg] = self
-                param2config_key[arg] = arg
-
-            elif arg in named_params:
-                value = named_params[arg]
-
-                if isinstance(value, dict):
-                    if '_name' in value:
-                        value = self._do_recursive_build(object_key=arg, registrable_object=value,
-                                                         default_params_mode=default_params_mode,
-                                                         unconfigured_keys=unconfigured_keys,
-                                                         parent_level=parent_level + "." + arg)
-                    else:
-                        for item in value:
-                            if isinstance(value[item], dict):
-                                value[item] = self._do_recursive_build(object_key=item, registrable_object=value[item],
-                                                                       default_params_mode=default_params_mode,
-                                                                       unconfigured_keys=unconfigured_keys,
-                                                                       parent_level=f'{parent_level}.{arg}.{item}')
-                            else:  # value[item] is either an object defined in a dictionary, or it's an already built object
-                                value[item] = resolve_simple_value(f'{parent_level}.{arg}.{item}', value[item])
-                        self.factories[f'{parent_level}.{arg}'] = PluginFactory(dict, None, list(value.items()))
-
-                elif isinstance(value, list):
-                    value = do_recursive_build_list(list_object=value, arg_name=arg)
-
-                elif isinstance(value, str) and value[0] == '$':
-
-                    if value[1:] in self.experiment:
-                        logger.debug(f"Using the object {value}, already instantiated")
-                        value = self.experiment[value[1:]]
-                    elif value[1:] in REGISTRY:
-                        logger.debug(f"Using the object {value} from the registry (not instantiated)")
-                        value = REGISTRY[value[1:]]
-                    else:
-                        logger.debug(f"{value} not configured yet, will be configured in next iteration")
-                else:
-                    logger.debug(f"Using value {arg} / {named_params[arg]} from the config file")
-
-                if not (isinstance(value, str) and value[0] == '$'):
-                    params[arg] = value
-                    param2config_key[arg] = value
-                else:
-                    logger.debug(f"You need to define '{value}' as a '{value[1:]}' object in the config file")
-
-            # For values that are not in named_params, we look first at the experiment dict, then at the defaults parameters
-            elif arg in self.experiment:
-                params[arg] = self.experiment[arg]
-                param2config_key[arg] = arg
-
-            elif default_params_mode == DefaultParamsMode.NOT_IN_EXPERIMENT and \
-                    arg not in self.experiment and arg not in unconfigured_keys and \
-                    arg in default_params:
-                params[arg] = default_params[arg]
-                param2config_key[arg] = None
-            elif default_params_mode == DefaultParamsMode.USE_DEFAULTS and arg in default_params:
-                params[arg] = default_params[arg]
-                param2config_key[arg] = None
-
-        if len(params) == len(spec_args):
-            self.factories[parent_level] = PluginFactory(cls=registrable, param2config_key=param2config_key, **params)
-            return registrable(**params)
-
-        else:
-            unconfigured_params = spec_args - params.keys()
-            raise UnconfiguredItemsException({
-                parent_level: unconfigured_params})
-
-    def _build_items_with_default_params_mode(self, config: Dict, default_params_mode: DefaultParamsMode):
-
-        while config:
-            configured = set()
-            config_errors = {}
-            for object_key, registrable_object in config.items():
-
-                try:
-                    self.experiment[object_key] = self._do_recursive_build(object_key, registrable_object,
-                                                                           default_params_mode=default_params_mode,
-                                                                           unconfigured_keys=config.keys(),
-                                                                           parent_level=object_key)
-                    configured.add(object_key)
-
-                except BadParameter as b:
-                    raise BadParameter(registrable=b.registrable, param=b.param)
-                except UnconfiguredItemsException as e:
-                    config_errors.update(e.items)
-            if configured:
-                for k in configured:
-                    del config[k]
-
-            else:
-                if config_errors:
-                    raise UnconfiguredItemsException(config_errors)
-
-    def _build_items(self, config: Dict[str, Any]):
-
-        try:
-            logger.debug(f"Initializing complex configurations ignoring default params:")
-            self._build_items_with_default_params_mode(config, DefaultParamsMode.IGNORE_DEFAULTS)
-        except UnconfiguredItemsException as e:
-            pass
-
-        try:
-            logger.debug(f"Initializing complex configurations only filling in default params not found in the experiment:")
-
-            self._build_items_with_default_params_mode(config, DefaultParamsMode.NOT_IN_EXPERIMENT)
-        except UnconfiguredItemsException as e:
-            pass
-
-        try:
-            logger.debug(f"Initializing complex configurations filling in all default params:")
-            self._build_items_with_default_params_mode(config, DefaultParamsMode.USE_DEFAULTS)
-        except UnconfiguredItemsException as e:
-            logging.error('There are unconfigured items in the experiment. Please check your configuration:')
-            for k, v in e.items.items():
-                logging.error(f'"{k}" missing properties:')
-                for vv in v:
-                    logging.error(f'\t+ {vv}')
-
-            raise e
+        for key, value_config in self.config.items():
+            if key not in self.experiment:
+                self.build(key)
 
     def _check_init(self):
         if self.experiment is None:
             raise ValueError('experiment config is not setup yet!')
 
+    def build(self, key: str) -> Any:
+        if key not in self.config:
+            raise KeyError()
+        if key in self.builds_started:
+            raise LoopInConfigError(key)
+        self.builds_started.append(key)
+        self.experiment[key] = self.builder.instantiate(self.config[key], name=key)
+        return self.experiment[key]
+
     # map-like methods
     def __getitem__(self, item):
         self._check_init()
-        return self.experiment[item]
+        if item in self.experiment:
+            return self.experiment[item]
+        return self.build(item)
 
     def get(self, item, default=None):
         self._check_init()
@@ -524,3 +411,6 @@ class ExperimentConfig:
 
     def __setitem__(self, key, value):
         raise ValueError("cannot update experiment!")
+
+    def __len__(self) -> int:
+        return len(self.experiment)

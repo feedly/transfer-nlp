@@ -5,7 +5,12 @@ from experiments.transfer_learning.transformers.dataset import *
 from experiments.transfer_learning.transformers.model import *
 from transfer_nlp.plugins.config import ExperimentConfig
 
+from experiments.utils import PLUGINS
+
 logger = logging.getLogger(__name__)
+
+for plugin_name, plugin in PLUGINS.items():
+    register_plugin(registrable=plugin, alias=plugin_name)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

@@ -3,12 +3,58 @@ import unittest
 from pathlib import Path
 
 import ignite
+import ignite.metrics as metrics
+import torch.nn as nn
+import torch.optim as optim
 from ignite.metrics import Precision, Recall, MetricsLambda
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.regularizers import L1
-from transfer_nlp.plugins.trainers import SingleTaskTrainer
 from .trainer_utils import *
+
+PLUGINS = {
+    'CrossEntropyLoss': nn.CrossEntropyLoss,
+    'BCEWithLogitsLoss': nn.BCEWithLogitsLoss,
+    "Adam": optim.Adam,
+    "SGD": optim.SGD,
+    "AdaDelta": optim.Adadelta,
+    "AdaGrad": optim.Adagrad,
+    "SparseAdam": optim.SparseAdam,
+    "AdaMax": optim.Adamax,
+    "ASGD": optim.ASGD,
+    "LBFGS": optim.LBFGS,
+    "RMSPROP": optim.RMSprop,
+    "Rprop": optim.Rprop,
+    "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau,
+    "MultiStepLR": optim.lr_scheduler.MultiStepLR,
+    "ExponentialLR": optim.lr_scheduler.ExponentialLR,
+    "CosineAnnealingLR": optim.lr_scheduler.CosineAnnealingLR,
+    "LambdaLR": optim.lr_scheduler.LambdaLR,
+    "ReLU": nn.functional.relu,
+    "LeakyReLU": nn.functional.leaky_relu,
+    "Tanh": nn.functional.tanh,
+    "Softsign": nn.functional.softsign,
+    "Softshrink": nn.functional.softshrink,
+    "Softplus": nn.functional.softplus,
+    "Sigmoid": nn.Sigmoid,
+    "CELU": nn.CELU,
+    "SELU": nn.functional.selu,
+    "RReLU": nn.functional.rrelu,
+    "ReLU6": nn.functional.relu6,
+    "PReLU": nn.functional.prelu,
+    "LogSigmoid": nn.functional.logsigmoid,
+    "Hardtanh": nn.functional.hardtanh,
+    "Hardshrink": nn.functional.hardshrink,
+    "ELU": nn.functional.elu,
+    "Softmin": nn.functional.softmin,
+    "Softmax": nn.functional.softmax,
+    "LogSoftmax": nn.functional.log_softmax,
+    "GLU": nn.functional.glu,
+    "TanhShrink": nn.functional.tanhshrink,
+    "Accuracy": metrics.Accuracy,
+}
+for plugin_name, plugin in PLUGINS.items():
+    register_plugin(registrable=plugin, alias=plugin_name)
 
 
 def fbeta(r, p, beta, average):
@@ -42,14 +88,16 @@ EXPERIMENT = {
         "_name": "Adam",
         "lr": 0.01,
         "params": {
-            "_name": "TrainableParameters"
+            "_name": "TrainableParameters",
+            "model": "$model"
         }
     },
     "scheduler": {
         "_name": "ReduceLROnPlateau",
         "patience": 1,
         "mode": "min",
-        "factor": 0.5
+        "factor": 0.5,
+        "optimizer": "$optimizer"
     },
     "trainer": {
         "_name": "SingleTaskTrainer",
@@ -62,6 +110,7 @@ EXPERIMENT = {
         "gradient_clipping": 0.25,
         "num_epochs": 5,
         "seed": 1337,
+        "scheduler": "$scheduler",
         "regularizer": {
             "_name": "L1"
         },
@@ -105,14 +154,6 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(trainer.gradient_clipping, 0.25)
         self.assertEqual(trainer.embeddings_name, None)
         self.assertEqual(trainer.forward_params, ['x_in', 'apply_softmax'])
-        # trainer.train()
-
-        # Test factories
-        optimizer = trainer.experiment_config.factories['optimizer'].create()
-        self.assertIsInstance(optimizer, torch.optim.Adam)
-
-        trainer = trainer.experiment_config.factories['trainer'].create()
-        self.assertIsInstance(trainer, SingleTaskTrainer)
 
     def test_setup(self):
         e = copy.deepcopy(EXPERIMENT)

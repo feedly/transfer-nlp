@@ -1,11 +1,14 @@
 import logging
 from pathlib import Path
 
-from experiments.transformers.dataset import *
 from experiments.transformers.model import *
 from transfer_nlp.plugins.config import ExperimentConfig
+from ..utils import PLUGINS
 
 logger = logging.getLogger(__name__)
+
+for plugin_name, plugin in PLUGINS.items():
+    register_plugin(registrable=plugin, alias=plugin_name)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

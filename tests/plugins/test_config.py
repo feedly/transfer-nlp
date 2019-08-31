@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
-from typing import List, Any, Dict
+from typing import Any, Dict, List
 
-from transfer_nlp.plugins.config import register_plugin, UnconfiguredItemsException, ExperimentConfig, BadParameter, UnknownPluginException
+from transfer_nlp.plugins.config import CallableInstantiationError, ExperimentConfig, LoopInConfigError, UnknownPluginException, UnknownReferenceError, register_plugin
 
 
 @register_plugin
@@ -76,10 +76,9 @@ class Demo:
 @register_plugin
 class DemoWithConfig:
 
-    def __init__(self, demo2, intval: int, experiment_config):
+    def __init__(self, demo2, intval: int):
         self.demo2 = demo2
         self.intval = intval
-        self.experiment_config = experiment_config
 
 
 @register_plugin
@@ -282,18 +281,21 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(e.experiment['demo'].demo3, DemoWithInt)
         self.assertEqual(e.experiment['demo'].demo2.strval, 'foo')
         self.assertEqual(e.experiment['demo'].demo3.intval, 2)
-        self.assertEqual(e.factories.keys(), {'demo.demo2', 'demo.demo3', 'demo'})
 
     def test_child_injection(self):
         experiment = {
             'demo': {
                 '_name': 'Demo',
+                'demo2': '$demo2',
+                'demo3': '$demo3'
             },
             'demo2': {
-                '_name': 'DemoWithStr'
+                '_name': 'DemoWithStr',
+                'strval': '$strval'
             },
             'demo3': {
-                '_name': 'DemoWithInt'
+                '_name': 'DemoWithInt',
+                'intval': '$intval'
             },
             'strval': 'dummy',
             'intval': 5
@@ -311,14 +313,17 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             'demo': {
                 '_name': 'Demo',
-                'demo3': '$demo3a'
+                'demo3': '$demo3a',
+                'demo2': '$demo2'
 
             },
             'demo2': {
-                '_name': 'DemoWithStr'
+                '_name': 'DemoWithStr',
+                'strval': '$strval'
             },
             'demo3': {
-                '_name': 'DemoWithInt'
+                '_name': 'DemoWithInt',
+                'intval': '$intval'
             },
             'demo3a': {
                 '_name': 'DemoWithInt',
@@ -389,7 +394,7 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig(experiment, HOME='/tmp', HOMEPATH=Path('/tmp2'), SVAL=7, VAL=True)
         self.assertEqual(e['data2'].param_list[0].is_available, '/tmp')
         self.assertEqual(e['data2'].param_list[1].is_available, True)
-        self.assertEqual(e['data2'].param_list[2], '/tmp2')
+        self.assertEqual(e['data2'].param_list[2], Path('/tmp2'))
 
     def test_literal_injection(self):
         experiment = {
@@ -423,14 +428,12 @@ class RegistryTest(unittest.TestCase):
             }
         }
 
-        try:
+        with self.assertRaises(CallableInstantiationError) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except UnconfiguredItemsException as e:
-            self.assertEqual(3, len(e.items))
-            self.assertEqual({'demo2', 'demo3'}, e.items['demo'])
-            self.assertEqual({'strval'}, e.items['demo2'])
-            self.assertEqual({'intval'}, e.items['demo3'])
+
+        self.assertEqual(cm.exception.obj_name, 'demo')
+        self.assertEqual(cm.exception.callable_name, 'Demo')
+        self.assertListEqual(cm.exception.arg_names, [])
 
     def test_defaults(self):
         experiment = {
@@ -487,7 +490,8 @@ class RegistryTest(unittest.TestCase):
         experiment = {
             'demo': {
                 '_name': 'DemoComplexDefaults',
-                'strval': 'foo'
+                'strval': 'foo',
+                'obj': '$obj'
             },
             'obj': {
                 '_name': 'DemoDefaults',
@@ -509,43 +513,19 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(e['demo'].complex.intval1, 20)
         self.assertEqual(e['demo'].complex.intval2, None)
 
-    def test_with_config(self):
-        experiment = {
-            'demo2': {
-                '_name': 'DemoWithInt'
-            },
-            'with_config': {
-                '_name': 'DemoWithConfig',
-                'intval': 10
-            },
-            'intval': 5
-        }
-
-        e = ExperimentConfig(experiment)
-
-        d = e['with_config']
-        self.assertEqual(10, d.intval)
-        self.assertEqual(5, d.demo2.intval)
-        self.assertTrue(d.experiment_config is e)
-
-        self.assertEqual({'demo2', 'with_config', 'intval'}, e.factories.keys())
-        self.assertEqual(5, e.factories['intval'].create())
-
-        d = e.factories['with_config'].create()
-        self.assertEqual(10, d.intval)
-        self.assertEqual(5, d.demo2.intval)
-        self.assertTrue(d.experiment_config is e)
-
     def test_unordered_nested_config(self):
         experiment = {
             'democ': {
-                '_name': 'DemoC'
+                '_name': 'DemoC',
+                'demob': '$demob'
             },
             'demob': {
-                '_name': 'DemoB'
+                '_name': 'DemoB',
+                'demoa': '$demoa'
             },
             'demoa': {
-                '_name': 'DemoA'
+                '_name': 'DemoA',
+                'simple_int': '$simple_int'
             },
             'simple_int': 2
         }
@@ -565,7 +545,8 @@ class RegistryTest(unittest.TestCase):
                     '_name': 'DemoB',
                     'attrb': 10,
                     'demoa': {
-                        '_name': 'DemoA'
+                        '_name': 'DemoA',
+                        'simple_int': '$simple_int'
                     }
                 }
             },
@@ -589,18 +570,22 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig(experiment)
         self.assertEqual(e['item'].strval, 'foo')
 
+        #########
+
         experiment = {
             "item": {
                 "_name": "DemoWithStr",
                 "strval": "$bar"
             }
         }
-        try:
+
+        with self.assertRaises(UnknownReferenceError) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except UnconfiguredItemsException as e:
-            self.assertEqual(len(e.items), 1)
-            self.assertEqual({'strval'}, e.items['item'])
+
+        self.assertEqual("item.strval", cm.exception.obj_name)
+        self.assertEqual('$bar', cm.exception.reference_name)
+
+        #########
 
         experiment = {
             'demo': {
@@ -612,12 +597,13 @@ class RegistryTest(unittest.TestCase):
             }
         }
 
-        try:
+        with self.assertRaises(UnknownReferenceError) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except UnconfiguredItemsException as e:
-            self.assertEqual(len(e.items), 1)
-            self.assertEqual({'$demo3'}, e.items['demo.children.child0'])
+
+        self.assertEqual('demo.children.child0', cm.exception.obj_name)
+        self.assertEqual('$demo3', cm.exception.reference_name)
+
+        #########
 
         experiment = {
             'demo': {
@@ -627,12 +613,11 @@ class RegistryTest(unittest.TestCase):
             }
         }
 
-        try:
+        with self.assertRaises(UnknownReferenceError) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except UnconfiguredItemsException as e:
-            self.assertEqual(len(e.items), 1)
-            self.assertEqual({'$demo3'}, e.items['demo.children.0'])
+
+        self.assertEqual('demo.children.0', cm.exception.obj_name)
+        self.assertEqual('$demo3', cm.exception.reference_name)
 
     def test_additional_params(self):
 
@@ -644,12 +629,13 @@ class RegistryTest(unittest.TestCase):
                 "bad_param": 2
             }
         }
-        try:
+
+        with self.assertRaises(CallableInstantiationError) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except BadParameter as b:
-            self.assertEqual(b.param, 'bad_param')
-            self.assertEqual(b.registrable, 'DemoWithInt')
+
+        self.assertEqual('item', cm.exception.obj_name)
+        self.assertEqual('DemoWithInt', cm.exception.callable_name)
+        self.assertListEqual(['intval', 'bad_param'], cm.exception.arg_names)
 
     def test_bad_plugin(self):
 
@@ -658,11 +644,14 @@ class RegistryTest(unittest.TestCase):
                 "_name": "NoConfig",
             }
         }
-        try:
+
+        with self.assertRaises(UnknownPluginException) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except UnknownPluginException as e:
-            self.assertEqual(e.registrable, 'NoConfig')
+
+        self.assertEqual('NoConfig', cm.exception.registrable)
+        self.assertEqual('item', cm.exception.obj_name)
+
+        #########
 
         experiment = {
             "item": {
@@ -674,11 +663,14 @@ class RegistryTest(unittest.TestCase):
                 }
             }
         }
-        try:
+
+        with self.assertRaises(UnknownPluginException) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except UnknownPluginException as e:
-            self.assertEqual(e.registrable, 'NoConfig')
+
+        self.assertEqual('NoConfig', cm.exception.registrable)
+        self.assertEqual('item.children.child', cm.exception.obj_name)
+
+        #########
 
         experiment = {
             "item": {
@@ -690,11 +682,12 @@ class RegistryTest(unittest.TestCase):
                 ]
             }
         }
-        try:
+
+        with self.assertRaises(UnknownPluginException) as cm:
             ExperimentConfig(experiment)
-            self.fail()
-        except UnknownPluginException as e:
-            self.assertEqual(e.registrable, 'NoConfig')
+
+        self.assertEqual('NoConfig', cm.exception.registrable)
+        self.assertEqual('item.children.0', cm.exception.obj_name)
 
     def test_recursive_list(self):
         experiment = {
@@ -722,23 +715,6 @@ class RegistryTest(unittest.TestCase):
 
         self.assertIsInstance(demo.children[1], DemoWithInt)
         self.assertEqual(demo.children[1].intval, 2)
-
-        self.assertEqual(e.factories.keys(), {'demo', 'demo3', 'demo.children', 'demo.children.0', 'demo.children.1'})
-
-        copy = e.factories['demo.children'].create()
-        self.assertIsInstance(copy[0], DemoWithStr)
-        self.assertEqual(copy[0].strval, 'foo')
-
-        self.assertIsInstance(copy[1], DemoWithInt)
-        self.assertEqual(copy[1].intval, 2)
-
-        copy = e.factories['demo.children.0'].create()
-        self.assertIsInstance(copy, DemoWithStr)
-        self.assertEqual(copy.strval, 'foo')
-
-        copy = e.factories['demo.children.1'].create()
-        self.assertIsInstance(copy, DemoWithInt)
-        self.assertEqual(copy.intval, 2)
 
     def test_recursive_dict(self):
         experiment = {
@@ -769,23 +745,6 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(demo.children['child1'], DemoWithInt)
         self.assertEqual(demo.children['child1'].intval, 2)
 
-        self.assertEqual(e.factories.keys(), {'demo', 'demo3', 'demo.children', 'demo.children.child0', 'demo.children.child1'})
-
-        copy = e.factories['demo.children'].create()
-        self.assertIsInstance(copy['child0'], DemoWithStr)
-        self.assertEqual(copy['child0'].strval, 'foo')
-
-        self.assertIsInstance(copy['child1'], DemoWithInt)
-        self.assertEqual(copy['child1'].intval, 2)
-
-        copy = e.factories['demo.children.child0'].create()
-        self.assertIsInstance(copy, DemoWithStr)
-        self.assertEqual(copy.strval, 'foo')
-
-        copy = e.factories['demo.children.child1'].create()
-        self.assertIsInstance(copy, DemoWithInt)
-        self.assertEqual(copy.intval, 2)
-
     def test_method_config(self):
         experiment = {
             'demo': {
@@ -802,11 +761,6 @@ class RegistryTest(unittest.TestCase):
         e = ExperimentConfig(experiment)
         self.assertIsInstance(e['object_from_method'], DemoWithStr)
         self.assertEqual(e['object_from_method'].strval, 5)
-
-        # Test that we can reconfigure the object from the factory
-        object_from_method = e.factories['object_from_method'].create()
-        self.assertIsInstance(object_from_method, DemoWithStr)
-        self.assertEqual(object_from_method.strval, 5)
 
     def test_nested_lists_dicts(self):
 
@@ -858,26 +812,6 @@ class RegistryTest(unittest.TestCase):
         self.assertIsInstance(e['pipeline'].steps[1][1], DemoWithInt)
         self.assertEqual(e['pipeline'].steps[1][0], 'second')
 
-        # # Test tha factory creation works as expected
-        a = e.factories['pipeline.steps.0.0.1'].create()
-        self.assertIsInstance(a, DemoWithInt)
-        a = e.factories['pipeline.steps.0.1'].create()
-        self.assertIsInstance(a, DemoWithInt)
-        a = e.factories['pipeline.steps.1.1'].create()
-        self.assertIsInstance(a, DemoWithInt)
-
-        a = e.factories['pipeline.steps.1'].create()
-        self.assertIsInstance(a, list)
-        self.assertIsInstance(a[1], DemoWithInt)
-        self.assertEqual(a[0], 'second')
-
-        a = e.factories['pipeline.steps'].create()
-        self.assertIsInstance(a, list)
-        self.assertIsInstance(a[1], list)
-        self.assertIsInstance(a[0], list)
-        self.assertIsInstance(a[1][1], DemoWithInt)
-        self.assertIsInstance(a[0][0][1], DemoWithInt)
-
         self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[0], DemoWithInt)
         self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[1], DemoWithInt)
         self.assertIsInstance(e['pipeline_list_of_dict_objects'].steps[2]['k2'], DemoWithInt)
@@ -885,12 +819,29 @@ class RegistryTest(unittest.TestCase):
             "k1": 1,
             "k2": 2})
 
-        a = e.factories['pipeline_list_of_dict_objects.steps'].create()
-        self.assertIsInstance(a, list)
-        a = e.factories['pipeline_list_of_dict_objects.steps.0'].create()
-        self.assertIsInstance(a, DemoWithInt)
-        a = e.factories['pipeline_list_of_dict_objects.steps.2.k2'].create()
-        self.assertIsInstance(a, DemoWithInt)
-        a = e.factories['pipeline_list_of_dict_objects.steps.2.k3.1'].create()
-        self.assertIsInstance(a, DemoWithInt)
-        self.assertEqual(e['pipeline_list_of_dict_objects'].steps[4], [1, 2, 3])
+    def test_loop_in_config(self):
+
+        experiment1 = {
+            'item1': {
+                'item': '$item2'
+            },
+            'item2': {
+                'item': '$item3'
+            },
+            'item3': {
+                'item': '$item1',
+            },
+        }
+
+        experiment2 = {
+            'item': {
+                'key': [
+                    {
+                        'key': '$item'
+                    }
+                ]
+            }
+        }
+
+        self.assertRaises(LoopInConfigError, lambda: ExperimentConfig(experiment1))
+        self.assertRaises(LoopInConfigError, lambda: ExperimentConfig(experiment2))
