@@ -9,7 +9,7 @@ import toml
 
 from transfer_nlp.plugins.config import ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
-from transfer_nlp.plugins.trainers import TrainerABC
+from transfer_nlp.plugins.trainer_abc import TrainerABC
 
 ConfigEnv = Dict[str, Any]
 
