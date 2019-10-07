@@ -158,7 +158,7 @@ class ObjectBuilder:
             except InstantiationImpossible:
                 pass
 
-        logging.info(f'instantiating "{name}" as a simple object, {config}')
+        logger.info(f'instantiating "{name}" as a simple object, {config}')
 
         return config
 
@@ -178,7 +178,7 @@ class DictInstantiator(ObjectInstantiator):
         if not isinstance(config, dict):
             raise InstantiationImpossible()
 
-        logging.info(f'instantiating "{name}" as a dictionary')
+        logger.info(f'instantiating "{name}" as a dictionary')
 
         return {
             key: self.builder.instantiate(value_config, f'{name}.{key}')
@@ -201,7 +201,7 @@ class ListInstantiator(ObjectInstantiator):
         if not isinstance(config, list):
             raise InstantiationImpossible()
 
-        logging.info(f'instantiating "{name}" as a list')
+        logger.info(f'instantiating "{name}" as a list')
 
         return [
             self.builder.instantiate(value_config, f'{name}.{i}')
@@ -236,7 +236,7 @@ class FromMappingInstantiator(ObjectInstantiator):
             raise InstantiationImpossible
         try:
             instance = self.env[config[1:]]
-            logging.info(f'instantiating "{name}" using value {instance} from key {config} in {self.mapping_name}')
+            logger.info(f'instantiating "{name}" using value {instance} from key {config} in {self.mapping_name}')
             return instance
         except KeyError:
             raise InstantiationImpossible
@@ -281,7 +281,7 @@ class FromEnvironmentVariableInstantiator(FromMappingInstantiator):
             if v_upd.startswith('$'):
                 raise UnknownReferenceError(name, config) from None
 
-            logging.info(f'instantiating "{name}" using value {v_upd}')
+            logger.info(f'instantiating "{name}" using value {v_upd}')
 
             return v_upd
 
@@ -310,7 +310,7 @@ class CallableInstantiator(DictInstantiator):
 
         klass: Union[Type, Callable] = REGISTRY[klass_name]
 
-        logging.info(f'instantiating "{name}" calling {klass_name}')
+        logger.info(f'instantiating "{name}" calling {klass_name}')
 
         param_instances: Dict[str, Any] = {
             key: self.builder.instantiate(value_config, f'{name}.{key}')
