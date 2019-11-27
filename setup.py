@@ -23,7 +23,6 @@ setup(
         'pyaml>=19.4.1',
         'toml>=0.10.0'
     ],
-    setup_requires=['green'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
