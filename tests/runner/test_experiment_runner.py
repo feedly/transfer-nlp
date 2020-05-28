@@ -11,7 +11,7 @@ import toml
 
 from transfer_nlp.plugins.config import register_plugin, ExperimentConfig
 from transfer_nlp.plugins.reporters import ReporterABC
-from transfer_nlp.plugins.trainers import TrainerABC
+from transfer_nlp.plugins.trainer_abc import TrainerABC
 from transfer_nlp.runner.experiment_runner import ExperimentRunner
 
 logger = logging.getLogger(__name__)
