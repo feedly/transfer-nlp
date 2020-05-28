@@ -21,7 +21,10 @@ pip install -r requirements.txt
 To use Transfer NLP as a library:
 
 ```
+# to install the experiment builder only
 pip install transfernlp
+# to install Transfer NLP with PyTorch and Transfer Learning in NLP support
+pip install transfernlp[torch]
 ```
 or 
 ```
